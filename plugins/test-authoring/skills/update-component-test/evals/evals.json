@@ -1,0 +1,67 @@
+{
+  "skill_name": "update-component-test",
+  "evals": [
+    {
+      "id": 0,
+      "prompt": "update component scenario for Billing: discount calc when amount changed",
+      "expected_output": "Skill update-component-test triggers; runs Step -1 schema check, presents the audit summary, executes audit-derived actions (no confirmation gate), summarises result.",
+      "assertions": [
+        {
+          "text": "skill_triggered: update-component-test is selected"
+        },
+        {
+          "text": "schema_check_executed: schema_version compared before any writes"
+        },
+        {
+          "text": "audit_presented: audit summary and proposed-actions tables are shown; actions derive from audit status without a confirmation gate"
+        }
+      ]
+    },
+    {
+      "id": 1,
+      "prompt": "refresh the OrderApproval feature file after the new state was added",
+      "expected_output": "Skill update-component-test triggers; runs Step -1 schema check, presents the audit summary, executes audit-derived actions (no confirmation gate), summarises result.",
+      "assertions": [
+        {
+          "text": "skill_triggered: update-component-test is selected"
+        },
+        {
+          "text": "schema_check_executed: schema_version compared before any writes"
+        },
+        {
+          "text": "audit_presented: audit summary and proposed-actions tables are shown; actions derive from audit status without a confirmation gate"
+        }
+      ]
+    },
+    {
+      "id": 2,
+      "prompt": "explain the scenario design philosophy",
+      "expected_output": "Skill update-component-test does NOT trigger. Either another skill is selected or the model answers conversationally.",
+      "assertions": [
+        {
+          "text": "skill_not_triggered: update-component-test is NOT selected"
+        }
+      ]
+    },
+    {
+      "id": 3,
+      "prompt": "review the step-class organisation",
+      "expected_output": "Skill update-component-test does NOT trigger. Either another skill is selected or the model answers conversationally.",
+      "assertions": [
+        {
+          "text": "skill_not_triggered: update-component-test is NOT selected"
+        }
+      ]
+    },
+    {
+      "id": 4,
+      "prompt": "how should we name new feature files?",
+      "expected_output": "Skill update-component-test does NOT trigger. Either another skill is selected or the model answers conversationally.",
+      "assertions": [
+        {
+          "text": "skill_not_triggered: update-component-test is NOT selected"
+        }
+      ]
+    }
+  ]
+}

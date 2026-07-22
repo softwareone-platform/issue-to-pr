@@ -1,0 +1,5 @@
+# Archive a superseded run (staleness-gate → archive branch)
+
+Disclosed reference for `resolve-issue` (SKILL.md preamble staleness gate). Read only when the staleness gate routes to *archive* — i.e. a superseded run on the same ticket.
+
+**Archive is a move, never a delete.** Read the old top-level `state.md`'s timestamp — `started`, else `ended`, else the file's mtime — and form a Windows-safe UTC stamp `YYYY-MM-DDTHH-MM-SSZ` (colons rendered as dashes). Create `.claude/resolve/<ticket>/<stamp>/`, move `plan.md`, `fact-check.md`, `decisions.md`, and any leftover `plan.baseline.md` into it, and move `state.md` **last**, leaving any existing sibling timestamp subdirs untouched; the top-level is then empty and the run proceeds fresh-from-top (P3's directory already exists). Deriving the stamp from the old `started` (not "now") and moving `state.md` last makes an interrupted archive idempotent — a still-present top-level `state.md` re-triggers the gate, which recomputes the *same* subdir and finishes the move, so there is never a half-archived top-level or a second subdir. If the top-level has no files to move, skip the archive and proceed fresh.

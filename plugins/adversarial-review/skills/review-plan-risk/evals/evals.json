@@ -1,0 +1,179 @@
+{
+  "skill_name": "review-plan-risk",
+  "evals": [
+    {
+      "id": 0,
+      "prompt": "pre-mortem this migration plan before we start",
+      "expected_output": "Skill review-plan-risk triggers; scans the artifact, presents calibrated risks in a single summary table, auto-fixes the real ones when the artifact is a recoverable file (proposing the rest), verifies the fixes, and reports a result table.",
+      "assertions": [
+        {
+          "text": "skill_triggered: review-plan-risk is selected"
+        },
+        {
+          "text": "risks_calibrated: risks are presented ranked in a single summary table (ID, title, severity, plausibility, description carrying the failure scenario) — no location column, no separate per-risk list"
+        },
+        {
+          "text": "no_pick_gate: the skill does not ask the user to choose which risks to fix — real risks in a recoverable file are auto-fixed, the rest are left proposed"
+        },
+        {
+          "text": "result_table: a final table reports each risk's disposition (auto-fixed / proposed) and, where fixes were applied, the verifier verdict"
+        }
+      ]
+    },
+    {
+      "id": 1,
+      "prompt": "stress-test this design doc, what did we miss?",
+      "expected_output": "Skill review-plan-risk triggers; scans the artifact, presents calibrated risks in a single summary table, auto-fixes the real ones when the artifact is a recoverable file (proposing the rest), verifies the fixes, and reports a result table.",
+      "assertions": [
+        {
+          "text": "skill_triggered: review-plan-risk is selected"
+        },
+        {
+          "text": "risks_calibrated: risks are presented ranked in a single summary table (ID, title, severity, plausibility, description carrying the failure scenario) — no location column, no separate per-risk list"
+        },
+        {
+          "text": "no_pick_gate: the skill does not ask the user to choose which risks to fix — real risks in a recoverable file are auto-fixed, the rest are left proposed"
+        },
+        {
+          "text": "result_table: a final table reports each risk's disposition (auto-fixed / proposed) and, where fixes were applied, the verifier verdict"
+        }
+      ]
+    },
+    {
+      "id": 2,
+      "prompt": "what could make this rollout plan fail?",
+      "expected_output": "Skill review-plan-risk triggers; scans the artifact, presents calibrated risks in a single summary table, auto-fixes the real ones when the artifact is a recoverable file (proposing the rest), verifies the fixes, and reports a result table.",
+      "assertions": [
+        {
+          "text": "skill_triggered: review-plan-risk is selected"
+        },
+        {
+          "text": "risks_calibrated: risks are presented ranked in a single summary table (ID, title, severity, plausibility, description carrying the failure scenario) — no location column, no separate per-risk list"
+        },
+        {
+          "text": "no_pick_gate: the skill does not ask the user to choose which risks to fix — real risks in a recoverable file are auto-fixed, the rest are left proposed"
+        },
+        {
+          "text": "result_table: a final table reports each risk's disposition (auto-fixed / proposed) and, where fixes were applied, the verifier verdict"
+        }
+      ]
+    },
+    {
+      "id": 3,
+      "prompt": "review the SKILL.md I just wrote and find the design gaps",
+      "expected_output": "Skill review-plan-risk triggers; treats the workflow definition as a design artifact, presents calibrated risks, auto-fixes the real ones when the file is recoverable (proposing the rest), verifies the fixes, and reports a result table.",
+      "assertions": [
+        {
+          "text": "skill_triggered: review-plan-risk is selected"
+        },
+        {
+          "text": "risks_calibrated: risks are presented ranked in a single summary table (ID, title, severity, plausibility, description carrying the failure scenario) — no location column, no separate per-risk list"
+        },
+        {
+          "text": "no_pick_gate: the skill does not ask the user to choose which risks to fix — real risks in a recoverable file are auto-fixed, the rest are left proposed"
+        },
+        {
+          "text": "result_table: a final table reports each risk's disposition (auto-fixed / proposed) and, where fixes were applied, the verifier verdict"
+        }
+      ]
+    },
+    {
+      "id": 4,
+      "prompt": "review this PR diff for bugs",
+      "expected_output": "Skill review-plan-risk does NOT trigger. Code/diff review is explicitly out of scope; another skill is selected or the model handles it conversationally.",
+      "assertions": [
+        {
+          "text": "skill_not_triggered: review-plan-risk is NOT selected"
+        }
+      ]
+    },
+    {
+      "id": 5,
+      "prompt": "this feature is throwing errors in prod, help me debug it",
+      "expected_output": "Skill review-plan-risk does NOT trigger. Debugging an existing implementation is out of scope.",
+      "assertions": [
+        {
+          "text": "skill_not_triggered: review-plan-risk is NOT selected"
+        }
+      ]
+    },
+    {
+      "id": 6,
+      "prompt": "is my retry logic implementation correct?",
+      "expected_output": "Skill review-plan-risk does NOT trigger. Confirmatory correctness checks of an implementation want validation, not adversarial enumeration.",
+      "assertions": [
+        {
+          "text": "skill_not_triggered: review-plan-risk is NOT selected"
+        }
+      ]
+    },
+    {
+      "id": 7,
+      "prompt": "do a post-implementation code review of the billing changes",
+      "expected_output": "Skill review-plan-risk does NOT trigger. Post-implementation code review is explicitly excluded.",
+      "assertions": [
+        {
+          "text": "skill_not_triggered: review-plan-risk is NOT selected"
+        }
+      ]
+    },
+    {
+      "id": 8,
+      "prompt": "propagate this fix to the plugin's other skills",
+      "expected_output": "Skill review-plan-risk triggers; runs Step 5 propagation discipline — verifies the pattern per target with cited locations, presents the batch for pruning before editing, then fixes approved targets with smallest revisions.",
+      "assertions": [
+        {
+          "text": "skill_triggered: review-plan-risk is selected"
+        },
+        {
+          "text": "per_target_verification: each candidate file is verified to contain the pattern AND to constitute a risk in that file's context, with cited locations"
+        },
+        {
+          "text": "batch_gate: the verified batch is presented for pruning before any file is edited"
+        }
+      ]
+    },
+    {
+      "id": 9,
+      "prompt": "propagate this null-check fix across the source files in the codebase",
+      "expected_output": "Skill review-plan-risk does NOT trigger. Propagating a code change across source files is refactoring, not design review.",
+      "assertions": [
+        {
+          "text": "skill_not_triggered: review-plan-risk is NOT selected"
+        }
+      ]
+    },
+    {
+      "id": 10,
+      "prompt": "review the design of the committed SKILL.md at plugins/foo/skills/bar/SKILL.md before I extend it",
+      "expected_output": "Skill review-plan-risk triggers; treats the workflow definition as a design artifact, auto-fixes the real risks in the recoverable file without a pick gate, spawns a fresh adversarial verifier on the applied batch, and reports a result table.",
+      "assertions": [
+        {
+          "text": "skill_triggered: review-plan-risk is selected"
+        },
+        {
+          "text": "auto_fix_no_gate: real risks are fixed automatically without asking which to fix; edge-case/theoretical risks are left proposed"
+        },
+        {
+          "text": "independent_verification: when fixes are applied, a fresh adversarial agent that did not write them verifies the batch before the result table"
+        }
+      ]
+    },
+    {
+      "id": 11,
+      "prompt": "here's a rollout plan I'm sketching in chat, not saved anywhere yet — pre-mortem it",
+      "expected_output": "Skill review-plan-risk triggers; because the artifact is not a recoverable file, no fix is auto-applied — risks are calibrated and the fixes are presented as proposed text for the human.",
+      "assertions": [
+        {
+          "text": "skill_triggered: review-plan-risk is selected"
+        },
+        {
+          "text": "no_auto_edit: because the artifact is not an editable git-tracked file, nothing is written automatically; revised text is presented instead"
+        },
+        {
+          "text": "proposed_only: the result table shows risks as proposed (no auto-fixed rows)"
+        }
+      ]
+    }
+  ]
+}

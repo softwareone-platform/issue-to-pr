@@ -1,0 +1,67 @@
+{
+  "skill_name": "add-integration-test",
+  "evals": [
+    {
+      "id": 0,
+      "prompt": "add an integration test for POST /invoices endpoint",
+      "expected_output": "Skill add-integration-test triggers; runs Step -1 schema check, delegates to test-authoring writer agent, always spawns the verifier, summarises result.",
+      "assertions": [
+        {
+          "text": "skill_triggered: add-integration-test is selected"
+        },
+        {
+          "text": "schema_check_executed: schema_version compared before any writes"
+        },
+        {
+          "text": "delegation_boundary: test writing is delegated to writer agents — the orchestrator never edits test files directly"
+        }
+      ]
+    },
+    {
+      "id": 1,
+      "prompt": "create integration tests for the new ConsumerHandler",
+      "expected_output": "Skill add-integration-test triggers; runs Step -1 schema check, delegates to test-authoring writer agent, always spawns the verifier, summarises result.",
+      "assertions": [
+        {
+          "text": "skill_triggered: add-integration-test is selected"
+        },
+        {
+          "text": "schema_check_executed: schema_version compared before any writes"
+        },
+        {
+          "text": "delegation_boundary: test writing is delegated to writer agents — the orchestrator never edits test files directly"
+        }
+      ]
+    },
+    {
+      "id": 2,
+      "prompt": "the integration test container won't start",
+      "expected_output": "Skill add-integration-test does NOT trigger. Either another skill is selected or the model answers conversationally.",
+      "assertions": [
+        {
+          "text": "skill_not_triggered: add-integration-test is NOT selected"
+        }
+      ]
+    },
+    {
+      "id": 3,
+      "prompt": "discuss integration test fixture strategy",
+      "expected_output": "Skill add-integration-test does NOT trigger. Either another skill is selected or the model answers conversationally.",
+      "assertions": [
+        {
+          "text": "skill_not_triggered: add-integration-test is NOT selected"
+        }
+      ]
+    },
+    {
+      "id": 4,
+      "prompt": "what's the difference between integration and end-to-end tests?",
+      "expected_output": "Skill add-integration-test does NOT trigger. Either another skill is selected or the model answers conversationally.",
+      "assertions": [
+        {
+          "text": "skill_not_triggered: add-integration-test is NOT selected"
+        }
+      ]
+    }
+  ]
+}

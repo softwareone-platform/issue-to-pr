@@ -1,0 +1,17 @@
+{
+  "_comment": "Canonical step registry for the resolve-issue pipeline. Single source of truth for the step SKELETON (id, order, label, component, gate, runsTests). resolve-issue-dashboard reads this to render its pipeline and to flag cross-run test contention; resolve-issue's SKILL.md is the registry of record for these ids and must stay consistent with it. Per-step BEHAVIOUR lives in resolve-issue/SKILL.md prose, not here. The id prefixes (A/B) and resolve-issue's Phase A/Phase B narrative are the same split around the single plan-approval gate; the dashboard renders steps as a flat numbered list and does not show the phase letter. runsTests marks steps that execute integration/component tests against the shared host container stack (Podman + SQL + Azurite); resolve-issue-dashboard warns when two or more runs sit on such a step at once. Adding a step: append it here (resolve-issue-dashboard picks it up) and document its behaviour in resolve-issue/SKILL.md.",
+  "steps": [
+    { "id": "a-fact-check", "label": "Fact-check issue", "component": "review-issue-fact" },
+    { "id": "a-elicit-decisions", "label": "Resolve decisions", "component": null },
+    { "id": "a-draft-plan", "label": "Draft plan", "component": null },
+    { "id": "a-harden-plan", "label": "Harden plan", "component": "review-plan-risk" },
+    { "id": "a-gate-approve", "label": "Plan approval", "component": null, "gate": true },
+    { "id": "b-implement", "label": "Implement fix", "component": null },
+    { "id": "b-write-tests", "label": "Write tests", "component": "test-authoring", "runsTests": true },
+    { "id": "b-commit-tests", "label": "Prepare for review", "component": null },
+    { "id": "b-security-review", "label": "Review security", "component": "security-review", "runsTests": true },
+    { "id": "b-code-risk", "label": "Finalise fix", "component": "review-code-risk", "runsTests": true },
+    { "id": "b-open-pr", "label": "Open PR", "component": "open-pr" },
+    { "id": "done", "label": "Done", "component": null }
+  ]
+}

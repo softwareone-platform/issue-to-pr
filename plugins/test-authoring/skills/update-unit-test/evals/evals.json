@@ -1,0 +1,67 @@
+{
+  "skill_name": "update-unit-test",
+  "evals": [
+    {
+      "id": 0,
+      "prompt": "update unit tests for BillingService now that CreateInvoice signature changed",
+      "expected_output": "Skill update-unit-test triggers; runs Step -1 schema check, presents the audit summary, executes audit-derived actions (no confirmation gate), summarises result.",
+      "assertions": [
+        {
+          "text": "skill_triggered: update-unit-test is selected"
+        },
+        {
+          "text": "schema_check_executed: schema_version compared before any writes"
+        },
+        {
+          "text": "audit_presented: audit summary and proposed-actions tables are shown; actions derive from audit status without a confirmation gate"
+        }
+      ]
+    },
+    {
+      "id": 1,
+      "prompt": "the unit tests for OrderProcessor are stale, refresh them",
+      "expected_output": "Skill update-unit-test triggers; runs Step -1 schema check, presents the audit summary, executes audit-derived actions (no confirmation gate), summarises result.",
+      "assertions": [
+        {
+          "text": "skill_triggered: update-unit-test is selected"
+        },
+        {
+          "text": "schema_check_executed: schema_version compared before any writes"
+        },
+        {
+          "text": "audit_presented: audit summary and proposed-actions tables are shown; actions derive from audit status without a confirmation gate"
+        }
+      ]
+    },
+    {
+      "id": 2,
+      "prompt": "how do I write a unit test for static methods?",
+      "expected_output": "Skill update-unit-test does NOT trigger. Either another skill is selected or the model answers conversationally.",
+      "assertions": [
+        {
+          "text": "skill_not_triggered: update-unit-test is NOT selected"
+        }
+      ]
+    },
+    {
+      "id": 3,
+      "prompt": "discuss our refactoring strategy for legacy unit tests",
+      "expected_output": "Skill update-unit-test does NOT trigger. Either another skill is selected or the model answers conversationally.",
+      "assertions": [
+        {
+          "text": "skill_not_triggered: update-unit-test is NOT selected"
+        }
+      ]
+    },
+    {
+      "id": 4,
+      "prompt": "should we delete this old unit test?",
+      "expected_output": "Skill update-unit-test does NOT trigger. Either another skill is selected or the model answers conversationally.",
+      "assertions": [
+        {
+          "text": "skill_not_triggered: update-unit-test is NOT selected"
+        }
+      ]
+    }
+  ]
+}

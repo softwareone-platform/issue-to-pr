@@ -1,0 +1,109 @@
+{
+  "skill_name": "scan-test-gaps",
+  "evals": [
+    {
+      "id": 0,
+      "prompt": "scan for test gaps in the billing module",
+      "expected_output": "Skill scan-test-gaps triggers; runs Step -1 schema check, shows confirmation gate (or natural gate for scan), delegates to test-authoring agent, summarises result.",
+      "assertions": [
+        {
+          "text": "skill_triggered: scan-test-gaps is selected"
+        },
+        {
+          "text": "schema_check_executed: schema_version compared before any writes"
+        },
+        {
+          "text": "confirmation_gate_shown: user is asked to confirm scope before any Write/Edit (scan-test-gaps may use its Step 6 gate instead)"
+        }
+      ]
+    },
+    {
+      "id": 1,
+      "prompt": "which classes lack tests?",
+      "expected_output": "Skill scan-test-gaps triggers; runs Step -1 schema check, shows confirmation gate (or natural gate for scan), delegates to test-authoring agent, summarises result.",
+      "assertions": [
+        {
+          "text": "skill_triggered: scan-test-gaps is selected"
+        },
+        {
+          "text": "schema_check_executed: schema_version compared before any writes"
+        },
+        {
+          "text": "confirmation_gate_shown: user is asked to confirm scope before any Write/Edit (scan-test-gaps may use its Step 6 gate instead)"
+        }
+      ]
+    },
+    {
+      "id": 2,
+      "prompt": "find untested code in the recent changes",
+      "expected_output": "Skill scan-test-gaps triggers; runs Step -1 schema check, shows confirmation gate (or natural gate for scan), delegates to test-authoring agent, summarises result.",
+      "assertions": [
+        {
+          "text": "skill_triggered: scan-test-gaps is selected"
+        },
+        {
+          "text": "schema_check_executed: schema_version compared before any writes"
+        },
+        {
+          "text": "confirmation_gate_shown: user is asked to confirm scope before any Write/Edit (scan-test-gaps may use its Step 6 gate instead)"
+        }
+      ]
+    },
+    {
+      "id": 3,
+      "prompt": "check coverage holes for the new handlers",
+      "expected_output": "Skill scan-test-gaps triggers; runs Step -1 schema check, shows confirmation gate (or natural gate for scan), delegates to test-authoring agent, summarises result.",
+      "assertions": [
+        {
+          "text": "skill_triggered: scan-test-gaps is selected"
+        },
+        {
+          "text": "schema_check_executed: schema_version compared before any writes"
+        },
+        {
+          "text": "confirmation_gate_shown: user is asked to confirm scope before any Write/Edit (scan-test-gaps may use its Step 6 gate instead)"
+        }
+      ]
+    },
+    {
+      "id": 4,
+      "prompt": "the test runner is slow",
+      "expected_output": "Skill scan-test-gaps does NOT trigger. Either another skill is selected or the model answers conversationally.",
+      "assertions": [
+        {
+          "text": "skill_not_triggered: scan-test-gaps is NOT selected"
+        }
+      ]
+    },
+    {
+      "id": 5,
+      "prompt": "discuss our coverage tool config",
+      "expected_output": "Skill scan-test-gaps does NOT trigger. Either another skill is selected or the model answers conversationally.",
+      "assertions": [
+        {
+          "text": "skill_not_triggered: scan-test-gaps is NOT selected"
+        }
+      ]
+    },
+    {
+      "id": 6,
+      "prompt": "this test failed, why?",
+      "expected_output": "Skill scan-test-gaps does NOT trigger. Either another skill is selected or the model answers conversationally.",
+      "assertions": [
+        {
+          "text": "skill_not_triggered: scan-test-gaps is NOT selected"
+        }
+      ]
+    },
+    {
+      "id": 7,
+      "prompt": "should we use a coverage tool?",
+      "expected_output": "Skill scan-test-gaps does NOT trigger. Either another skill is selected or the model answers conversationally.",
+      "assertions": [
+        {
+          "text": "skill_not_triggered: scan-test-gaps is NOT selected"
+        }
+      ]
+    }
+  ]
+}

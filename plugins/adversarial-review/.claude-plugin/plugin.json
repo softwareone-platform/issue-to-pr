@@ -1,0 +1,5 @@
+{
+  "name": "adversarial-review",
+  "description": "Adversarial review skills: review-issue-fact (issue), review-plan-risk (design), review-code-risk (implementation)",
+  "version": "1.3.1"
+}

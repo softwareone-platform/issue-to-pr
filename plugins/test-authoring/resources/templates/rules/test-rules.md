@@ -1,0 +1,50 @@
+---
+schema_version: "1.1"
+description: Mandatory rules for all test writing and editing — project-wide conventions, fix rules, and build verification.
+paths: ["{{TEST_GLOB}}"]
+---
+
+# Test Writing Rules
+
+These rules apply to ALL test agents (writers, updaters, verifiers) when working with test files.
+
+## Mandatory Project-wide Rules
+
+{{PROJECT_WIDE_RULES}}
+<!-- Bootstrap (shared-tier2 subagent) fills this with a bullet list extracted from Step 1.4 analysis.
+Use `<plugin-root>/resources/templates/lang/<derived>/project-wide-rules.md` as the language-specific baseline, then refine with codebase-specific bullets observed in Step 1.4.
+The orchestrator pre-resolves the fragment path and passes it in the subagent prompt (see references/placeholders.md § Language fragments). -->
+
+## Fix Rules (CRITICAL)
+
+- **NEVER** weaken an assertion to make a test pass (e.g., changing `.Be(5)` to `.BeGreaterThan(0)`)
+- **NEVER** delete a test case that fails — fix the root cause or report it as failed
+- **NEVER** add skip/ignore attributes or comment out a test to bypass a failure
+- **NEVER** change the SUT (source code) to make tests pass
+- If a test fails after **2 fix attempts**, report it as `failed` in the output — do not keep weakening it
+
+## Build and Test Verification
+
+After writing or modifying tests, build and run them.
+
+{{BUILD_AND_TEST_COMMANDS}}
+<!-- Bootstrap fills this with one section per test project detected in Step 1.3/1.5, e.g.:
+
+### Unit tests
+```bash
+<build command>
+<test command with filter>
+```
+
+### Integration tests
+```bash
+<build command>
+<test command with filter>
+```
+-->
+
+### Verification procedure
+- If the build has errors, check whether they are **pre-existing** or caused by your changes. Only fix errors caused by your changes.
+- If a test fails, read the error output, diagnose the root cause, fix the test, and re-run.
+- Iterate until all new/modified tests pass. Max **2 fix rounds** — after that, report as failed.
+- If a test fails due to environmental issues (e.g., container runtime, network), report it as `env_failure` rather than silently skipping.

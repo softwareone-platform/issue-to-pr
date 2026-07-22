@@ -1,0 +1,846 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>resolve-issue progress</title>
+<style>
+  :root {
+    --surface-base: #070b14;
+    --surface-raised: #0e1726;
+    --surface-raised-2: #11202f;
+    --border-subtle: #1f2c3a;
+    --text-primary: #f0f3f5;
+    --text-secondary: #bcc6cf;
+    --text-tertiary: #94a1ab;
+    --text-disabled: #647689;
+    --accent: #22d3ee;
+    --accent-glow: rgba(34, 211, 238, 0.35);
+    --success: #34d399;
+    --error: #e24b4a;
+    --blocked: #e24b4a;
+    --amber: #fbbf24;
+    --tok-in: #a78bfa;
+    --tok-out: #f472b6;
+    --mono: ui-monospace, SFMono-Regular, "Cascadia Mono", Consolas, monospace;
+    --sans: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  }
+  * { box-sizing: border-box; }
+  html, body { margin: 0; height: 100%; }
+  body {
+    /* dark mesh: analogous blue -> cyan -> teal-green (~50 deg of the wheel)
+       as three low-opacity radial points over a 135deg dark base; subtle enough
+       that the HUD stays dark and text/orb keep their contrast */
+    background:
+      radial-gradient(58% 52% at 18% 14%, rgba(56, 99, 196, 0.14), transparent 60%),
+      radial-gradient(50% 50% at 86% 26%, rgba(34, 211, 238, 0.09), transparent 62%),
+      radial-gradient(55% 52% at 50% 98%, rgba(52, 211, 153, 0.07), transparent 60%),
+      linear-gradient(135deg, #070e1a 0%, #06111c 52%, #050c15 100%);
+    color: var(--text-primary);
+    font-family: var(--sans);
+    font-size: 14px;
+    line-height: 1.45;
+    overflow: hidden;
+  }
+  .app { display: flex; height: 100vh; }
+
+  /* run sidebar */
+  .sidebar { width: 240px; flex: none; border-right: 1px solid var(--border-subtle);
+    background: linear-gradient(180deg, rgba(14, 23, 38, 0.9), rgba(7, 11, 20, 0.92));
+    height: 100vh; overflow-y: auto; padding: 16px 0; }
+  .sidebar-head { font-size: 10.5px; text-transform: uppercase; letter-spacing: 0.18em; color: var(--text-tertiary); font-weight: 700; padding: 0 16px 12px; }
+  .repo-group { padding-bottom: 6px; }
+  .repo-head { display: flex; align-items: center; gap: 7px; padding: 10px 16px 5px; font-size: 10px; letter-spacing: 0.14em;
+    text-transform: uppercase; color: var(--text-tertiary); font-weight: 700; }
+  .repo-head .repo-name { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .run { display: flex; align-items: center; gap: 9px; width: 100%; text-align: left; border: none; background: none; cursor: pointer;
+    padding: 7px 14px 7px 28px; border-left: 2px solid transparent; color: var(--text-secondary); font-family: inherit; }
+  .run:hover { background: var(--surface-raised-2); }
+  .run.sel { border-left-color: var(--accent); background: linear-gradient(90deg, rgba(34, 211, 238, 0.10), transparent); }
+  .run .run-meta { display: flex; flex-direction: column; flex: 1; min-width: 0; }
+  .run .run-ticket { font-size: 12px; font-family: var(--mono); color: var(--text-primary); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .run .run-sub { font-size: 10px; color: var(--text-tertiary); }
+  .run .run-sub.cur { color: var(--text-secondary); }
+  .run .run-time { font-size: 11px; color: var(--text-disabled); flex: none; }
+  .run-empty { padding: 12px 16px; font-size: 12px; color: var(--text-tertiary); }
+
+  /* main column */
+  .main { flex: 1; min-width: 0; height: 100vh; overflow-y: auto; display: flex; flex-direction: column; padding: 16px 22px 12px; }
+  .header { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; }
+  .brand { font-weight: 600; font-size: 15px; letter-spacing: 0.2px; }
+  .brand .dim { color: var(--text-tertiary); font-weight: 400; }
+  .ticket-chip { font-family: var(--mono); font-size: 11.5px; padding: 2px 9px; border-radius: 6px;
+    background: var(--surface-raised-2); color: var(--text-secondary); border: 1px solid var(--border-subtle); }
+  .spacer { flex: 1; }
+  .status-pill { display: inline-flex; align-items: center; gap: 7px; font-size: 11.5px; font-weight: 500;
+    padding: 4px 11px; border-radius: 999px; border: 1px solid var(--border-subtle);
+    background: var(--surface-raised); color: var(--text-secondary); text-transform: capitalize; }
+  .dot { width: 8px; height: 8px; border-radius: 50%; background: var(--text-disabled); flex: none; }
+  .dot.running { background: var(--accent); box-shadow: 0 0 0 0 var(--accent-glow); animation: pulse 1.6s infinite; }
+  .dot.paused { background: var(--amber); }
+  .dot.done { background: var(--success); }
+  .dot.waiting { background: var(--text-tertiary); }
+  .dot.active { background: var(--accent); }
+  .dot.idle { background: var(--text-disabled); }
+  .dot.blocked { background: var(--blocked); }
+  @keyframes pulse {
+    0% { box-shadow: 0 0 0 0 var(--accent-glow); }
+    70% { box-shadow: 0 0 0 7px rgba(34, 211, 238, 0); }
+    100% { box-shadow: 0 0 0 0 rgba(34, 211, 238, 0); }
+  }
+
+  .meta { display: flex; gap: 16px; flex-wrap: wrap; color: var(--text-tertiary); font-size: 11.5px; margin: 8px 0 0; }
+  .meta .k { color: var(--text-disabled); }
+  .meta code { font-family: var(--mono); color: var(--text-secondary); }
+  .meta a { color: var(--accent); text-decoration: none; }
+  .meta a:hover { text-decoration: underline; }
+  .badge-ok { color: var(--success); }
+
+  /* cross-run test-contention banner (gate/blocked now use the attention frame +
+     core takeover below, so they no longer render an inline banner) */
+  .warn {
+    display: none; align-items: flex-start; gap: 10px; padding: 10px 14px; border-radius: 10px;
+    font-size: 13px; margin-top: 12px;
+    background: rgba(251, 191, 36, 0.1); border: 1px solid rgba(251, 191, 36, 0.4); color: #fcd9a0;
+  }
+  .warn.show { display: flex; }
+  .warn svg { color: var(--amber); flex: none; margin-top: 1px; }
+  .warn .warn-body { flex: 1; min-width: 0; }
+  .warn .warn-runs { margin-top: 6px; display: flex; flex-wrap: wrap; gap: 6px; }
+  .warn .warn-runs .wr { font-family: var(--mono); font-size: 11px; padding: 2px 8px; border-radius: 6px;
+    background: var(--surface-raised-2); color: var(--text-secondary); border: 1px solid var(--border-subtle); }
+
+  /* attention layer for gate/blocked: a large-area breathing frame plus dimmed chrome.
+     this is the cue peripheral vision reads on a side monitor or a half-width split,
+     where a centre-of-screen hue change alone does not register. amber = gate, red = blocked */
+  .attn { position: fixed; inset: 0; pointer-events: none; z-index: 60; display: none; }
+  body.attn-gate .attn, body.attn-blocked .attn { display: block; }
+  body.attn-gate    { --attn: var(--amber);   --attn-soft: rgba(251, 191, 36, 0.46); }
+  body.attn-blocked { --attn: var(--blocked); --attn-soft: rgba(226, 75, 74, 0.50); }
+  .attn::before {
+    content: ""; position: absolute; inset: 0;
+    box-shadow: inset 0 0 0 3px var(--attn), inset 0 0 26px 2px var(--attn), inset 0 0 130px 14px var(--attn-soft);
+    /* breathe a few times to catch the eye, then settle to a steady lit frame so a
+       long-parked gate does not nag */
+    animation: breathe 2.1s ease-in-out 5;
+  }
+  @keyframes breathe { 0%, 100% { opacity: 1; } 50% { opacity: 0.4; } }
+  /* dim the chrome so the lit frame and the orb win the luminance contrast; hero stays full */
+  body.attn-gate .sidebar, body.attn-blocked .sidebar,
+  body.attn-gate .header,  body.attn-blocked .header,
+  body.attn-gate .meta,    body.attn-blocked .meta,
+  body.attn-gate .ticker,  body.attn-blocked .ticker,
+  body.attn-gate .foot,    body.attn-blocked .foot { filter: brightness(0.75) saturate(0.95); transition: filter 0.45s ease; }
+
+  /* hero: command-center pipeline */
+  .hero { position: relative; flex: 1; min-height: 420px; display: flex; align-items: center; justify-content: center; margin-top: 8px; }
+  #graph { position: absolute; inset: 0; }
+  #graph svg { display: block; width: 100%; height: 100%; }
+  .legend { position: absolute; top: 6px; left: 4px; display: flex; flex-wrap: wrap; gap: 12px; align-items: center; font-size: 11px; color: var(--text-tertiary); }
+  .legend .d { display: inline-block; width: 9px; height: 9px; border-radius: 50%; margin-right: 5px; vertical-align: -1px; }
+  .legend .lk { display: inline-block; width: 8px; height: 9px; margin-right: 5px; vertical-align: -1px; }
+
+  /* core readout overlay (the four whole-run gauges, folded in) */
+  .corewrap { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; pointer-events: none; }
+  .core { text-align: center; }
+  .core .clab { font-size: 11px; letter-spacing: 0.34em; color: var(--accent); font-family: var(--mono); }
+  .core .cbig { font-size: 62px; font-weight: 600; font-family: var(--mono); color: var(--text-primary); line-height: 1; margin: 5px 0; font-variant-numeric: tabular-nums; }
+  .core .cbig .cden { color: #3b4a5a; }
+  .core .cstat { font-size: 10.5px; letter-spacing: 0.30em; font-family: var(--mono); }
+  .core .cdur { margin-top: 12px; font-family: var(--mono); font-size: 16px; color: var(--text-secondary); font-variant-numeric: tabular-nums; }
+  .core .cdur .ck { display: block; font-size: 7.5px; letter-spacing: 0.2em; color: var(--text-tertiary); margin-top: 3px; }
+  /* gate/blocked takeover readout: the step label is the at-a-glance hero line, on par
+     with the step-count number it replaces */
+  .core .cicon { font-size: 32px; line-height: 1; }
+  .core .cact { font-size: 12.5px; letter-spacing: 0.32em; font-family: var(--mono); font-weight: 700; margin-top: 3px; }
+  .core .cwhat { font-size: 30px; font-weight: 600; line-height: 1.05; margin: 7px 0 3px; color: var(--text-primary); }
+  .core .cgo { font-size: 13px; color: var(--text-secondary); font-family: var(--mono); }
+  .core .csmall { margin-top: 11px; font-family: var(--mono); font-size: 11px; color: var(--text-disabled); }
+
+  /* volume aggregates docked at the hero's top-right, clear of the orb ring */
+  .statdock { position: absolute; top: 6px; right: 4px; display: flex; flex-direction: column; gap: 11px;
+    background: linear-gradient(180deg, rgba(17, 32, 47, 0.66), rgba(14, 23, 38, 0.66));
+    border: 1px solid var(--border-subtle); border-radius: 12px; padding: 12px 15px; }
+  .statdock .sg { display: flex; flex-direction: column; gap: 2px; }
+  .statdock .sg .sk { font-size: 8px; letter-spacing: 0.2em; text-transform: uppercase; color: var(--text-tertiary); font-family: var(--mono); }
+  .statdock .sg .sv { font-family: var(--mono); font-size: 15px; color: var(--text-primary); font-variant-numeric: tabular-nums; }
+  .statdock .sg .sv .in { color: var(--tok-in); }
+  .statdock .sg .sv .out { color: var(--tok-out); }
+  .statdock .sg .sv .tg { font-size: 9px; letter-spacing: 0.12em; color: var(--text-tertiary); }
+
+  /* agent-activity ticker (compact, subordinate) */
+  /* draggable splitter between the hero and the activity ticker */
+  .splitter { flex: none; height: 11px; cursor: row-resize; display: flex; align-items: center; justify-content: center; touch-action: none; user-select: none; }
+  .splitter::before { content: ""; width: 46px; height: 3px; border-radius: 2px; background: var(--border-subtle); transition: background 0.15s, width 0.15s; }
+  .splitter:hover::before, .splitter.dragging::before { background: var(--accent); width: 64px; }
+  .splitter:focus-visible { outline: none; }
+  .splitter:focus-visible::before { background: var(--accent); width: 64px; box-shadow: 0 0 0 2px rgba(34, 211, 238, 0.35); }
+  .ticker { flex: none; height: 188px; display: flex; flex-direction: column; border-top: 1px solid var(--border-subtle);
+    background: linear-gradient(180deg, transparent, rgba(14, 23, 38, 0.5)); }
+  .ticker-head { display: flex; align-items: center; gap: 10px; padding: 8px 2px 6px; }
+  .ticker-head .section-label { font-size: 10px; letter-spacing: 0.2em; text-transform: uppercase; color: var(--text-tertiary); font-weight: 600; }
+  .ticker-head .live { margin-left: auto; display: inline-flex; align-items: center; gap: 6px; font-size: 11px; color: var(--text-disabled); }
+  .conn-dot { width: 7px; height: 7px; border-radius: 50%; background: var(--success); }
+  .conn-dot.down { background: var(--error); }
+  .activity { flex: 1; min-height: 0; overflow-y: auto; }
+  .activity .empty { padding: 14px 2px; color: var(--text-tertiary); font-size: 12.5px; }
+  /* hard ceiling so a single log row can never grow to viewport height:
+     defense-in-depth against a descendant leaking a large height (e.g. a future
+     class name colliding with a layout selector such as `.main`). healthy rows
+     are ~23px, well under the cap, so it is invisible in normal rendering and
+     only clamps a runaway row rather than letting it fill the panel */
+  .arow { display: flex; align-items: center; gap: 10px; padding: 2px 2px; line-height: 1.25; max-height: 2.2em; overflow: hidden; }
+  .arow .astatus { flex: none; }
+  .arow .astatus.success { color: var(--success); }
+  .arow .astatus.error { color: var(--error); }
+  .arow .astatus.running { color: var(--accent); }
+  .agent-badge { flex: none; font-size: 10px; font-family: var(--mono); padding: 1px 6px; border-radius: 5px;
+    background: var(--surface-raised-2); color: var(--text-secondary); max-width: 200px; overflow: hidden;
+    white-space: nowrap; text-overflow: ellipsis; }
+  /* `is-main`, not `main`: a bare `main` modifier collides with the `.main`
+     column selector (height:100vh, display:flex), which stretched the badge -
+     and so the whole activity row - to viewport height in the wide layout */
+  .agent-badge.is-main { color: var(--accent); }
+  .arow .tool { font-size: 12px; font-weight: 600; flex: none; }
+  .arow .target { font-family: var(--mono); font-size: 11px; color: var(--text-secondary); flex: 1; min-width: 0;
+    overflow: hidden; white-space: nowrap; text-overflow: ellipsis; }
+  .arow .elapsed { font-family: var(--mono); font-size: 10px; color: var(--text-tertiary); flex: none; }
+  .spin { animation: spin 1s linear infinite; }
+  @keyframes spin { to { transform: rotate(360deg); } }
+  .foot { flex: none; padding: 6px 2px 0; font-size: 11px; color: var(--text-disabled); }
+
+  @media (max-width: 720px) {
+    .app { flex-direction: column; }
+    .sidebar { width: 100%; height: auto; max-height: 42vh; overflow-y: auto; min-height: 0;
+      border-right: none; border-bottom: 1px solid var(--border-subtle); display: block; padding: 10px 0; }
+    .sidebar-head { padding: 0 16px 8px; }
+    .main { height: auto; }
+    .hero { min-height: 340px; }
+    .splitter { display: none; }
+    .ticker { height: auto; }
+    .activity { flex: none; max-height: 200px; }
+  }
+
+  /* respect reduced-motion: kill CSS animations (SVG SMIL is skipped in JS too) */
+  @media (prefers-reduced-motion: reduce) {
+    .dot.running { animation: none; }
+    .spin { animation: none; }
+    .splitter::before { transition: none; }
+    .attn::before { animation: none; }
+    /* the attention dim should snap, not fade, when motion is reduced */
+    body.attn-gate .sidebar, body.attn-blocked .sidebar,
+    body.attn-gate .header,  body.attn-blocked .header,
+    body.attn-gate .meta,    body.attn-blocked .meta,
+    body.attn-gate .ticker,  body.attn-blocked .ticker,
+    body.attn-gate .foot,    body.attn-blocked .foot { transition: none; }
+  }
+</style>
+</head>
+<body>
+<div class="attn"></div>
+<div id="attn-live" aria-live="assertive" style="position:absolute;width:1px;height:1px;margin:-1px;padding:0;overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap;border:0;"></div>
+<div class="app">
+  <aside class="sidebar">
+    <div class="sidebar-head">Runs</div>
+    <div id="runs"><div class="run-empty">Discovering runs...</div></div>
+  </aside>
+  <div class="main">
+    <div class="header">
+      <span class="brand">resolve-issue <span class="dim">progress</span></span>
+      <span class="ticket-chip" id="ticket">no ticket</span>
+      <span class="spacer"></span>
+      <span class="status-pill"><span class="dot" id="status-dot"></span><span id="status-text">idle</span></span>
+    </div>
+
+    <div class="meta" id="meta"></div>
+
+    <div class="warn" id="contention">
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M10.3 3.9 1.8 18a2 2 0 0 0 1.7 3h17a2 2 0 0 0 1.7-3L13.7 3.9a2 2 0 0 0-3.4 0z"/><path d="M12 9v4"/><path d="M12 17h.01"/></svg>
+      <div class="warn-body"><span id="contention-text"></span><div class="warn-runs" id="contention-runs"></div></div>
+    </div>
+
+    <div class="hero">
+      <div class="legend">
+        <span><span class="d" style="background:#34d399"></span>completed</span>
+        <span><span class="d" style="background:#22d3ee"></span>running</span>
+        <span><svg class="lk" width="9" height="9" viewBox="0 0 8 9"><rect x="0" y="3" width="8" height="6" rx="1.4" fill="#fbbf24"/><path d="M1.5 3 V1.6 a2.5 2.5 0 0 1 5 0 V3" fill="none" stroke="#fbbf24" stroke-width="1.2"/></svg>gate</span>
+        <span><span class="d" style="background:#e24b4a"></span>blocked</span>
+        <span><span class="d" style="background:#34404f"></span>pending</span>
+      </div>
+      <div class="statdock" id="statdock"></div>
+      <div id="graph"></div>
+      <div class="corewrap"><div class="core" id="core"></div></div>
+    </div>
+
+    <div class="splitter" id="splitter" role="separator" aria-orientation="horizontal" aria-label="Drag to resize the activity panel" tabindex="0"></div>
+    <div class="ticker">
+      <div class="ticker-head">
+        <span class="section-label">Agent activity</span>
+        <span class="live"><span class="conn-dot" id="conn-dot"></span><span id="conn-text">connecting...</span></span>
+      </div>
+      <div class="activity" id="activity"><div class="empty">Waiting for activity...</div></div>
+    </div>
+    <div class="foot">read-only observer</div>
+  </div>
+</div>
+
+<script>
+"use strict";
+
+var REDUCE = !!(window.matchMedia && window.matchMedia("(prefers-reduced-motion: reduce)").matches);
+
+// fixed dark palette literals (this standalone page has no light mode and no
+// icon font, so SVG fills and icons are inlined rather than pulled from CSS vars)
+var C = {
+  accent: "#22d3ee", ok: "#34d399", amber: "#fbbf24", blocked: "#e24b4a",
+  track: "#34404f", txt: "#f0f3f5", mut: "#94a1ab", border: "#2c3645",
+  node: "#0e1726", nodePend: "#0a111c", connPend: "#34404f", orbEdge: "#1b2a3c",
+  // tokens in/out are a data split, so they deliberately avoid the status hues
+  // (cyan / amber / green / red) the legend reserves page-wide
+  tokIn: "#a78bfa", tokOut: "#f472b6"
+};
+
+var ICONS = {
+  check: "<path d='M20 6 9 17l-5-5'/>",
+  spinner: "<path d='M21 12a9 9 0 1 1-6.2-8.6'/>",
+  x: "<path d='M18 6 6 18M6 6l12 12'/>",
+  terminal: "<path d='m4 17 6-6-6-6'/><path d='M12 19h8'/>",
+  file: "<path d='M14 3v5h5'/><path d='M14 3H6a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z'/>",
+  edit: "<path d='M12 20h9'/><path d='M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4z'/>",
+  search: "<circle cx='11' cy='11' r='7'/><path d='m21 21-4.3-4.3'/>",
+  robot: "<rect x='4' y='8' width='16' height='12' rx='2'/><path d='M12 8V4M9 14h.01M15 14h.01'/>",
+  wrench: "<path d='M14.7 6.3a4 4 0 0 0-5.4 5.4L3 18v3h3l6.3-6.3a4 4 0 0 0 5.4-5.4l-2.7 2.7-2-2z'/>",
+  git: "<circle cx='6' cy='6' r='2.5'/><circle cx='6' cy='18' r='2.5'/><circle cx='18' cy='8' r='2.5'/><path d='M6 8.5v7M18 10.5c0 4-6 2-6 6'/>"
+};
+
+function svg(name, cls) {
+  var p = ICONS[name] || ICONS.wrench;
+  return "<svg class='" + (cls || "") + "' width='15' height='15' viewBox='0 0 24 24' fill='none' stroke='currentColor' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'>" + p + "</svg>";
+}
+
+function toolIcon(tool) {
+  var t = (tool || "").toLowerCase();
+  if (t === "bash" || t === "powershell") return "terminal";
+  if (t === "read") return "file";
+  if (t === "write") return "file";
+  if (t === "edit" || t === "notebookedit") return "edit";
+  if (t === "glob" || t === "grep" || t === "toolsearch" || t === "websearch") return "search";
+  if (t === "task" || t === "agent") return "robot";
+  if (t.indexOf("git") === 0) return "git";
+  return "wrench";
+}
+
+function esc(s) {
+  return String(s == null ? "" : s).replace(/[&<>"]/g, function (c) {
+    return { "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c];
+  });
+}
+
+function pad2(n) { return n < 10 ? "0" + n : "" + n; }
+
+// duration formatter. the core readout needs hours + minutes + seconds for long
+// runs, zero-padded so the tabular width does not jitter as the 1s tick advances
+function fmtDur(ms) {
+  if (ms == null) return "";
+  if (ms < 1000) return ms + "ms";
+  var s = ms / 1000;
+  if (s < 60) return s.toFixed(1) + "s";
+  var m = Math.floor(s / 60);
+  if (m < 60) return m + "m " + pad2(Math.floor(s % 60)) + "s";
+  return Math.floor(m / 60) + "h " + pad2(m % 60) + "m " + pad2(Math.floor(s % 60)) + "s";
+}
+
+function fmtNum(n) {
+  n = n || 0;
+  if (n >= 1000000) return (n / 1000000).toFixed(1) + "M";
+  if (n >= 1000) return (n / 1000).toFixed(1) + "k";
+  return String(n);
+}
+
+// elapsed anchored to the run's own timeline: ticks now-startedMs while live
+// (a running run, incl. one paused at a gate, visibly advances), and freezes at
+// endedMs-startedMs when not live. startedMs/endedMs are the run-scoped state.md
+// timestamps when present; the endedMs>=startedMs guard rejects the cross-session
+// mismatch that can still arise on the old-run fallback (a newer session's first
+// event postdating a finished run), showing "-" rather than a misleading 0
+var _dur = null;
+function durationText() {
+  if (!_dur || _dur.startedMs == null) return "-";
+  if (_dur.live) return fmtDur(nowMs() - _dur.startedMs);
+  if (_dur.endedMs != null && _dur.endedMs >= _dur.startedMs) return fmtDur(_dur.endedMs - _dur.startedMs);
+  return "-";
+}
+
+function statusStroke(st) {
+  return st === "completed" ? C.ok : st === "running" ? C.accent
+    : st === "paused" ? C.amber : st === "blocked" ? C.blocked : C.border;
+}
+
+// the core ring + status text colour track the run status; amber stays reserved
+// for the gate/paused meaning, so the ring is never decoratively amber
+function coreColor(status) {
+  return status === "done" ? C.ok : status === "paused" ? C.amber
+    : status === "blocked" ? C.blocked : status === "running" ? C.accent : C.mut;
+}
+
+/* ---- command-center pipeline (sequential ring + folded core readout) ---- */
+
+// build the orbit graph: step nodes laid clockwise from 12 o'clock, connected
+// step-to-step around the ring so the 1->n order and the active edge read at a
+// glance; the core circle carries the single status-coloured step-progress ring
+function buildGraph(steps, status, met) {
+  var host = document.getElementById("graph");
+  if (!host) return;
+  var W = host.clientWidth, H = host.clientHeight;
+  if (!W || !H) return;
+  var cx = W / 2, cy = H / 2;
+  // reserve more room horizontally than vertically: the 3-o'clock and 9-o'clock
+  // labels extend a full label-width sideways and clip on a narrow window, while
+  // the top/bottom labels are centre-anchored and need less. keeps the wide-screen
+  // size roughly as before (there H is the binding dimension).
+  var R = Math.max(140, Math.min(W / 2 - 170, H / 2 - 80));
+  var coreR = Math.min(W, H) * 0.235;
+  var coreEl = document.getElementById("core");
+  if (coreEl) coreEl.style.maxWidth = (coreR * 1.85).toFixed(0) + "px";
+  // prepend a display-only "Start" node so the first real step gets an incoming
+  // connector that animates the moment the run is live. completed as soon as the run
+  // has begun (any status other than idle), so the Start->Fact-check edge satisfies the
+  // completed->running rule below. never added to m.steps or the registry, so the
+  // stepIndex/stepCount gauge and the id-keyed label lookups stay on the real steps
+  var startNode = { id: "__start", label: "Start", component: null, gate: false,
+    status: status === "idle" ? "pending" : "completed", synthetic: true };
+  steps = [startNode].concat(steps);
+  var n = steps.length;
+  function pt(i) {
+    var a = -Math.PI / 2 + i * (2 * Math.PI / Math.max(1, n));
+    return { x: cx + R * Math.cos(a), y: cy + R * Math.sin(a), a: a };
+  }
+
+  var defs = "<defs><radialGradient id='cgrad' cx='50%' cy='50%' r='50%'>"
+    + "<stop offset='0%' stop-color='#13283f'/><stop offset='60%' stop-color='#0b1828'/><stop offset='100%' stop-color='#070d16'/></radialGradient>"
+    + "<filter id='cglow' x='-60%' y='-60%' width='220%' height='220%'><feGaussianBlur stdDeviation='6' result='b'/>"
+    + "<feMerge><feMergeNode in='b'/><feMergeNode in='SourceGraphic'/></feMerge></filter></defs>";
+
+  // connectors: sequential arcs along the orbit between consecutive nodes
+  var conns = "";
+  for (var i = 0; i < n - 1; i++) {
+    var A = pt(i), B = pt(i + 1), a = steps[i], b = steps[i + 1];
+    var d = "M" + A.x.toFixed(1) + " " + A.y.toFixed(1) + " A " + R.toFixed(1) + " " + R.toFixed(1) + " 0 0 1 " + B.x.toFixed(1) + " " + B.y.toFixed(1);
+    var done = a.status === "completed" && b.status === "completed";
+    var active = a.status === "completed" && b.status === "running";
+    if (done) {
+      conns += "<path d='" + d + "' fill='none' stroke='" + C.ok + "' stroke-width='2.4'/>";
+    } else if (active) {
+      conns += "<path id='pl-active' d='" + d + "' fill='none' stroke='" + C.accent + "' stroke-width='2.8'"
+        + (REDUCE ? "" : " stroke-dasharray='5 6'") + ">"
+        + (REDUCE ? "" : "<animate attributeName='stroke-dashoffset' from='11' to='0' dur='0.5s' repeatCount='indefinite'/>") + "</path>";
+      if (!REDUCE) conns += "<circle r='3.2' fill='" + C.accent + "'><animateMotion dur='1.5s' repeatCount='indefinite'><mpath href='#pl-active'/></animateMotion></circle>";
+    } else {
+      conns += "<path d='" + d + "' fill='none' stroke='" + C.connPend + "' stroke-width='1.6'/>";
+    }
+  }
+
+  // core: soft glow + dark orb + a single status-coloured progress ring on a track
+  var col = coreColor(status);
+  var rr = coreR + 6, Ci = 2 * Math.PI * rr;
+  var sc = met.stepCount || 0, si = met.stepIndex || 0, frac = sc ? si / sc : 0;
+  var core = "<circle cx='" + cx + "' cy='" + cy + "' r='" + rr + "' fill='none' stroke='" + col + "' stroke-width='7' opacity='0.14' filter='url(#cglow)'/>"
+    + "<circle cx='" + cx + "' cy='" + cy + "' r='" + coreR + "' fill='url(#cgrad)' stroke='" + C.orbEdge + "' stroke-width='1'/>"
+    + "<circle cx='" + cx + "' cy='" + cy + "' r='" + rr + "' fill='none' stroke='" + C.connPend + "' stroke-width='3'/>"
+    + "<circle cx='" + cx + "' cy='" + cy + "' r='" + rr + "' fill='none' stroke='" + col + "' stroke-width='3' stroke-linecap='round' stroke-dasharray='"
+    + (frac * Ci).toFixed(1) + " " + ((1 - frac) * Ci).toFixed(1) + "' transform='rotate(-90 " + cx + " " + cy + ")'/>";
+
+  // nodes + radial labels + a gate lock badge at the node's top-right
+  var nodes = "", nr = 14;
+  for (var j = 0; j < n; j++) {
+    var P = pt(j), s = steps[j], stroke = statusStroke(s.status);
+    var sw = s.status === "pending" ? 1.3 : 2, fill = s.status === "pending" ? C.nodePend : C.node;
+    if (s.status === "running" && !REDUCE) {
+      nodes += "<circle cx='" + P.x.toFixed(1) + "' cy='" + P.y.toFixed(1) + "' r='" + nr + "' fill='none' stroke='" + C.accent + "' stroke-width='1.5'>"
+        + "<animate attributeName='r' values='" + nr + ";" + (nr + 9) + ";" + nr + "' dur='1.9s' repeatCount='indefinite'/>"
+        + "<animate attributeName='opacity' values='0.7;0;0.7' dur='1.9s' repeatCount='indefinite'/></circle>";
+    }
+    nodes += "<circle cx='" + P.x.toFixed(1) + "' cy='" + P.y.toFixed(1) + "' r='" + nr + "' fill='" + fill + "' stroke='" + stroke + "' stroke-width='" + sw + "'>"
+      + "<title>" + esc(s.label + "  -  " + (s.component || "no component") + "  -  " + s.status) + "</title></circle>";
+    if (s.synthetic) {
+      // origin marker: a right-pointing play triangle, never a step number or checkmark
+      nodes += "<path d='M" + (P.x - 3.5).toFixed(1) + " " + (P.y - 4.5).toFixed(1) + " L" + (P.x + 4.5).toFixed(1) + " " + P.y.toFixed(1) + " L" + (P.x - 3.5).toFixed(1) + " " + (P.y + 4.5).toFixed(1) + " Z' fill='" + (s.status === "completed" ? C.ok : C.mut) + "'/>";
+    } else if (s.status === "completed") {
+      nodes += "<path d='M" + (P.x - 5).toFixed(1) + " " + P.y.toFixed(1) + " l3 3.2 l6 -7.6' fill='none' stroke='" + C.ok + "' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'/>";
+    } else if (s.status === "running") {
+      nodes += "<circle cx='" + P.x.toFixed(1) + "' cy='" + P.y.toFixed(1) + "' r='4' fill='" + C.accent + "'/>";
+    } else if (s.status === "blocked") {
+      nodes += "<g fill='none' stroke='" + C.blocked + "' stroke-width='1.6' stroke-linecap='round' stroke-linejoin='round'><path d='M" + P.x.toFixed(1) + " " + (P.y - 5).toFixed(1) + " L" + (P.x + 5).toFixed(1) + " " + (P.y + 4).toFixed(1) + " L" + (P.x - 5).toFixed(1) + " " + (P.y + 4).toFixed(1) + " Z'/><path d='M" + P.x.toFixed(1) + " " + (P.y - 1).toFixed(1) + " v2'/></g>";
+    } else {
+      // real steps keep their 1..N numbering despite the synthetic node at index 0
+      nodes += "<text x='" + P.x.toFixed(1) + "' y='" + (P.y + 4).toFixed(1) + "' text-anchor='middle' font-size='12' font-family='ui-monospace,monospace' fill='" + C.mut + "'>" + j + "</text>";
+    }
+    // gate lock badge off the node's top-right, with a small gap so it touches
+    // neither the node body nor the orbit connector
+    if (s.gate) {
+      nodes += "<g transform='translate(" + (P.x + nr - 1).toFixed(1) + "," + (P.y - nr - 8).toFixed(1) + ")'><rect x='0' y='3' width='8' height='6' rx='1.4' fill='" + C.amber + "'/><path d='M1.5 3 V1.6 a2.5 2.5 0 0 1 5 0 V3' fill='none' stroke='" + C.amber + "' stroke-width='1.2'/></g>";
+    }
+    var lx = cx + (R + 26) * Math.cos(P.a), ly = cy + (R + 26) * Math.sin(P.a);
+    var co = Math.cos(P.a), anchor = co > 0.3 ? "start" : co < -0.3 ? "end" : "middle";
+    var lcol = s.status === "pending" ? C.mut : C.txt;
+    nodes += "<text x='" + lx.toFixed(1) + "' y='" + (ly + 3).toFixed(1) + "' text-anchor='" + anchor + "' font-size='13' font-family='system-ui,sans-serif' font-weight='500' fill='" + lcol + "'>"
+      + "<tspan fill='" + C.mut + "' font-family='ui-monospace,monospace' font-size='11'>" + (s.synthetic ? "" : (j + " ")) + "</tspan>" + esc(s.label) + "</text>";
+  }
+
+  host.innerHTML = "<svg viewBox='0 0 " + Math.round(W) + " " + Math.round(H) + "' width='100%' height='100%' role='img' aria-label='resolve-issue pipeline'>" + defs + conns + core + nodes + "</svg>";
+}
+
+// rebuild the SVG only when the steps, status, step index, or size change, so
+// the running animations stay steady between data ticks
+var _gkey = "", _lastGraph = null;
+function maybeBuildGraph(steps, status, met) {
+  steps = steps || [];
+  var host = document.getElementById("graph");
+  var w = host ? host.clientWidth : 0, h = host ? host.clientHeight : 0;
+  var key = steps.map(function (s) { return s.id + ":" + s.status + ":" + (s.gate ? 1 : 0); }).join("|")
+    + "|" + status + "|" + (met.stepIndex || 0) + "/" + (met.stepCount || 0) + "|" + w + "x" + h;
+  if (key !== _gkey) {
+    _gkey = key;
+    _lastGraph = { steps: steps, status: status, met: met };
+    buildGraph(steps, status, met);
+  }
+}
+
+// the core readout (the four whole-run gauges, folded into the orb): the step
+// gauge is the big count + the ring, plus active duration, tokens in/out, tools
+// resolve a step id to its registry label (the same value that step's node renders)
+function stepLabelById(m, id) {
+  var ss = (m && m.steps) || [];
+  for (var i = 0; i < ss.length; i++) { if (ss[i].id === id) { return ss[i].label; } }
+  return id;
+}
+
+function updateCore(m) {
+  var core = document.getElementById("core");
+  if (!core) return;
+  var met = m.metrics || {};
+  var status = m.status || "idle";
+  var si = met.stepIndex || 0, sc = met.stepCount || 0;
+  // gate/blocked take the core over with the call-to-action; the step name is the
+  // active step's own label (registry source), never a hand-written phrase, so it
+  // cannot drift from the node. the duration keeps its #dur id so the tick lives on
+  var blockedLabel = m.blocked ? stepLabelById(m, m.blocked.step) : null;
+  var gateLabel = (!m.blocked && m.gate) ? (m.gate.label || "a gate") : null;
+  if (blockedLabel != null || gateLabel != null) {
+    var isBlocked = blockedLabel != null;
+    var acol = isBlocked ? C.blocked : C.amber;
+    core.innerHTML =
+      "<div class='cicon' style='color:" + acol + "'>" + (isBlocked ? "&#9888;" : "&#128274;") + "</div>"
+      + "<div class='cact' style='color:" + acol + "'>" + (isBlocked ? "BLOCKED" : "WAITING FOR YOU") + "</div>"
+      + "<div class='cwhat'>" + esc(isBlocked ? blockedLabel : gateLabel) + "</div>"
+      + "<div class='cgo'>action needed in Claude Code</div>"
+      + "<div class='csmall'>step " + si + "/" + sc + " &middot; <span id='dur'>" + esc(durationText()) + "</span></div>";
+  } else {
+    var col = coreColor(status);
+    // core holds progress + time only (all centred single lines, so nothing can
+    // crowd the ring); the duration keeps ticking here as the liveness heartbeat
+    core.innerHTML =
+      "<div class='clab'>PIPELINE</div>"
+      + "<div class='cbig'>" + si + "<span class='cden'>/" + sc + "</span></div>"
+      + "<div class='cstat' style='color:" + col + "'>" + esc(status.toUpperCase()) + "</div>"
+      + "<div class='cdur'><span id='dur'>" + esc(durationText()) + "</span><span class='ck'>ACTIVE</span></div>";
+  }
+  // volume aggregates (tokens, tools) dock at the hero's top-right, off the orb
+  var dock = document.getElementById("statdock");
+  if (dock) {
+    var tin = (met.tokens && met.tokens.input) || 0, tout = (met.tokens && met.tokens.output) || 0;
+    dock.innerHTML =
+      "<div class='sg'><div class='sk'>Tokens</div>"
+        + "<div class='sv'><span class='in'>" + fmtNum(tin) + "</span> <span class='tg'>in</span></div>"
+        + "<div class='sv'><span class='out'>" + fmtNum(tout) + "</span> <span class='tg'>out</span></div></div>"
+      + "<div class='sg'><div class='sk'>Tools</div><div class='sv'>" + fmtNum(met.toolCalls) + "</div></div>";
+  }
+}
+
+/* ---- model render ---- */
+
+// the PR link should appear only once a PR genuinely exists - gate on the
+// open-pr step having completed, so a stale pr-url from a re-run stays hidden
+function prReady(m) {
+  var ss = (m && m.steps) || [];
+  for (var i = 0; i < ss.length; i++) {
+    if (ss[i].component === "open-pr") return ss[i].status === "completed";
+  }
+  return false;
+}
+
+function renderModel(m) {
+  if (!m) { return; }
+
+  document.getElementById("ticket").textContent = m.ticket || (m.session && m.session.ticketDetected) || "no ticket";
+
+  var status = m.status || "idle";
+  var allowedDot = { running: 1, paused: 1, done: 1, blocked: 1, idle: 1 };
+  var dotClass = allowedDot[status] ? status : "idle";
+  document.getElementById("status-dot").className = "dot " + dotClass;
+  document.getElementById("status-text").textContent = status;
+
+  // meta line
+  var meta = [];
+  if (m.baseBranch || m.workBranch) {
+    meta.push("<span class='k'>branch</span> <code>" + esc(m.workBranch || "?") + "</code> &rarr; <code>" + esc(m.baseBranch || "?") + "</code>");
+  }
+  if (m.planApproved) meta.push("<span class='badge-ok'>plan approved</span>");
+  if (m.prUrl && prReady(m)) meta.push("<a href='" + esc(m.prUrl) + "' target='_blank' rel='noopener'>open PR &#8599;</a>");
+  if (m.session && m.session.id) meta.push("<span class='k'>session</span> <code>" + esc(m.session.id.slice(0, 8)) + "</code>");
+  document.getElementById("meta").innerHTML = meta.join("");
+
+  // gate / blocked raise the attention layer (breathing frame + dimmed chrome) and
+  // the core takes the message over; blocked outranks a gate. these replace the old
+  // gate/blocked inline banners
+  document.body.classList.remove("attn-gate", "attn-blocked");
+  if (m.blocked) { document.body.classList.add("attn-blocked"); }
+  else if (m.gate) { document.body.classList.add("attn-gate"); }
+  // announce the change for screen readers (the removed banners used to carry this)
+  var live = document.getElementById("attn-live");
+  if (live) {
+    var liveMsg = m.blocked
+      ? ("Blocked at " + stepLabelById(m, m.blocked.step) + ". Action needed in your Claude Code session.")
+      : m.gate
+      ? ("Waiting for you at " + (m.gate.label || "a gate") + ". Action needed in your Claude Code session.")
+      : "";
+    // only write on change so a screen reader is not re-announced on every push
+    if (live.textContent !== liveMsg) { live.textContent = liveMsg; }
+  }
+
+  // core readout + orbit graph (the four gauges live inside the core now)
+  var met = m.metrics || {};
+  _dur = { live: met.live, startedMs: met.startedMs, endedMs: met.endedMs };
+  updateCore(m);
+  maybeBuildGraph(m.steps || [], status, met);
+
+  // activity ticker (newest first)
+  var act = (m.activity || []).slice().reverse();
+  var aEl = document.getElementById("activity");
+  if (!act.length) {
+    aEl.innerHTML = "<div class='empty'>No tool activity yet for this session.</div>";
+  } else {
+    aEl.innerHTML = act.map(function (a) {
+      var stCls = a.status === "error" ? "error" : (a.status === "running" ? "running" : "success");
+      var stIcon = a.status === "error" ? svg("x") : (a.status === "running" ? svg("spinner", "spin") : svg("check"));
+      var isMain = a.agent === "main";
+      return "<div class='arow'>"
+        + "<span class='astatus " + stCls + "'>" + stIcon + "</span>"
+        + "<span class='agent-badge " + (isMain ? "is-main" : "") + "'>" + esc(a.agent) + "</span>"
+        + "<span class='tool'>" + svg(toolIcon(a.tool)) + " " + esc(a.tool) + "</span>"
+        + "<span class='target'>" + esc(a.target) + "</span>"
+        + "<span class='elapsed'>" + esc(fmtDur(a.elapsedMs)) + "</span>"
+        + "</div>";
+    }).join("");
+  }
+}
+
+function nowMs() { return new Date().getTime(); }
+
+// normalise a path for comparison: case-insensitive, slash-agnostic, no trailing slash
+function normPath(p) { return (p || "").toLowerCase().replace(/\\/g, "/").replace(/\/+$/, ""); }
+
+function relTime(ms) {
+  if (!ms) return "";
+  var d = (nowMs() - ms) / 1000;
+  if (d < 60) return "just now";
+  if (d < 3600) return Math.floor(d / 60) + "m ago";
+  if (d < 86400) return Math.floor(d / 3600) + "h ago";
+  return Math.floor(d / 86400) + "d ago";
+}
+
+function renderRuns(runs, selId) {
+  var el = document.getElementById("runs");
+  if (!runs || !runs.length) {
+    el.innerHTML = "<div class='run-empty'>No resolve runs found.</div>";
+    return;
+  }
+  var allowed = { running: 1, paused: 1, done: 1, waiting: 1, active: 1, idle: 1, blocked: 1 };
+  // group by repo (keyed on cwd so two repos sharing a basename stay distinct)
+  var groups = {}, order = [];
+  runs.forEach(function (r) {
+    var k = r.cwd || r.repo || "";
+    if (!groups[k]) { groups[k] = { repo: r.repo, runs: [], last: 0 }; order.push(k); }
+    groups[k].runs.push(r);
+    groups[k].last = Math.max(groups[k].last, r.lastActivityMs || 0);
+  });
+  // repos ordered by most-recent activity first
+  order.sort(function (a, b) { return groups[b].last - groups[a].last; });
+  el.innerHTML = order.map(function (k) {
+    var g = groups[k];
+    // within a repo: the live (current) run pinned on top, the rest by recency desc
+    g.runs.sort(function (a, b) {
+      return (a.runStamp ? 1 : 0) - (b.runStamp ? 1 : 0) || (b.lastActivityMs || 0) - (a.lastActivityMs || 0);
+    });
+    var rows = g.runs.map(function (r) {
+      var st = allowed[r.status] ? r.status : "idle";
+      var sel = r.id === selId ? " sel" : "";
+      var sub = r.runStamp
+        ? "<span class='run-sub'>" + esc(r.runStamp) + "</span>"
+        : "<span class='run-sub cur'>current</span>";
+      return "<button class='run" + sel + "' data-run='" + esc(r.id) + "' title='" + esc(r.cwd) + "'>"
+        + "<span class='dot " + st + "'></span>"
+        + "<span class='run-meta'><span class='run-ticket'>" + esc(r.ticket || "(no ticket yet)") + "</span>" + sub + "</span>"
+        + "<span class='run-time'>" + esc(relTime(r.lastActivityMs)) + "</span>"
+        + "</button>";
+    }).join("");
+    return "<div class='repo-group'><div class='repo-head'><span class='repo-name'>" + esc(g.repo) + "</span></div>" + rows + "</div>";
+  }).join("");
+}
+
+var deepLink = (function () {
+  var p = new URLSearchParams(location.search);
+  return { run: p.get("run"), cwd: p.get("cwd"), done: false };
+})();
+
+function applyDeepLink(runs) {
+  if (deepLink.done) return;
+  if (deepLink.run) { deepLink.done = true; selectRun(deepLink.run); return; }
+  if (deepLink.cwd && runs) {
+    var want = normPath(deepLink.cwd);
+    for (var i = 0; i < runs.length; i++) {
+      if (runs[i].cwd && normPath(runs[i].cwd) === want) {
+        deepLink.done = true; selectRun(runs[i].id); return;
+      }
+    }
+  }
+}
+
+function selectRun(id) {
+  if (!id) return;
+  fetch("/select?run=" + encodeURIComponent(id)).catch(function () {});
+}
+
+// global heads-up: 2+ runs parked on a test step share the host's Podman / SQL /
+// Azurite, so they can collide. Read-only - the dashboard only warns.
+function renderContention(c) {
+  var el = document.getElementById("contention");
+  if (c && c.count >= 2) {
+    el.classList.add("show");
+    document.getElementById("contention-text").innerHTML =
+      "<b>" + c.count + " runs</b> are positioned at a test step. These steps run integration / "
+      + "component tests against the shared Podman, SQL, and Azurite, so running them together can "
+      + "conflict, race, or starve each other &mdash; stagger them rather than letting both test at once.";
+    document.getElementById("contention-runs").innerHTML = (c.runs || []).map(function (r) {
+      return "<span class='wr'>" + esc(r.repo) + " &middot; " + esc(r.ticket || "?") + " @ " + esc(r.step) + "</span>";
+    }).join("");
+  } else {
+    el.classList.remove("show");
+  }
+}
+
+// the SSE payload is { runs, selectedId, model, contention }; dispatch to the views
+function render(p) {
+  if (!p || p.error) { return; }
+  renderContention(p.contention);
+  renderRuns(p.runs, p.selectedId);
+  renderModel(p.model || {});
+  applyDeepLink(p.runs);
+}
+
+function setConn(ok) {
+  document.getElementById("conn-dot").className = "conn-dot" + (ok ? "" : " down");
+  document.getElementById("conn-text").textContent = ok ? "live" : "reconnecting...";
+}
+
+function connect() {
+  var es = new EventSource("/events");
+  es.onopen = function () { setConn(true); };
+  es.onmessage = function (e) {
+    setConn(true);
+    try { render(JSON.parse(e.data)); } catch (err) {}
+  };
+  es.onerror = function () { setConn(false); };
+}
+
+document.getElementById("runs").addEventListener("click", function (e) {
+  var b = e.target.closest("button.run");
+  if (b) selectRun(b.getAttribute("data-run"));
+});
+
+// draggable splitter between the hero and the activity ticker: dragging the
+// handle reallocates vertical space (taller ticker -> shorter hero) and re-lays
+// the size-derived orbit; the height persists across reloads. the orbit needs a
+// tall hero, so the clamp keeps the hero above an orbit-safe floor
+var _mainEl = document.querySelector(".main");
+var _heroEl = document.querySelector(".hero");
+var _tickerEl = document.querySelector(".ticker");
+var _splitEl = document.getElementById("splitter");
+var TICKER_KEY = "rid-ticker-h", HERO_MIN = 480;
+
+function clampTickerH(h) {
+  if (!_mainEl || !_heroEl || !_tickerEl) { return h; }
+  // chrome = everything in .main except the hero and the ticker (header, meta,
+  // banners, splitter, foot); measured live so it tracks banners showing/hiding
+  var chrome = _mainEl.clientHeight - _heroEl.clientHeight - _tickerEl.clientHeight;
+  var flexible = _mainEl.clientHeight - chrome;
+  var hi = Math.min(flexible - HERO_MIN, Math.round(flexible * 0.62));
+  return Math.max(120, Math.min(h, Math.max(120, hi)));
+}
+
+function setTickerH(h, save) {
+  if (!_tickerEl) { return; }
+  _tickerEl.style.height = clampTickerH(h) + "px";
+  if (_lastGraph) { maybeBuildGraph(_lastGraph.steps, _lastGraph.status, _lastGraph.met); }
+  if (save) { try { localStorage.setItem(TICKER_KEY, String(Math.round(_tickerEl.getBoundingClientRect().height))); } catch (e) {} }
+}
+
+(function initSplitter() {
+  if (!_splitEl || !_tickerEl || !_mainEl) { return; }
+  var saved = parseInt(localStorage.getItem(TICKER_KEY), 10);
+  if (saved) { _tickerEl.style.height = clampTickerH(saved) + "px"; }
+  var dragging = false, startY = 0, startH = 0;
+  _splitEl.addEventListener("pointerdown", function (e) {
+    dragging = true; startY = e.clientY; startH = _tickerEl.getBoundingClientRect().height;
+    _splitEl.classList.add("dragging");
+    try { _splitEl.setPointerCapture(e.pointerId); } catch (x) {}
+    e.preventDefault();
+  });
+  _splitEl.addEventListener("pointermove", function (e) {
+    // drag up (smaller clientY) grows the ticker, shrinking the hero
+    if (dragging) { setTickerH(startH + (startY - e.clientY), false); }
+  });
+  function end(e) {
+    if (!dragging) { return; }
+    dragging = false;
+    _splitEl.classList.remove("dragging");
+    try { _splitEl.releasePointerCapture(e.pointerId); } catch (x) {}
+    try { localStorage.setItem(TICKER_KEY, String(Math.round(_tickerEl.getBoundingClientRect().height))); } catch (x) {}
+  }
+  _splitEl.addEventListener("pointerup", end);
+  _splitEl.addEventListener("pointercancel", end);
+  // the separator is focusable; arrow keys nudge the split for keyboard users
+  _splitEl.addEventListener("keydown", function (e) {
+    var cur = _tickerEl.getBoundingClientRect().height;
+    if (e.key === "ArrowUp") { setTickerH(cur + 24, true); e.preventDefault(); }
+    else if (e.key === "ArrowDown") { setTickerH(cur - 24, true); e.preventDefault(); }
+  });
+})();
+
+// re-lay the orbit when the width changes (node positions are size-derived), and
+// re-clamp a dragged ticker height against the new viewport
+var _rzTimer = null;
+window.addEventListener("resize", function () {
+  if (_rzTimer) clearTimeout(_rzTimer);
+  _rzTimer = setTimeout(function () {
+    if (_tickerEl && _tickerEl.style.height) {
+      setTickerH(parseInt(_tickerEl.style.height, 10) || 0, false);
+    } else if (_lastGraph) {
+      maybeBuildGraph(_lastGraph.steps, _lastGraph.status, _lastGraph.met);
+    }
+  }, 150);
+});
+
+// tick the elapsed duration locally each second while the run is live, so the
+// number visibly advances as a liveness heartbeat (incl. paused at a gate)
+// without the server pushing every second; it freezes by itself once not live
+setInterval(function () {
+  if (_dur && _dur.live && _dur.startedMs != null) {
+    var el = document.getElementById("dur");
+    if (el) el.textContent = fmtDur(nowMs() - _dur.startedMs);
+  }
+}, 1000);
+connect();
+</script>
+</body>
+</html>

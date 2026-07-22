@@ -1,0 +1,6 @@
+# claude
+.claude/
+
+# python cache
+__pycache__/
+*.pyc

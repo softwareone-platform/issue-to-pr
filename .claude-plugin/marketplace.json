@@ -1,0 +1,33 @@
+{
+  "name": "itpr",
+  "description": "Marketplace for skills library",
+  "owner": {
+    "name": "pbc-swo"
+  },
+  "plugins": [
+    {
+      "name": "adversarial-review",
+      "description": "Adversarial review skills: review-issue-fact (issue), review-plan-risk (design), review-code-risk (implementation)",
+      "version": "1.3.1",
+      "source": "./plugins/adversarial-review"
+    },
+    {
+      "name": "pr-lifecycle",
+      "description": "Team-agnostic PR lifecycle skills (Azure DevOps or GitHub): open-pr, resolve-pr-comments",
+      "version": "0.7.0",
+      "source": "./plugins/pr-lifecycle"
+    },
+    {
+      "name": "test-authoring",
+      "description": "Test authoring plugin: scan-test-gaps, add/update test workflows, setup-test-context",
+      "version": "0.14.0",
+      "source": "./plugins/test-authoring"
+    },
+    {
+      "name": "issue-to-pr-pipeline",
+      "description": "Issue-to-PR orchestration: resolve-issue chains the review, test, and PR-lifecycle skills into one resumable pipeline behind a single plan-approval gate; resolve-issue-dashboard is a read-only dashboard that visualises a run",
+      "version": "0.13.0",
+      "source": "./plugins/issue-to-pr-pipeline"
+    }
+  ]
+}

@@ -1,0 +1,67 @@
+{
+  "skill_name": "update-integration-test",
+  "evals": [
+    {
+      "id": 0,
+      "prompt": "update integration tests for /orders endpoint after the schema change",
+      "expected_output": "Skill update-integration-test triggers; runs Step -1 schema check, presents the audit summary, executes audit-derived actions (no confirmation gate), summarises result.",
+      "assertions": [
+        {
+          "text": "skill_triggered: update-integration-test is selected"
+        },
+        {
+          "text": "schema_check_executed: schema_version compared before any writes"
+        },
+        {
+          "text": "audit_presented: audit summary and proposed-actions tables are shown; actions derive from audit status without a confirmation gate"
+        }
+      ]
+    },
+    {
+      "id": 1,
+      "prompt": "refresh the InvoiceConsumer integration tests",
+      "expected_output": "Skill update-integration-test triggers; runs Step -1 schema check, presents the audit summary, executes audit-derived actions (no confirmation gate), summarises result.",
+      "assertions": [
+        {
+          "text": "skill_triggered: update-integration-test is selected"
+        },
+        {
+          "text": "schema_check_executed: schema_version compared before any writes"
+        },
+        {
+          "text": "audit_presented: audit summary and proposed-actions tables are shown; actions derive from audit status without a confirmation gate"
+        }
+      ]
+    },
+    {
+      "id": 2,
+      "prompt": "tell me about integration test infrastructure",
+      "expected_output": "Skill update-integration-test does NOT trigger. Either another skill is selected or the model answers conversationally.",
+      "assertions": [
+        {
+          "text": "skill_not_triggered: update-integration-test is NOT selected"
+        }
+      ]
+    },
+    {
+      "id": 3,
+      "prompt": "review the integration test fixtures",
+      "expected_output": "Skill update-integration-test does NOT trigger. Either another skill is selected or the model answers conversationally.",
+      "assertions": [
+        {
+          "text": "skill_not_triggered: update-integration-test is NOT selected"
+        }
+      ]
+    },
+    {
+      "id": 4,
+      "prompt": "convert these integration tests to e2e tests",
+      "expected_output": "Skill update-integration-test does NOT trigger. Either another skill is selected or the model answers conversationally.",
+      "assertions": [
+        {
+          "text": "skill_not_triggered: update-integration-test is NOT selected"
+        }
+      ]
+    }
+  ]
+}
