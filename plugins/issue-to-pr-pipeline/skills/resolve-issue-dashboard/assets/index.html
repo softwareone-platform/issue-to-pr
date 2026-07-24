@@ -519,7 +519,7 @@ function maybeBuildGraph(steps, status, met) {
 }
 
 // the core readout (the four whole-run gauges, folded into the orb): the step
-// gauge is the big count + the ring, plus active duration, tokens in/out, tools
+// gauge is the big count + the ring, plus elapsed (wall-clock) duration, tokens in/out, tools
 // resolve a step id to its registry label (the same value that step's node renders)
 function stepLabelById(m, id) {
   var ss = (m && m.steps) || [];
@@ -559,7 +559,7 @@ function updateCore(m) {
       "<div class='clab'>PIPELINE</div>"
       + "<div class='cbig'>" + si + "<span class='cden'>/" + sc + "</span></div>"
       + "<div class='cstat' style='color:" + col + "'>" + esc(status.toUpperCase()) + "</div>"
-      + "<div class='cdur'><span id='dur'>" + esc(durationText()) + "</span><span class='ck'>ACTIVE</span></div>";
+      + "<div class='cdur'><span id='dur'>" + esc(durationText()) + "</span><span class='ck'>ELAPSED</span></div>";
   }
   // volume aggregates (tokens, tools) dock at the hero's top-right, off the orb
   var dock = document.getElementById("statdock");
