@@ -295,9 +295,34 @@ def test_step_activity():
     check("build_model activity attached", fc["activity"]["tokensOut"], 100)
 
 
+# ----- find_live_session: ticket-aware session selection (R3) -----------------
+
+def test_session_selection():
+    d = tempfile.mkdtemp()
+    older = os.path.join(d, "older.jsonl")   # references the ticket
+    newer = os.path.join(d, "newer.jsonl")   # unrelated, but newer mtime
+    with open(older, "w", encoding="utf-8") as f:
+        f.write(json.dumps({"type": "user", "cwd": "x",
+                            "message": {"content": "/resolve-issue acme-42 please"}}) + "\n")
+    with open(newer, "w", encoding="utf-8") as f:
+        f.write(json.dumps({"type": "user", "cwd": "x",
+                            "message": {"content": "unrelated work here"}}) + "\n")
+    os.utime(older, (1000, 1000))
+    os.utime(newer, (2000, 2000))  # newer mtime
+    # no ticket -> newest overall (unchanged legacy behaviour)
+    check("no ticket picks newest", os.path.basename(ps.find_live_session(d)), "newer.jsonl")
+    # ticket-aware -> the session that references it, despite its older mtime
+    check("ticket-aware picks matching", os.path.basename(ps.find_live_session(d, "acme-42")), "older.jsonl")
+    # ticket present in no session -> fall back to newest (no regression)
+    check("ticket-aware falls back", os.path.basename(ps.find_live_session(d, "acme-99")), "newer.jsonl")
+    check("_session_mentions hit", ps._session_mentions(older, "acme-42"), True)
+    check("_session_mentions miss", ps._session_mentions(newer, "acme-42"), False)
+    check("_session_mentions no ticket", ps._session_mentions(older, None), False)
+
+
 _TESTS = (test_status_rules, test_main_active, test_run_id_roundtrip,
           test_parse_state, test_contention, test_timings, test_waiting_detection,
-          test_step_activity)
+          test_step_activity, test_session_selection)
 
 
 def _run_all():

@@ -125,24 +125,36 @@ class RunManager:
                 self.collector = None
         return True
 
-    def _ensure_session(self):
+    def _ensure_session(self, ticket, archived):
+        # an archived run has no live session of its own; the repo's newest
+        # session belongs to unrelated (usually live) work, so tailing it would
+        # attribute that activity/tokens to the historical run - do not tail
+        if archived:
+            self.session_path = None
+            self.collector = None
+            return
         if not self.project_dir:
             self.project_dir = ps.find_project_dir(self.sel_cwd)
-        latest = ps.find_live_session(self.project_dir)
+        # ticket-aware: prefer the session that actually drove this ticket, so an
+        # unrelated newer session in the same repo does not hijack the metrics
+        latest = ps.find_live_session(self.project_dir, ticket)
         if latest != self.session_path:
             self.session_path = latest
             self.collector = ps.Collector(self.project_dir, latest) if latest else None
 
     def build(self):
         with self._lock:
-            self._ensure_session()
             sel_cwd = self.sel_cwd
             ticket = self.sel_ticket or ps.find_resolve_ticket(sel_cwd, None)
+            archived = bool(self.sel_run_key)
+            self._ensure_session(ticket, archived)
             state = {}
             ended_ms = None
             timings = []
             if ticket:
-                resolve_dir = ps.resolve_dir_for(sel_cwd, ticket)
+                # pass the run_key so an ARCHIVED run reads its own timestamp
+                # subdir, not the top-level live run's state.md / timings.md
+                resolve_dir = ps.resolve_dir_for(sel_cwd, ticket, self.sel_run_key)
                 state_path = os.path.join(resolve_dir, "state.md")
                 state = ps.parse_state(state_path)
                 # run's last-progress time; stable across a next-day relaunch
@@ -166,7 +178,9 @@ class RunManager:
                 "ticketDetected": ticket,
             }
             model = ps.build_model(state, events, tin, tout, meta, ended_ms, main_active, timings, main_seen, token_records)
-            selected_id = ps.run_id(sel_cwd, ticket)
+            # include run_key so the selected-id matches the ARCHIVED run's
+            # sidebar entry (run_id keys on it) instead of the live run's
+            selected_id = ps.run_id(sel_cwd, ticket, self.sel_run_key)
         # run list is independent of selection state -> compute outside the lock
         runs = ps.list_runs(self.launch_cwd)
         # derive the cross-run test-contention heads-up from the UNMODIFIED list,

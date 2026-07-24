@@ -136,15 +136,45 @@ def find_project_dir(cwd):
     return newest
 
 
-def find_live_session(project_dir):
+def _session_mentions(path, ticket):
+    """Cheap head-scan: does this session's opening reference the ticket? A
+    resolve-issue run's driving session starts with the `/resolve-issue <ticket>`
+    invocation, so a bounded read of the first records tells it apart from an
+    unrelated session in the same repo. Best-effort - any read issue returns
+    False, and the caller falls back to the newest session."""
+    if not ticket:
+        return False
+    tl = ticket.lower()
+    try:
+        with open(path, encoding="utf-8") as f:
+            for i, line in enumerate(f):
+                if i >= 40:
+                    break
+                if tl in line.lower():
+                    return True
+    except OSError:
+        pass
+    return False
+
+
+def find_live_session(project_dir, ticket=None):
     """The live session is the most recently modified top-level *.jsonl
-    (subagent transcripts live one level down and are excluded here)."""
+    (subagent transcripts live one level down and are excluded here). When a
+    `ticket` is given, prefer the newest session that references that ticket, so
+    an unrelated newer session in the same repo cannot hijack the view (the
+    metrics/activity/gate cues are session-derived); fall back to the newest
+    overall when none reference it (no regression from the ticketless behaviour)."""
     if not project_dir:
         return None
     files = glob.glob(os.path.join(project_dir, "*.jsonl"))
     if not files:
         return None
-    return max(files, key=os.path.getmtime)
+    files.sort(key=os.path.getmtime, reverse=True)
+    if ticket:
+        for f in files:
+            if _session_mentions(f, ticket):
+                return f
+    return files[0]
 
 
 def session_id_of(session_path):
@@ -817,7 +847,7 @@ def collect_model(cwd, ticket):
     build: locate everything, read it all, and return the model."""
     cwd = os.path.abspath(cwd)
     project_dir = find_project_dir(cwd)
-    session_path = find_live_session(project_dir)
+    session_path = find_live_session(project_dir, ticket)
     resolve_dir = resolve_dir_for(cwd, ticket) if ticket else None
     state_path = os.path.join(resolve_dir, "state.md") if resolve_dir else None
     state = parse_state(state_path) if state_path else {}
