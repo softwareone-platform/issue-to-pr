@@ -36,50 +36,52 @@ def check(name, got, want):
 
 # ----- build_model: the gate/blocked-vs-approaching status rules --------------
 
-def _model(next_step, attention="", main_active=False):
+def _model(next_step, attention="", main_active=False, main_seen=False):
     state = {
         "next-step": next_step,
         "attention": attention,
         "ticket": "acme-1",
         "plan-approved": "yes",
     }
-    m = ps.build_model(state, [], 0, 0, {"cwd": "."}, None, main_active)
+    m = ps.build_model(state, [], 0, 0, {"cwd": "."}, None, main_active, main_seen=main_seen)
     cur = next((s for s in m["steps"] if s["id"] == next_step), None)
     return {
         "status": m["status"],
         "gate": m["gate"] is not None,
         "blocked": m["blocked"] is not None,
+        "awaiting": m["awaitingInput"] is not None,
         "cur": cur["status"] if cur else None,
     }
 
 
 def test_status_rules():
-    # a gate step, genuinely parked (yielded) -> amber gate shown
+    # a gate step, genuinely parked -> gate cue shown (amber at the client)
     check("a-gate-approve parked", _model("a-gate-approve", "", False),
-          {"status": "paused", "gate": True, "blocked": False, "cur": "paused"})
+          {"status": "paused", "gate": True, "blocked": False, "awaiting": False, "cur": "paused"})
     # a gate step, still approaching (main session busy) -> demoted to running,
     # gate payload suppressed so the client keeps the amber cue off
     check("a-gate-approve approaching", _model("a-gate-approve", "", True),
-          {"status": "running", "gate": False, "blocked": False, "cur": "running"})
-    # attention set, genuinely parked -> red blocked shown
+          {"status": "running", "gate": False, "blocked": False, "awaiting": False, "cur": "running"})
+    # attention set, genuinely parked -> blocked cue shown (amber, not red - a
+    # human disposition is a wait, not an error)
     check("b-open-pr blocked parked", _model("b-open-pr", "awaiting confirm", False),
-          {"status": "blocked", "gate": False, "blocked": True, "cur": "blocked"})
+          {"status": "blocked", "gate": False, "blocked": True, "awaiting": False, "cur": "blocked"})
     # attention set but still drafting (busy) -> demoted, blocked payload suppressed
     check("b-open-pr blocked approaching", _model("b-open-pr", "awaiting confirm", True),
-          {"status": "running", "gate": False, "blocked": False, "cur": "running"})
+          {"status": "running", "gate": False, "blocked": False, "awaiting": False, "cur": "running"})
     # a genuine disposition wait at b-code-risk must still show blocked (no regression)
     check("b-code-risk disposition parked", _model("b-code-risk", "unresolved risk", False),
-          {"status": "blocked", "gate": False, "blocked": True, "cur": "blocked"})
-    # a non-gate step with no attention is unaffected by main_active either way
+          {"status": "blocked", "gate": False, "blocked": True, "awaiting": False, "cur": "blocked"})
+    # a non-gate step with no attention and no tailing is running either way
     check("b-implement non-gate busy", _model("b-implement", "", True),
-          {"status": "running", "gate": False, "blocked": False, "cur": "running"})
-    check("b-implement non-gate idle", _model("b-implement", "", False),
-          {"status": "running", "gate": False, "blocked": False, "cur": "running"})
+          {"status": "running", "gate": False, "blocked": False, "awaiting": False, "cur": "running"})
+    check("b-implement non-gate untailed", _model("b-implement", "", False),
+          {"status": "running", "gate": False, "blocked": False, "awaiting": False, "cur": "running"})
 
 
 # ----- Collector.main_active: main-session liveness parse ---------------------
 
-def _main_active(lines):
+def _collector(lines):
     d = tempfile.mkdtemp()
     p = os.path.join(d, "sess.jsonl")
     with open(p, "w", encoding="utf-8") as f:
@@ -87,7 +89,11 @@ def _main_active(lines):
             f.write(json.dumps(o) + "\n")
     c = ps.Collector(d, p)
     c.refresh()
-    return c.main_active()
+    return c
+
+
+def _main_active(lines):
+    return _collector(lines).main_active()
 
 
 def _asst(stop, block="text"):
@@ -115,6 +121,10 @@ def test_main_active():
     check("last stop_sequence", _main_active([_asst("stop_sequence")]), False)
     # nothing read yet defaults to not-active (falls back to cursor-only reading)
     check("noise only", _main_active([{"type": "mode"}]), False)
+    # main_seen: True once any main line is read, so a genuine yield (main_active
+    # False AFTER a main turn) is told apart from a never-tailed run's default
+    check("main_seen after asst", _collector([_asst("end_turn")]).main_seen(), True)
+    check("main_seen noise only", _collector([{"type": "mode"}]).main_seen(), False)
 
 
 # ----- run_id / decode_run_id round-trip --------------------------------------
@@ -221,8 +231,39 @@ def test_timings():
     check("empty entries", ps.compute_step_durations([]), {})
 
 
+# ----- waiting-for-you on a non-gate step (the yield signal) ------------------
+
+def test_waiting_detection():
+    # a-elicit-decisions is neither a gate nor attention-flagged; once the session
+    # has yielded (main_seen True, main_active False) it must read as waiting - amber
+    check("elicit yielded is waiting",
+          _model("a-elicit-decisions", "", False, True),
+          {"status": "paused", "gate": False, "blocked": False, "awaiting": True, "cur": "paused"})
+    # the same step still working (main_active True) is running, not waiting
+    check("elicit working is running",
+          _model("a-elicit-decisions", "", True, True),
+          {"status": "running", "gate": False, "blocked": False, "awaiting": False, "cur": "running"})
+    # never tailed (main_seen False): the default-False main_active must NOT read as
+    # a false wait - stays running (cursor-only reading)
+    check("elicit untailed is running",
+          _model("a-elicit-decisions", "", False, False),
+          {"status": "running", "gate": False, "blocked": False, "awaiting": False, "cur": "running"})
+    # a done run that happens to be yielded is not a wait
+    check("done not waiting",
+          _model("done", "", False, True),
+          {"status": "done", "gate": False, "blocked": False, "awaiting": False, "cur": "completed"})
+    # a gate step keeps its own gate cue when yielded (not the generic awaitingInput)
+    check("gate yielded stays gate",
+          _model("a-gate-approve", "", False, True),
+          {"status": "paused", "gate": True, "blocked": False, "awaiting": False, "cur": "paused"})
+    # attention (disposition) keeps its blocked cue when yielded
+    check("attention yielded stays blocked",
+          _model("b-code-risk", "unresolved risk", False, True),
+          {"status": "blocked", "gate": False, "blocked": True, "awaiting": False, "cur": "blocked"})
+
+
 _TESTS = (test_status_rules, test_main_active, test_run_id_roundtrip,
-          test_parse_state, test_contention, test_timings)
+          test_parse_state, test_contention, test_timings, test_waiting_detection)
 
 
 def _run_all():

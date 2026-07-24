@@ -82,7 +82,9 @@
   .dot.waiting { background: var(--text-tertiary); }
   .dot.active { background: var(--accent); }
   .dot.idle { background: var(--text-disabled); }
-  .dot.blocked { background: var(--blocked); }
+  /* a human-input wait (disposition / confirm), not an error: amber, not red.
+     red stays reserved for genuine failures (a tool call, the SSE connection) */
+  .dot.blocked { background: var(--amber); }
   @keyframes pulse {
     0% { box-shadow: 0 0 0 0 var(--accent-glow); }
     70% { box-shadow: 0 0 0 7px rgba(34, 211, 238, 0); }
@@ -372,15 +374,17 @@ function durationText() {
 }
 
 function statusStroke(st) {
+  // paused and blocked are both human-input waits -> amber. red is not a step
+  // state; it is reserved for genuine errors (failed tool call, SSE down)
   return st === "completed" ? C.ok : st === "running" ? C.accent
-    : st === "paused" ? C.amber : st === "blocked" ? C.blocked : C.border;
+    : st === "paused" ? C.amber : st === "blocked" ? C.amber : C.border;
 }
 
 // the core ring + status text colour track the run status; amber stays reserved
 // for the gate/paused meaning, so the ring is never decoratively amber
 function coreColor(status) {
   return status === "done" ? C.ok : status === "paused" ? C.amber
-    : status === "blocked" ? C.blocked : status === "running" ? C.accent : C.mut;
+    : status === "blocked" ? C.amber : status === "running" ? C.accent : C.mut;
 }
 
 /* ---- command-center pipeline (sequential ring + folded core readout) ---- */
@@ -476,7 +480,7 @@ function buildGraph(steps, status, met) {
     } else if (s.status === "running") {
       nodes += "<circle cx='" + P.x.toFixed(1) + "' cy='" + P.y.toFixed(1) + "' r='4' fill='" + C.accent + "'/>";
     } else if (s.status === "blocked") {
-      nodes += "<g fill='none' stroke='" + C.blocked + "' stroke-width='1.6' stroke-linecap='round' stroke-linejoin='round'><path d='M" + P.x.toFixed(1) + " " + (P.y - 5).toFixed(1) + " L" + (P.x + 5).toFixed(1) + " " + (P.y + 4).toFixed(1) + " L" + (P.x - 5).toFixed(1) + " " + (P.y + 4).toFixed(1) + " Z'/><path d='M" + P.x.toFixed(1) + " " + (P.y - 1).toFixed(1) + " v2'/></g>";
+      nodes += "<g fill='none' stroke='" + C.amber + "' stroke-width='1.6' stroke-linecap='round' stroke-linejoin='round'><path d='M" + P.x.toFixed(1) + " " + (P.y - 5).toFixed(1) + " L" + (P.x + 5).toFixed(1) + " " + (P.y + 4).toFixed(1) + " L" + (P.x - 5).toFixed(1) + " " + (P.y + 4).toFixed(1) + " Z'/><path d='M" + P.x.toFixed(1) + " " + (P.y - 1).toFixed(1) + " v2'/></g>";
     } else {
       // real steps keep their 1..N numbering despite the synthetic node at index 0
       nodes += "<text x='" + P.x.toFixed(1) + "' y='" + (P.y + 4).toFixed(1) + "' text-anchor='middle' font-size='12' font-family='ui-monospace,monospace' fill='" + C.mut + "'>" + j + "</text>";
@@ -532,15 +536,19 @@ function updateCore(m) {
   // gate/blocked take the core over with the call-to-action; the step name is the
   // active step's own label (registry source), never a hand-written phrase, so it
   // cannot drift from the node. the duration keeps its #dur id so the tick lives on
-  var blockedLabel = m.blocked ? stepLabelById(m, m.blocked.step) : null;
-  var gateLabel = (!m.blocked && m.gate) ? (m.gate.label || "a gate") : null;
-  if (blockedLabel != null || gateLabel != null) {
-    var isBlocked = blockedLabel != null;
-    var acol = isBlocked ? C.blocked : C.amber;
+  // all three waits share one amber takeover; only the icon and verb differ.
+  // blocked (a disposition) leads because it outranks a gate; awaitingInput is a
+  // plain mid-step question. none is red - none is an error
+  var wait = m.blocked ? { label: stepLabelById(m, m.blocked.step), act: "NEEDS YOU", icon: "&#9888;" }
+    : m.gate ? { label: (m.gate.label || "a gate"), act: "WAITING FOR YOU", icon: "&#128274;" }
+    : m.awaitingInput ? { label: (m.awaitingInput.label || "a step"), act: "WAITING FOR YOU", icon: "&#128172;" }
+    : null;
+  if (wait) {
+    var acol = C.amber;
     core.innerHTML =
-      "<div class='cicon' style='color:" + acol + "'>" + (isBlocked ? "&#9888;" : "&#128274;") + "</div>"
-      + "<div class='cact' style='color:" + acol + "'>" + (isBlocked ? "BLOCKED" : "WAITING FOR YOU") + "</div>"
-      + "<div class='cwhat'>" + esc(isBlocked ? blockedLabel : gateLabel) + "</div>"
+      "<div class='cicon' style='color:" + acol + "'>" + wait.icon + "</div>"
+      + "<div class='cact' style='color:" + acol + "'>" + wait.act + "</div>"
+      + "<div class='cwhat'>" + esc(wait.label) + "</div>"
       + "<div class='cgo'>action needed in Claude Code</div>"
       + "<div class='csmall'>step " + si + "/" + sc + " &middot; <span id='dur'>" + esc(durationText()) + "</span></div>";
   } else {
@@ -601,16 +609,19 @@ function renderModel(m) {
   // gate / blocked raise the attention layer (breathing frame + dimmed chrome) and
   // the core takes the message over; blocked outranks a gate. these replace the old
   // gate/blocked inline banners
+  // every human-input wait (plan gate, risk disposition, PR confirm, or a mid-step
+  // question) raises the SAME amber cue - none is an error, so none goes red
   document.body.classList.remove("attn-gate", "attn-blocked");
-  if (m.blocked) { document.body.classList.add("attn-blocked"); }
-  else if (m.gate) { document.body.classList.add("attn-gate"); }
+  if (m.blocked || m.gate || m.awaitingInput) { document.body.classList.add("attn-gate"); }
   // announce the change for screen readers (the removed banners used to carry this)
   var live = document.getElementById("attn-live");
   if (live) {
-    var liveMsg = m.blocked
-      ? ("Blocked at " + stepLabelById(m, m.blocked.step) + ". Action needed in your Claude Code session.")
-      : m.gate
-      ? ("Waiting for you at " + (m.gate.label || "a gate") + ". Action needed in your Claude Code session.")
+    var waitStep = m.blocked ? stepLabelById(m, m.blocked.step)
+      : m.gate ? (m.gate.label || "a gate")
+      : m.awaitingInput ? (m.awaitingInput.label || "a step")
+      : null;
+    var liveMsg = waitStep
+      ? ("Waiting for you at " + waitStep + ". Action needed in your Claude Code session.")
       : "";
     // only write on change so a screen reader is not re-announced on every push
     if (live.textContent !== liveMsg) { live.textContent = liveMsg; }

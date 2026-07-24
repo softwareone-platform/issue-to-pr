@@ -321,6 +321,10 @@ class Collector:
         # updated per main-session line, so it reflects the last one read. defaults
         # False so a run with no transcript keeps the cursor-only reading
         self._main_active = False
+        # whether ANY main-session line has been read at all. distinguishes a
+        # genuine yield (a main turn ended in end_turn) from the default-False of a
+        # run we never tailed - only the former should read as "waiting for you"
+        self._main_seen = False
 
     def refresh(self):
         """Read any bytes appended since the last call across the session file
@@ -410,6 +414,7 @@ class Collector:
         # verified on live transcripts: an end_turn is never resumed by a tool_use
         # without an intervening user line, so end_turn cleanly marks the yield
         if agent == "main":
+            self._main_seen = True
             if o.get("type") == "assistant":
                 self._main_active = (msg.get("stop_reason") == "tool_use")
             else:
@@ -452,6 +457,13 @@ class Collector:
         has yielded to the user or nothing has been read yet. Lets the model tell
         'approaching a human gate' from 'actually parked at it'."""
         return self._main_active
+
+    def main_seen(self):
+        """True once any main-session line has been read. Paired with a False
+        main_active it means a genuine yield (the main turn ended, awaiting the
+        human); without it a never-tailed run's default-False main_active would
+        read as a false 'waiting for you'."""
+        return self._main_seen
 
 
 def _elapsed_ms(start, end):
@@ -593,7 +605,7 @@ def list_status(next_step):
     return "active"
 
 
-def build_model(state, events, tokens_in, tokens_out, session_meta, ended_ms=None, main_active=False, timings=None):
+def build_model(state, events, tokens_in, tokens_out, session_meta, ended_ms=None, main_active=False, timings=None, main_seen=False):
     """Assemble the read-only progress model from the cursor plus the parsed
     activity. Pure: no I/O, no clock reads. `ended_ms` is the run's last-progress
     time (state.md mtime) supplied by the caller; defaults to None so the dry-run
@@ -602,20 +614,34 @@ def build_model(state, events, tokens_in, tokens_out, session_meta, ended_ms=Non
     the cursor-only reading); it demotes a not-yet-reached gate to running.
     `timings` is the parsed timings.md entries (defaults to empty, so a caller
     without them keeps the durationless reading), folded into per-step
-    durationMs / occurrences."""
+    durationMs / occurrences. `main_seen` (defaults False) is whether any
+    main-session line was read; paired with a False `main_active` it marks a
+    genuine yield-to-human on a step that is neither a gate nor attention-flagged
+    (e.g. a-elicit-decisions asking a question), which reads as waiting."""
     next_step = state.get("next-step")
     step_durations = compute_step_durations(timings or [])
     cur_idx = STEP_IDS.index(next_step) if next_step in STEP_IDS else -1
     is_done = next_step == "done"
     blocked = _is_blocked(state.get("attention"))
+    at_gate = next_step in GATE_STEPS
     # the cursor (a gate step) or a set attention note says we are AT a human
     # gate, but the tailed session can show the main loop is still working toward
     # it and has not yet yielded control - e.g. b-open-pr sets attention BEFORE open-pr
     # spends time drafting, and the a-gate-approve cursor flips while the plan is still
     # being rendered. treat that in-progress window as running, not
-    # waiting-for-you, so the amber / red attention cue fires only once the
+    # waiting-for-you, so the amber attention cue fires only once the
     # session actually parks at the gate rather than the moment it enters the step
-    approaching = bool(main_active) and (blocked or next_step in GATE_STEPS)
+    approaching = bool(main_active) and (blocked or at_gate)
+    # the session ended its turn and yielded to the human on a step the cursor
+    # cannot flag as a wait - the orchestrator asked a question mid-step
+    # (a-elicit-decisions, a fact-check HALT, a b-write-tests targeted question).
+    # this is the positive end_turn signal, NOT transcript silence (gaps are
+    # normal: a long tool call, a subagent writing its own transcript), and it is
+    # gated on main_seen so a never-tailed run's default-False does not read as a
+    # false wait. it never competes with a gate / attention (those own the wait),
+    # nor with a done / unknown cursor
+    yielded = (bool(main_seen) and not bool(main_active)
+               and not at_gate and not blocked and not is_done and cur_idx >= 0)
 
     steps = []
     for i, s in enumerate(STEPS):
@@ -628,12 +654,16 @@ def build_model(state, events, tokens_in, tokens_out, session_meta, ended_ms=Non
         elif i == cur_idx:
             # a non-empty attention note means the current step is stuck waiting
             # on the human, which outranks the running / gate-paused reading -
-            # unless the session is only approaching the gate and still running
+            # unless the session is only approaching the gate and still running.
+            # a plain yield on a non-gate step is also a wait (paused), whereas a
+            # non-gate step still working reads running
             if approaching:
                 status = "running"
             elif blocked:
                 status = "blocked"
             elif s["id"] in GATE_STEPS:
+                status = "paused"
+            elif yielded:
                 status = "paused"
             else:
                 status = "running"
@@ -653,11 +683,13 @@ def build_model(state, events, tokens_in, tokens_out, session_meta, ended_ms=Non
     overall = overall_status(next_step)
     if blocked:
         overall = "blocked"
+    elif yielded:
+        overall = "paused"
     if approaching:
         overall = "running"
 
     # suppress the gate / blocked payload while only approaching: the client raises
-    # the amber / red attention layer (frame + core takeover + screen-reader alert)
+    # the amber attention layer (frame + core takeover + screen-reader alert)
     # purely on these being present, so leaving them null keeps the cue off until
     # the session genuinely parks
     gate = None
@@ -667,6 +699,15 @@ def build_model(state, events, tokens_in, tokens_out, session_meta, ended_ms=Non
     blocked_info = None
     if blocked and not approaching:
         blocked_info = {"step": next_step, "reason": state.get("attention")}
+
+    # a plain yield-to-human on a non-gate, non-attention step: the orchestrator
+    # asked a question and parked. same amber "waiting for you" cue as a gate, but
+    # keyed on the tailed session rather than the cursor, so a step the registry
+    # cannot flag as a gate still shows as waiting
+    awaiting = None
+    if yielded:
+        awaiting = {"step": next_step,
+                    "label": next((s["label"] for s in STEPS if s["id"] == next_step), next_step)}
 
     activity = []
     for ev in events:
@@ -697,6 +738,7 @@ def build_model(state, events, tokens_in, tokens_out, session_meta, ended_ms=Non
         "status": overall,
         "gate": gate,
         "blocked": blocked_info,
+        "awaitingInput": awaiting,
         "steps": steps,
         "activity": activity,
         "metrics": {
@@ -737,14 +779,16 @@ def collect_model(cwd, ticket):
     }
     events, tokens_in, tokens_out = [], 0, 0
     main_active = False
+    main_seen = False
     if session_path:
         collector = Collector(project_dir, session_path)
         collector.refresh()
         events = collector.events()
         tokens_in, tokens_out = collector.tokens_in, collector.tokens_out
         main_active = collector.main_active()
+        main_seen = collector.main_seen()
 
-    return build_model(state, events, tokens_in, tokens_out, session_meta, ended_ms, main_active, timings)
+    return build_model(state, events, tokens_in, tokens_out, session_meta, ended_ms, main_active, timings, main_seen)
 
 
 def _pretty_stamp(s):

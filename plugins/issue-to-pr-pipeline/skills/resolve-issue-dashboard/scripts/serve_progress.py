@@ -150,18 +150,20 @@ class RunManager:
                 timings = ps.parse_timings(os.path.join(resolve_dir, "timings.md"))
             events, tin, tout = [], 0, 0
             main_active = False
+            main_seen = False
             if self.collector and self.session_path and os.path.isfile(self.session_path):
                 self.collector.refresh()
                 events = self.collector.events()
                 tin, tout = self.collector.tokens_in, self.collector.tokens_out
                 main_active = self.collector.main_active()
+                main_seen = self.collector.main_seen()
             meta = {
                 "id": ps.session_id_of(self.session_path) if self.session_path else None,
                 "projectDir": self.project_dir,
                 "cwd": sel_cwd,
                 "ticketDetected": ticket,
             }
-            model = ps.build_model(state, events, tin, tout, meta, ended_ms, main_active, timings)
+            model = ps.build_model(state, events, tin, tout, meta, ended_ms, main_active, timings, main_seen)
             selected_id = ps.run_id(sel_cwd, ticket)
         # run list is independent of selection state -> compute outside the lock
         runs = ps.list_runs(self.launch_cwd)
