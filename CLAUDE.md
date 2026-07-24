@@ -79,7 +79,7 @@ Each `evals/evals.json` pairs prompts with an `expected_output` and a list of `a
 
 ## resolve-issue-dashboard
 
-The only executable code lives under `plugins/issue-to-pr-pipeline/skills/resolve-issue-dashboard/`: `scripts/{serve_progress.py,parse_session.py}` — a read-only, localhost-only observer that tails Claude Code transcripts and `.claude/resolve/<ticket>/state.md` to visualise a `resolve-issue` run (it never writes to transcripts or `.claude/resolve/`) — plus `tests/selfcheck.py`, a stdlib deterministic self-check of the parser's pure logic. Run the dashboard: `python serve_progress.py [--cwd PATH] [--ticket TICKET] [--port N] [--no-browser]`; run the checks: `python tests/selfcheck.py`.
+The only executable code lives under `plugins/issue-to-pr-pipeline/skills/resolve-issue-dashboard/`: `scripts/{serve_progress.py,parse_session.py}` — a read-only, localhost-only observer that tails Claude Code transcripts and `.claude/resolve/<ticket>/state.md` (plus the run's append-only `timings.md`, for per-step durations) to visualise a `resolve-issue` run (it never writes to transcripts or `.claude/resolve/`) — plus `tests/selfcheck.py`, a stdlib deterministic self-check of the parser's pure logic. Run the dashboard: `python serve_progress.py [--cwd PATH] [--ticket TICKET] [--port N] [--no-browser]`; run the checks: `python tests/selfcheck.py`.
 
 ## Conventions
 

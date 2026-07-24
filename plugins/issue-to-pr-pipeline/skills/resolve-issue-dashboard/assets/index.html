@@ -454,6 +454,12 @@ function buildGraph(steps, status, met) {
   var nodes = "", nr = 14;
   for (var j = 0; j < n; j++) {
     var P = pt(j), s = steps[j], stroke = statusStroke(s.status);
+    // per-step wall-clock: a completed step shows its frozen duration; a step
+    // re-entered by a gate revise (or a future rework loop) shows a xN count so
+    // the re-run cost is visible, not hidden
+    var durTxt = "";
+    if (s.durationMs != null) durTxt = fmtDur(s.durationMs);
+    if (s.occurrences > 1) durTxt += (durTxt ? " " : "") + "×" + s.occurrences;
     var sw = s.status === "pending" ? 1.3 : 2, fill = s.status === "pending" ? C.nodePend : C.node;
     if (s.status === "running" && !REDUCE) {
       nodes += "<circle cx='" + P.x.toFixed(1) + "' cy='" + P.y.toFixed(1) + "' r='" + nr + "' fill='none' stroke='" + C.accent + "' stroke-width='1.5'>"
@@ -461,7 +467,7 @@ function buildGraph(steps, status, met) {
         + "<animate attributeName='opacity' values='0.7;0;0.7' dur='1.9s' repeatCount='indefinite'/></circle>";
     }
     nodes += "<circle cx='" + P.x.toFixed(1) + "' cy='" + P.y.toFixed(1) + "' r='" + nr + "' fill='" + fill + "' stroke='" + stroke + "' stroke-width='" + sw + "'>"
-      + "<title>" + esc(s.label + "  -  " + (s.component || "no component") + "  -  " + s.status) + "</title></circle>";
+      + "<title>" + esc(s.label + "  -  " + (s.component || "no component") + "  -  " + s.status + (durTxt ? "  -  " + durTxt : "")) + "</title></circle>";
     if (s.synthetic) {
       // origin marker: a right-pointing play triangle, never a step number or checkmark
       nodes += "<path d='M" + (P.x - 3.5).toFixed(1) + " " + (P.y - 4.5).toFixed(1) + " L" + (P.x + 4.5).toFixed(1) + " " + P.y.toFixed(1) + " L" + (P.x - 3.5).toFixed(1) + " " + (P.y + 4.5).toFixed(1) + " Z' fill='" + (s.status === "completed" ? C.ok : C.mut) + "'/>";
@@ -484,7 +490,9 @@ function buildGraph(steps, status, met) {
     var co = Math.cos(P.a), anchor = co > 0.3 ? "start" : co < -0.3 ? "end" : "middle";
     var lcol = s.status === "pending" ? C.mut : C.txt;
     nodes += "<text x='" + lx.toFixed(1) + "' y='" + (ly + 3).toFixed(1) + "' text-anchor='" + anchor + "' font-size='13' font-family='system-ui,sans-serif' font-weight='500' fill='" + lcol + "'>"
-      + "<tspan fill='" + C.mut + "' font-family='ui-monospace,monospace' font-size='11'>" + (s.synthetic ? "" : (j + " ")) + "</tspan>" + esc(s.label) + "</text>";
+      + "<tspan fill='" + C.mut + "' font-family='ui-monospace,monospace' font-size='11'>" + (s.synthetic ? "" : (j + " ")) + "</tspan>" + esc(s.label)
+      + (durTxt ? "<tspan x='" + lx.toFixed(1) + "' dy='13' fill='" + C.mut + "' font-family='ui-monospace,monospace' font-size='10'>" + esc(durTxt) + "</tspan>" : "")
+      + "</text>";
   }
 
   host.innerHTML = "<svg viewBox='0 0 " + Math.round(W) + " " + Math.round(H) + "' width='100%' height='100%' role='img' aria-label='resolve-issue pipeline'>" + defs + conns + core + nodes + "</svg>";
@@ -497,7 +505,7 @@ function maybeBuildGraph(steps, status, met) {
   steps = steps || [];
   var host = document.getElementById("graph");
   var w = host ? host.clientWidth : 0, h = host ? host.clientHeight : 0;
-  var key = steps.map(function (s) { return s.id + ":" + s.status + ":" + (s.gate ? 1 : 0); }).join("|")
+  var key = steps.map(function (s) { return s.id + ":" + s.status + ":" + (s.gate ? 1 : 0) + ":" + (s.durationMs || 0) + ":" + (s.occurrences || 0); }).join("|")
     + "|" + status + "|" + (met.stepIndex || 0) + "/" + (met.stepCount || 0) + "|" + w + "x" + h;
   if (key !== _gkey) {
     _gkey = key;

@@ -162,8 +162,67 @@ def test_contention():
     check("two active counted", ps.contention(two)["count"], 2)
 
 
+# ----- parse_timings / compute_step_durations: per-step wall-clock ------------
+
+def _ts(sec):
+    """A UTC-with-Z timestamp `sec` seconds past a fixed midnight, built without
+    reading the clock so the duration folds are deterministic."""
+    m, s = divmod(sec, 60)
+    h, m = divmod(m, 60)
+    return "2026-07-13T%02d:%02d:%02dZ" % (h, m, s)
+
+
+def _entries(pairs):
+    return [{"ts": _ts(sec), "step": step} for sec, step in pairs]
+
+
+def test_timings():
+    # parse_timings: markdown decoration tolerated, a prose line and an
+    # unknown-id line dropped, a bare (undecorated) line accepted, order kept
+    d = tempfile.mkdtemp()
+    p = os.path.join(d, "timings.md")
+    with open(p, "w", encoding="utf-8") as f:
+        f.write("- 2026-07-13T00:00:00Z a-fact-check\n")
+        f.write("some prose that is not an entry\n")
+        f.write("- 2026-07-13T00:05:00Z not-a-real-step\n")
+        f.write("2026-07-13T00:06:00Z a-draft-plan\n")
+    parsed = ps.parse_timings(p)
+    check("parse_timings count", len(parsed), 2)
+    check("parse_timings first", parsed[0], {"ts": "2026-07-13T00:00:00Z", "step": "a-fact-check"})
+    check("parse_timings skips unknown id", parsed[1]["step"], "a-draft-plan")
+    check("parse_timings missing file", ps.parse_timings(os.path.join(d, "none.md")), [])
+
+    # a-fact-check spans 10s, a-draft-plan spans 15s, done is terminal (no span)
+    dur = ps.compute_step_durations(_entries([(0, "a-fact-check"), (10, "a-draft-plan"), (25, "done")]))
+    check("closed step dur", dur["a-fact-check"], {"durationMs": 10000, "occurrences": 1, "open": False})
+    check("second step dur", dur["a-draft-plan"], {"durationMs": 15000, "occurrences": 1, "open": False})
+    check("done terminal not open", dur["done"], {"durationMs": None, "occurrences": 1, "open": False})
+
+    # the last non-done entry is still open (running); the earlier step is closed
+    dur = ps.compute_step_durations(_entries([(0, "a-fact-check"), (10, "b-implement")]))
+    check("open last step", dur["b-implement"], {"durationMs": None, "occurrences": 1, "open": True})
+    check("closed before open", dur["a-fact-check"]["durationMs"], 10000)
+
+    # a gate re-entry: a-harden-plan runs twice, its spans SUM and the count is 2 -
+    # the re-run cost flat state.md fields could not represent (the log's reason)
+    dur = ps.compute_step_durations(_entries([
+        (0, "a-harden-plan"), (5, "a-gate-approve"), (8, "a-harden-plan"),
+        (12, "a-gate-approve"), (20, "b-implement")]))
+    check("re-entry sums duration", dur["a-harden-plan"], {"durationMs": 9000, "occurrences": 2, "open": False})
+    check("re-entry sums gate", dur["a-gate-approve"], {"durationMs": 11000, "occurrences": 2, "open": False})
+
+    # a clock that went backwards across a resume yields a non-positive span ->
+    # dropped, so no negative time is charted, but the occurrence still counts
+    dur = ps.compute_step_durations(_entries([(10, "a-fact-check"), (5, "a-draft-plan")]))
+    check("clock reversal dropped", dur["a-fact-check"]["durationMs"], None)
+    check("clock reversal count kept", dur["a-fact-check"]["occurrences"], 1)
+
+    # empty log is safe
+    check("empty entries", ps.compute_step_durations([]), {})
+
+
 _TESTS = (test_status_rules, test_main_active, test_run_id_roundtrip,
-          test_parse_state, test_contention)
+          test_parse_state, test_contention, test_timings)
 
 
 def _run_all():

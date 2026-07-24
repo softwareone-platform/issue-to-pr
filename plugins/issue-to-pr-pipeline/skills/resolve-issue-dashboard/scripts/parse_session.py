@@ -4,7 +4,8 @@ and build a read-only progress model the dashboard renders.
 This is a pure observer: it only reads files Claude Code already writes
 (`~/.claude/projects/<encoded-cwd>/<session>.jsonl` plus that session's
 `<session>/subagents/agent-*.jsonl`) and the orchestrator's
-`.claude/resolve/<ticket>/state.md`. It never writes to either.
+`.claude/resolve/<ticket>/state.md` and per-step `timings.md`. It never writes
+to either.
 
 Run standalone for a dry-run of the model:
     python parse_session.py [--cwd PATH] [--ticket TICKET]
@@ -493,6 +494,65 @@ def _iso_to_ms(s):
     return int(dt.timestamp() * 1000)
 
 
+# ----- per-step timing -------------------------------------------------------
+
+def parse_timings(path):
+    """Read the orchestrator's append-only per-step timing log
+    (`.claude/resolve/<ticket>/timings.md`): one markdown line per step entry,
+    `- <UTC-ISO-Z> <step-id>`. resolve-issue appends a line each time it enters a
+    step, so a step re-entered by a Phase A gate revise (or a future Phase B
+    rework loop) appears more than once, in file order. Tolerant of light
+    markdown decoration and non-fatal - a missing or malformed file yields no
+    entries, never an error, the same contract as parse_state."""
+    entries = []
+    if not path or not os.path.isfile(path):
+        return entries
+    try:
+        with open(path, encoding="utf-8") as f:
+            text = f.read()
+    except OSError:
+        return entries
+    for line in text.splitlines():
+        m = re.match(
+            r"^[ \t>\-*`]*([0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9:]+Z)[ \t]+([A-Za-z][A-Za-z0-9-]*)",
+            line.strip())
+        if not m:
+            continue
+        ts, step = m.group(1), m.group(2)
+        # an id not in the registry (a typo, a renamed step) is skipped rather
+        # than charted at a guessed position - the rule build_model's cursor uses
+        # for an unknown next-step
+        if step in STEP_IDS and parse_ts(ts):
+            entries.append({"ts": ts, "step": step})
+    return entries
+
+
+def compute_step_durations(entries):
+    """Pure: fold ordered timing entries into per-step wall-clock. Each entry
+    marks entry INTO a step, so a step's span runs from its own entry to the next
+    entry; the final entry is still open (running) unless it is the terminal
+    `done`. Repeated entries for one step sum into its total and bump its count,
+    so a re-entry's cost is measured rather than overwritten - the reason the log
+    is a separate append-only file, not flat state.md fields. Returns
+    {step-id: {durationMs, occurrences, open}}, durationMs None for a step with no
+    closed span yet (only an open entry so far)."""
+    out = {}
+    n = len(entries)
+    for i, e in enumerate(entries):
+        step = e["step"]
+        rec = out.setdefault(step, {"durationMs": None, "occurrences": 0, "open": False})
+        rec["occurrences"] += 1
+        if i + 1 < n:
+            dur = _elapsed_ms(e["ts"], entries[i + 1]["ts"])
+            # drop a non-positive span (a clock that went backwards across a
+            # resume on another machine) rather than charting negative time
+            if dur is not None and dur > 0:
+                rec["durationMs"] = (rec["durationMs"] or 0) + dur
+        elif step != "done":
+            rec["open"] = True
+    return out
+
+
 def _is_blocked(attention):
     """A run is blocked (needs human disposition) when state.md carries a
     non-empty `attention` note - set by resolve-issue whenever it is waiting on
@@ -533,14 +593,18 @@ def list_status(next_step):
     return "active"
 
 
-def build_model(state, events, tokens_in, tokens_out, session_meta, ended_ms=None, main_active=False):
+def build_model(state, events, tokens_in, tokens_out, session_meta, ended_ms=None, main_active=False, timings=None):
     """Assemble the read-only progress model from the cursor plus the parsed
     activity. Pure: no I/O, no clock reads. `ended_ms` is the run's last-progress
     time (state.md mtime) supplied by the caller; defaults to None so the dry-run
     caller (collect_model) stays valid without it. `main_active` is the tailed
     main session's liveness (defaults False, so a caller with no transcript keeps
-    the cursor-only reading); it demotes a not-yet-reached gate to running."""
+    the cursor-only reading); it demotes a not-yet-reached gate to running.
+    `timings` is the parsed timings.md entries (defaults to empty, so a caller
+    without them keeps the durationless reading), folded into per-step
+    durationMs / occurrences."""
     next_step = state.get("next-step")
+    step_durations = compute_step_durations(timings or [])
     cur_idx = STEP_IDS.index(next_step) if next_step in STEP_IDS else -1
     is_done = next_step == "done"
     blocked = _is_blocked(state.get("attention"))
@@ -575,12 +639,15 @@ def build_model(state, events, tokens_in, tokens_out, session_meta, ended_ms=Non
                 status = "running"
         else:
             status = "pending"
+        td = step_durations.get(s["id"])
         steps.append({
             "id": s["id"],
             "label": s["label"],
             "component": s["component"],
             "gate": s["id"] in GATE_STEPS,
             "status": status,
+            "durationMs": (td["durationMs"] if td else None),
+            "occurrences": (td["occurrences"] if td else 0),
         })
 
     overall = overall_status(next_step)
@@ -661,6 +728,7 @@ def collect_model(cwd, ticket):
     state_path = os.path.join(resolve_dir, "state.md") if resolve_dir else None
     state = parse_state(state_path) if state_path else {}
     ended_ms = _mtime_ms(state_path) if state_path else None
+    timings = parse_timings(os.path.join(resolve_dir, "timings.md")) if resolve_dir else []
 
     session_meta = {
         "id": session_id_of(session_path) if session_path else None,
@@ -676,7 +744,7 @@ def collect_model(cwd, ticket):
         tokens_in, tokens_out = collector.tokens_in, collector.tokens_out
         main_active = collector.main_active()
 
-    return build_model(state, events, tokens_in, tokens_out, session_meta, ended_ms, main_active)
+    return build_model(state, events, tokens_in, tokens_out, session_meta, ended_ms, main_active, timings)
 
 
 def _pretty_stamp(s):

@@ -1,6 +1,6 @@
 # resolve-issue-dashboard
 
-A live, read-only dashboard for `resolve-issue` runs. **One global server** discovers every run across your repos — by reading the files Claude Code already writes (the session transcripts and each repo's `.claude/resolve/<ticket>/state.md`) — lists them in a left panel, and renders the selected run's pipeline step, what each subagent is doing, the running metrics, and any gate it is paused at. It is a pure observer: it never writes to a transcript or to `.claude/resolve/`, never answers a gate, and never edits code.
+A live, read-only dashboard for `resolve-issue` runs. **One global server** discovers every run across your repos — by reading the files Claude Code already writes (the session transcripts and each repo's `.claude/resolve/<ticket>/state.md`, plus the run's append-only `timings.md`) — lists them in a left panel, and renders the selected run's pipeline step, what each subagent is doing, the running metrics, and any gate it is paused at. It is a pure observer: it never writes to a transcript or to `.claude/resolve/`, never answers a gate, and never edits code.
 
 It is built lightweight on purpose — a stdlib-only Python server plus one self-contained HTML page — rather than adopting a full agent GUI. The design language (dark layered surfaces, a left run/project panel, status-coloured pipeline nodes, an activity timeline, stat cards) is borrowed from the `claude-code-agents-ui` project; the mechanism is our own and understands `resolve-issue`'s phases and `state.md`. Running it once serves every repo, so multiple concurrent runs need only one dashboard (and one port).
 
@@ -14,7 +14,7 @@ Python 3.8+ on PATH — standard library only, no `pip install`. It is the singl
 flowchart LR
     subgraph SOURCES["Files Claude Code already writes (read-only, all repos)"]
         PROJ["~/.claude/projects/*<br>session.jsonl (+ subagents)"]
-        ST["each repo's<br>.claude/resolve/&lt;ticket&gt;/state.md"]
+        ST["each repo's<br>.claude/resolve/&lt;ticket&gt;/<br>state.md + timings.md"]
     end
     PROJ -->|"cwd read from transcript"| DISC["list_runs<br>discover runs, no tailing"]
     ST --> DISC
@@ -32,7 +32,7 @@ flowchart LR
 
 - **Run panel (left)** — every run discovered across your repos (repo, ticket, a coarse next-step status dot — done / paused / active / idle — and last activity); click to switch the main view, with the launch repo selected by default. The precise running / paused / blocked state lives in the selected run's header, since the list does not tail each repo.
 - **Header + status pill** — the selected run's ticket, work and base branch, PR link once present, and a coloured run status (running / paused / blocked / done).
-- **Pipeline** — the steps (loaded from the shared `resources/resolve-issue-steps.json` registry, e.g. `a-fact-check` … `done`) as nodes; status comes from `state.md`'s `next-step` — earlier completed, current running or paused, later pending — with the running node pulsing and completed nodes ticked.
+- **Pipeline** — the steps (loaded from the shared `resources/resolve-issue-steps.json` registry, e.g. `a-fact-check` … `done`) as nodes; status comes from `state.md`'s `next-step` — earlier completed, current running or paused, later pending — with the running node pulsing and completed nodes ticked. Each completed node also shows its wall-clock, and a step re-entered by a gate revise shows a `×N` count, read from the run's append-only `timings.md`.
 - **Agent activity** — the merged tool-call stream from the main session and its subagents (each component's writer / verifier), showing tool, target, status, and duration.
 - **Stat cards** — pipeline step `N/12`, active duration, tool-call count, and tokens in/out.
 - **Attention cue** — a breathing full-frame highlight plus a core-readout takeover pointing back to the terminal: amber when the run is paused at the plan-approval gate, red when it is blocked awaiting a disposition. It fires only once the session has actually parked at the gate and yielded control — not the moment the step is entered, since the run can still be working toward it (e.g. drafting the PR before the open-PR confirmation), which the dashboard reads from the tailed session's liveness.

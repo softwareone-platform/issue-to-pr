@@ -140,11 +140,14 @@ class RunManager:
             ticket = self.sel_ticket or ps.find_resolve_ticket(sel_cwd, None)
             state = {}
             ended_ms = None
+            timings = []
             if ticket:
-                state_path = os.path.join(ps.resolve_dir_for(sel_cwd, ticket), "state.md")
+                resolve_dir = ps.resolve_dir_for(sel_cwd, ticket)
+                state_path = os.path.join(resolve_dir, "state.md")
                 state = ps.parse_state(state_path)
                 # run's last-progress time; stable across a next-day relaunch
                 ended_ms = ps._mtime_ms(state_path)
+                timings = ps.parse_timings(os.path.join(resolve_dir, "timings.md"))
             events, tin, tout = [], 0, 0
             main_active = False
             if self.collector and self.session_path and os.path.isfile(self.session_path):
@@ -158,7 +161,7 @@ class RunManager:
                 "cwd": sel_cwd,
                 "ticketDetected": ticket,
             }
-            model = ps.build_model(state, events, tin, tout, meta, ended_ms, main_active)
+            model = ps.build_model(state, events, tin, tout, meta, ended_ms, main_active, timings)
             selected_id = ps.run_id(sel_cwd, ticket)
         # run list is independent of selection state -> compute outside the lock
         runs = ps.list_runs(self.launch_cwd)
