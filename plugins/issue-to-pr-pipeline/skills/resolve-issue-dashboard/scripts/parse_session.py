@@ -317,6 +317,12 @@ class Collector:
         self._labels = {}
         self.tokens_in = 0
         self.tokens_out = 0
+        # per-record output-token samples (ts + output_tokens), retained so
+        # build_model can bucket them into per-step windows. only records that
+        # actually produced output are kept; summing per window is
+        # order-independent, so a late out-of-order sample just lands in its
+        # window. includes subagent records (a step's tokens then cover its fan-out)
+        self._token_records = []
         # whether the MAIN session is mid-work vs has yielded control to the user;
         # updated per main-session line, so it reflects the last one read. defaults
         # False so a run with no transcript keeps the cursor-only reading
@@ -422,7 +428,12 @@ class Collector:
         usage = msg.get("usage")
         if usage:
             self.tokens_in += usage.get("input_tokens", 0) or 0
-            self.tokens_out += usage.get("output_tokens", 0) or 0
+            out_tok = usage.get("output_tokens", 0) or 0
+            self.tokens_out += out_tok
+            # keep a per-step-bucketable sample; only assistant turns carry a
+            # non-zero output_tokens, so this is effectively per-turn model output
+            if out_tok and ts:
+                self._token_records.append({"ts": ts, "output_tokens": out_tok})
         content = msg.get("content")
         if not isinstance(content, list):
             return
@@ -450,6 +461,10 @@ class Collector:
 
     def events(self):
         return self._events
+
+    def token_records(self):
+        """Per-record {ts, output_tokens} samples, for per-step bucketing."""
+        return self._token_records
 
     def main_active(self):
         """True while the main session is mid-work (a tool call is imminent or a
@@ -565,6 +580,37 @@ def compute_step_durations(entries):
     return out
 
 
+def compute_step_activity(entries, token_records):
+    """Pure: bucket per-record output_tokens into the step windows defined by the
+    timings entries, summing per step-id. `token_records` is a list of
+    {ts, output_tokens}. A record whose ts falls in [entries[i].ts,
+    entries[i+1].ts) is attributed to entries[i].step (the last/open window
+    extends to +inf); a record before the first entry (preamble) is skipped.
+    Summing is order-independent - a late out-of-order sample lands in its window
+    regardless of arrival order - so this is safe to recompute each build. Returns
+    {step-id: tokensOut}. A window that changed step-id back (a re-entry) sums
+    into that step across all its occurrences, matching compute_step_durations."""
+    out = {}
+    n = len(entries)
+    if n == 0:
+        return out
+    bounds = [_iso_to_ms(e["ts"]) for e in entries]
+    for rec in token_records:
+        ms = _iso_to_ms(rec.get("ts"))
+        tok = rec.get("output_tokens") or 0
+        if ms is None or tok <= 0:
+            continue
+        for i in range(n):
+            lo = bounds[i]
+            if lo is None or ms < lo:
+                continue
+            hi = bounds[i + 1] if i + 1 < n else None
+            if hi is None or ms < hi:
+                out[entries[i]["step"]] = out.get(entries[i]["step"], 0) + tok
+                break
+    return out
+
+
 def _is_blocked(attention):
     """A run is blocked (needs human disposition) when state.md carries a
     non-empty `attention` note - set by resolve-issue whenever it is waiting on
@@ -605,7 +651,7 @@ def list_status(next_step):
     return "active"
 
 
-def build_model(state, events, tokens_in, tokens_out, session_meta, ended_ms=None, main_active=False, timings=None, main_seen=False):
+def build_model(state, events, tokens_in, tokens_out, session_meta, ended_ms=None, main_active=False, timings=None, main_seen=False, token_records=None):
     """Assemble the read-only progress model from the cursor plus the parsed
     activity. Pure: no I/O, no clock reads. `ended_ms` is the run's last-progress
     time (state.md mtime) supplied by the caller; defaults to None so the dry-run
@@ -617,9 +663,14 @@ def build_model(state, events, tokens_in, tokens_out, session_meta, ended_ms=Non
     durationMs / occurrences. `main_seen` (defaults False) is whether any
     main-session line was read; paired with a False `main_active` it marks a
     genuine yield-to-human on a step that is neither a gate nor attention-flagged
-    (e.g. a-elicit-decisions asking a question), which reads as waiting."""
+    (e.g. a-elicit-decisions asking a question), which reads as waiting.
+    `token_records` (defaults empty) are per-record {ts, output_tokens} samples,
+    bucketed into per-step `activity.tokensOut` - the compute signal that tells a
+    slow step that was computing from one that was waiting (a slow step with low
+    tokensOut was mostly idle)."""
     next_step = state.get("next-step")
     step_durations = compute_step_durations(timings or [])
+    step_tokens = compute_step_activity(timings or [], token_records or [])
     cur_idx = STEP_IDS.index(next_step) if next_step in STEP_IDS else -1
     is_done = next_step == "done"
     blocked = _is_blocked(state.get("attention"))
@@ -678,6 +729,7 @@ def build_model(state, events, tokens_in, tokens_out, session_meta, ended_ms=Non
             "status": status,
             "durationMs": (td["durationMs"] if td else None),
             "occurrences": (td["occurrences"] if td else 0),
+            "activity": {"tokensOut": step_tokens.get(s["id"], 0)},
         })
 
     overall = overall_status(next_step)
@@ -780,6 +832,7 @@ def collect_model(cwd, ticket):
     events, tokens_in, tokens_out = [], 0, 0
     main_active = False
     main_seen = False
+    token_records = []
     if session_path:
         collector = Collector(project_dir, session_path)
         collector.refresh()
@@ -787,8 +840,9 @@ def collect_model(cwd, ticket):
         tokens_in, tokens_out = collector.tokens_in, collector.tokens_out
         main_active = collector.main_active()
         main_seen = collector.main_seen()
+        token_records = collector.token_records()
 
-    return build_model(state, events, tokens_in, tokens_out, session_meta, ended_ms, main_active, timings, main_seen)
+    return build_model(state, events, tokens_in, tokens_out, session_meta, ended_ms, main_active, timings, main_seen, token_records)
 
 
 def _pretty_stamp(s):

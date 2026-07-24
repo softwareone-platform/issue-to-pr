@@ -464,6 +464,10 @@ function buildGraph(steps, status, met) {
     var durTxt = "";
     if (s.durationMs != null) durTxt = fmtDur(s.durationMs);
     if (s.occurrences > 1) durTxt += (durTxt ? " " : "") + "×" + s.occurrences;
+    // output-token compute signal, shown only for a completed step (frozen);
+    // in the tooltip it lets a slow step read as compute (high tok) vs waiting (low)
+    var tokTxt = "";
+    if (s.status === "completed" && s.activity && s.activity.tokensOut > 0) tokTxt = fmtNum(s.activity.tokensOut) + " tok";
     var sw = s.status === "pending" ? 1.3 : 2, fill = s.status === "pending" ? C.nodePend : C.node;
     if (s.status === "running" && !REDUCE) {
       nodes += "<circle cx='" + P.x.toFixed(1) + "' cy='" + P.y.toFixed(1) + "' r='" + nr + "' fill='none' stroke='" + C.accent + "' stroke-width='1.5'>"
@@ -471,7 +475,7 @@ function buildGraph(steps, status, met) {
         + "<animate attributeName='opacity' values='0.7;0;0.7' dur='1.9s' repeatCount='indefinite'/></circle>";
     }
     nodes += "<circle cx='" + P.x.toFixed(1) + "' cy='" + P.y.toFixed(1) + "' r='" + nr + "' fill='" + fill + "' stroke='" + stroke + "' stroke-width='" + sw + "'>"
-      + "<title>" + esc(s.label + "  -  " + (s.component || "no component") + "  -  " + s.status + (durTxt ? "  -  " + durTxt : "")) + "</title></circle>";
+      + "<title>" + esc(s.label + "  -  " + (s.component || "no component") + "  -  " + s.status + (durTxt ? "  -  " + durTxt : "") + (tokTxt ? "  -  " + tokTxt : "")) + "</title></circle>";
     if (s.synthetic) {
       // origin marker: a right-pointing play triangle, never a step number or checkmark
       nodes += "<path d='M" + (P.x - 3.5).toFixed(1) + " " + (P.y - 4.5).toFixed(1) + " L" + (P.x + 4.5).toFixed(1) + " " + P.y.toFixed(1) + " L" + (P.x - 3.5).toFixed(1) + " " + (P.y + 4.5).toFixed(1) + " Z' fill='" + (s.status === "completed" ? C.ok : C.mut) + "'/>";
@@ -509,7 +513,11 @@ function maybeBuildGraph(steps, status, met) {
   steps = steps || [];
   var host = document.getElementById("graph");
   var w = host ? host.clientWidth : 0, h = host ? host.clientHeight : 0;
-  var key = steps.map(function (s) { return s.id + ":" + s.status + ":" + (s.gate ? 1 : 0) + ":" + (s.durationMs || 0) + ":" + (s.occurrences || 0); }).join("|")
+  var key = steps.map(function (s) { return s.id + ":" + s.status + ":" + (s.gate ? 1 : 0) + ":" + (s.durationMs || 0) + ":" + (s.occurrences || 0)
+    // completed-step tokensOut only: a late out-of-order record correcting a
+    // finished step rebuilds; a running step's growing tokensOut stays out of the
+    // key, so its animation is not restarted every record
+    + ":" + (s.status === "completed" && s.activity ? (s.activity.tokensOut || 0) : 0); }).join("|")
     + "|" + status + "|" + (met.stepIndex || 0) + "/" + (met.stepCount || 0) + "|" + w + "x" + h;
   if (key !== _gkey) {
     _gkey = key;

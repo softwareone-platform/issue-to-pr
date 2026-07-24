@@ -262,8 +262,42 @@ def test_waiting_detection():
           {"status": "blocked", "gate": False, "blocked": True, "awaiting": False, "cur": "blocked"})
 
 
+# ----- compute_step_activity: per-step output-token bucketing -----------------
+
+def _toks(pairs):
+    return [{"ts": _ts(sec), "output_tokens": n} for sec, n in pairs]
+
+
+def test_step_activity():
+    entries = _entries([(0, "a-fact-check"), (10, "a-draft-plan"), (25, "done")])
+    toks = _toks([(3, 100), (12, 50), (20, 70)])
+    act = ps.compute_step_activity(entries, toks)
+    # record at 3s -> [0,10) fact-check; 12s & 20s -> [10,25) draft (summed)
+    check("bucket fact-check", act.get("a-fact-check"), 100)
+    check("bucket draft sums", act.get("a-draft-plan"), 120)
+    check("done window empty", act.get("done"), None)
+    # summing is order-independent: reversed input yields the same result
+    check("order-independent", ps.compute_step_activity(entries, list(reversed(toks))), act)
+    # a record before the first entry (preamble) is skipped, not misattributed
+    check("pre-first-window skipped",
+          ps.compute_step_activity(_entries([(10, "a-fact-check"), (20, "a-draft-plan")]), _toks([(5, 999)])), {})
+    # zero / non-positive output_tokens are dropped
+    check("zero tokens skipped", ps.compute_step_activity(entries, _toks([(3, 0)])), {})
+    # a re-entered step (two windows) sums its tokens across occurrences
+    reentry = _entries([(0, "a-harden-plan"), (10, "a-gate-approve"), (20, "a-harden-plan"), (30, "done")])
+    check("re-entry sums tokens",
+          ps.compute_step_activity(reentry, _toks([(5, 40), (25, 60)])).get("a-harden-plan"), 100)
+    check("no entries -> empty", ps.compute_step_activity([], _toks([(3, 100)])), {})
+    # build_model attaches activity.tokensOut per step
+    m = ps.build_model({"next-step": "a-draft-plan", "ticket": "acme-1"}, [], 0, 0, {"cwd": "."},
+                       None, False, entries, False, toks)
+    fc = next(s for s in m["steps"] if s["id"] == "a-fact-check")
+    check("build_model activity attached", fc["activity"]["tokensOut"], 100)
+
+
 _TESTS = (test_status_rules, test_main_active, test_run_id_roundtrip,
-          test_parse_state, test_contention, test_timings, test_waiting_detection)
+          test_parse_state, test_contention, test_timings, test_waiting_detection,
+          test_step_activity)
 
 
 def _run_all():
