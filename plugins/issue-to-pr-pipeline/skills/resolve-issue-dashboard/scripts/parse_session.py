@@ -272,14 +272,22 @@ def find_resolve_ticket(cwd, explicit=None):
 
 def parse_state(path):
     """Read the orchestrator's cursor. Tolerant of light markdown decoration
-    (`- **next-step:** b-write-tests` etc.); expects one `field: value` per line."""
+    (`- **next-step:** b-write-tests` etc.); expects one `field: value` per line.
+    Non-fatal: a missing, BOM-prefixed, or undecodable file yields an empty cursor
+    rather than raising, because `list_runs` reads this inside the poll loop."""
     state = {}
     if not path or not os.path.isfile(path):
         return state
     try:
-        with open(path, encoding="utf-8") as f:
+        # utf-8-sig so a BOM is consumed rather than left as ﻿ on the first
+        # character, where it stopped `next-step` from matching and made the run
+        # render as idle with nothing to explain it.
+        # a decode error is tolerated for the same reason a missing file is:
+        # raising here would surface as an error payload replacing the whole
+        # run list, for every repo, over one unreadable file.
+        with open(path, encoding="utf-8-sig") as f:
             text = f.read()
-    except OSError:
+    except (OSError, UnicodeDecodeError):
         return state
     for key in STATE_FIELDS:
         # the value must stay on the field's own line:
@@ -558,15 +566,16 @@ def parse_timings(path):
     `- <UTC-ISO-Z> <step-id>`. resolve-issue appends a line each time it enters a
     step, so a step re-entered by a Phase A gate revise (or a future Phase B
     rework loop) appears more than once, in file order. Tolerant of light
-    markdown decoration and non-fatal - a missing or malformed file yields no
-    entries, never an error, the same contract as parse_state."""
+    markdown decoration and non-fatal - a missing, malformed, or undecodable file
+    yields no entries, never an error, the same contract as parse_state."""
     entries = []
     if not path or not os.path.isfile(path):
         return entries
     try:
-        with open(path, encoding="utf-8") as f:
+        # utf-8-sig and a tolerated decode error, for the reasons parse_state gives
+        with open(path, encoding="utf-8-sig") as f:
             text = f.read()
-    except OSError:
+    except (OSError, UnicodeDecodeError):
         return entries
     for line in text.splitlines():
         m = re.match(

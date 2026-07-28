@@ -159,6 +159,50 @@ def test_parse_state():
     check("empty attention not blocked", ps._is_blocked(st.get("attention")), False)
 
 
+# ----- encoding: a bad file must cost only its own run, never the payload -----
+
+def test_encoding_tolerance():
+    d = tempfile.mkdtemp()
+
+    # a UTF-8 BOM does NOT raise, so it used to leave ﻿ on the first
+    # character - and `next-step` is state.md's first field, so the whole cursor
+    # went missing and the run rendered as idle with no error to explain it
+    bom = os.path.join(d, "bom-state.md")
+    with open(bom, "wb") as f:
+        f.write(b"\xef\xbb\xbfnext-step: b-open-pr\nticket: acme-1\n")
+    check("BOM state.md still yields next-step",
+          ps.parse_state(bom).get("next-step"), "b-open-pr")
+
+    bomt = os.path.join(d, "bom-timings.md")
+    with open(bomt, "wb") as f:
+        f.write(b"\xef\xbb\xbf- 2026-07-13T00:00:00Z a-fact-check\n"
+                b"- 2026-07-13T00:10:00Z a-draft-plan\n")
+    check("BOM timings.md keeps its first entry",
+          [e["step"] for e in ps.parse_timings(bomt)],
+          ["a-fact-check", "a-draft-plan"])
+
+    # an undecodable file must degrade to "no data" rather than raise: parse_state
+    # is reached from list_runs inside the poll loop, so one unreadable file used
+    # to replace the entire payload - every repo's run list - with an error
+    utf16 = os.path.join(d, "utf16-state.md")
+    with open(utf16, "wb") as f:
+        f.write("next-step: b-open-pr\n".encode("utf-16"))
+    check("undecodable state.md returns empty, no raise", ps.parse_state(utf16), {})
+
+    utf16t = os.path.join(d, "utf16-timings.md")
+    with open(utf16t, "wb") as f:
+        f.write("- 2026-07-13T00:00:00Z a-fact-check\n".encode("utf-16"))
+    check("undecodable timings.md returns empty, no raise", ps.parse_timings(utf16t), [])
+
+    # the blast radius that made this worth fixing: runs_for_cwd must still answer
+    run_dir = os.path.join(d, ".claude", "resolve", "acme-9")
+    os.makedirs(run_dir)
+    with open(os.path.join(run_dir, "state.md"), "wb") as f:
+        f.write("next-step: b-open-pr\n".encode("utf-16"))
+    check("a bad state.md does not stop the run list",
+          isinstance(ps.runs_for_cwd(d), list), True)
+
+
 # ----- contention: the coarse-status test-step filter (R1's oracle) -----------
 
 def test_contention():
@@ -321,8 +365,8 @@ def test_session_selection():
 
 
 _TESTS = (test_status_rules, test_main_active, test_run_id_roundtrip,
-          test_parse_state, test_contention, test_timings, test_waiting_detection,
-          test_step_activity, test_session_selection)
+          test_parse_state, test_encoding_tolerance, test_contention, test_timings,
+          test_waiting_detection, test_step_activity, test_session_selection)
 
 
 def _run_all():
