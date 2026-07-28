@@ -8,9 +8,8 @@
     { "id": "a-gate-approve", "label": "Plan approval", "component": null, "gate": true },
     { "id": "b-implement", "label": "Implement fix", "component": null },
     { "id": "b-write-tests", "label": "Write tests", "component": "test-authoring", "runsTests": true },
-    { "id": "b-commit-tests", "label": "Prepare for review", "component": null },
     { "id": "b-security-review", "label": "Review security", "component": "security-review", "runsTests": true },
-    { "id": "b-code-risk", "label": "Finalise fix", "component": "review-code-risk", "runsTests": true },
+    { "id": "b-code-risk", "label": "Review fix", "component": "review-code-risk", "runsTests": true },
     { "id": "b-open-pr", "label": "Open PR", "component": "open-pr" },
     { "id": "done", "label": "Done", "component": null }
   ]

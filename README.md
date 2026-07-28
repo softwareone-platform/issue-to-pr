@@ -58,17 +58,15 @@ The review, test, and PR plugins are independently useful. `issue-to-pr-pipeline
   BUILD
    ●─  6  Implement fix       make the code change
    │
-   ●─  7  Write tests         cover the change with tests
+   ●─  7  Write tests         cover the change with tests, then commit them
    │
-   ●─  8  Prepare for review  commit the work, ready to review
+   ●─  8  Review security     scan the diff for vulnerabilities
    │
-   ●─  9  Review security     scan the diff for vulnerabilities
+   ●─  9  Review fix          pressure-test that the fix resolves the issue
    │
-   ●─ 10  Finalise fix        pressure-test that the fix resolves the issue
-   │
-   ●─ 11  Open PR             raise the pull request
+   ●─ 10  Open PR             raise the pull request
   DONE
-   ◉─ 12  Done                pipeline complete, PR awaiting review
+   ◉─ 11  Done                pipeline complete, PR awaiting review
 ```
 
 The whole run checkpoints to `.claude/resolve/<ticket>/`, so a fresh session can resume it. `resolve-issue-dashboard` visualises a run live; `resolve-issue-learnings` distils what the pipeline learned across runs.

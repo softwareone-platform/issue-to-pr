@@ -32,9 +32,8 @@ _DEFAULT_STEPS = [
     {"id": "a-gate-approve", "label": "Plan approval", "component": None, "gate": True},
     {"id": "b-implement", "label": "Implement fix", "component": None, "gate": False},
     {"id": "b-write-tests", "label": "Write tests", "component": "test-authoring", "gate": False, "runsTests": True},
-    {"id": "b-commit-tests", "label": "Prepare for review", "component": None, "gate": False},
     {"id": "b-security-review", "label": "Review security", "component": "security-review", "gate": False, "runsTests": True},
-    {"id": "b-code-risk", "label": "Finalise fix", "component": "review-code-risk", "gate": False, "runsTests": True},
+    {"id": "b-code-risk", "label": "Review fix", "component": "review-code-risk", "gate": False, "runsTests": True},
     {"id": "b-open-pr", "label": "Open PR", "component": "open-pr", "gate": False},
     {"id": "done", "label": "Done", "component": None, "gate": False},
 ]

@@ -26,9 +26,8 @@ flowchart TD
 
     AG -- "approve (plan.md NOT committed)" --> bImpl["b-implement implement fix → commit"]
     subgraph B["Phase B — build + open PR"]
-        bImpl --> bWriteTests["b-write-tests add-*/update-*-test<br>(scoped to the change; NOT scan-test-gaps)"]
-        bWriteTests --> bCommitTests["b-commit-tests commit tests<br>(MUST precede the review passes — tests = regression oracle)"]
-        bCommitTests --> bSecurityReview["b-security-review security-review (security, report)<br>(built-in; scope-creep policy;<br>plan.md write-back; apply→verify→commit)"]
+        bImpl --> bWriteTests["b-write-tests add-*/update-*-test, then commit the tests<br>(scoped to the change; NOT scan-test-gaps)<br>(the commit MUST precede the review passes — tests = regression oracle)"]
+        bWriteTests --> bSecurityReview["b-security-review security-review (security, report)<br>(built-in; scope-creep policy;<br>plan.md write-back; apply→verify→commit)"]
         bSecurityReview --> bCodeRisk["b-code-risk git fetch → review-code-risk<br>(diff + issue + plan.md;<br>verifier = backstop;<br>commit auto-fixes after human sees table)"]
         bCodeRisk --> CK{"b-code-risk→b-open-pr checkpoint:<br>unresolved real / failed-verification?"}
         CK -- "yes" --> HOLD(["pause for human disposition"])
