@@ -1,6 +1,6 @@
 {
   "name": "itpr",
-  "description": "Marketplace for skills library",
+  "description": "Skills and subagents that take a ticket from diagnosis to a reviewed PR: adversarial review, test authoring, PR lifecycle, and the pipeline that chains them",
   "owner": {
     "name": "pbc-swo"
   },
