@@ -4,7 +4,7 @@ A [Claude Code](https://claude.com/claude-code) **plugin marketplace** (`itpr`) 
 
 ![The resolve-issue-dashboard visualising a run mid-pipeline](docs/resolve-issue-dashboard.png)
 
-<sub>The `resolve-issue-dashboard` (in `issue-to-pr-pipeline`) watching a run move through the twelve-step pipeline — illustrative example data.</sub>
+<sub>The `resolve-issue-dashboard` (in `issue-to-pr-pipeline`) watching a run move through the pipeline — illustrative example data.</sub>
 
 ## Install
 
@@ -42,7 +42,7 @@ Invoke any skill as `/<plugin>:<skill>`, or just describe the task — each skil
 
 ## How they fit together
 
-The review, test, and PR plugins are independently useful. `issue-to-pr-pipeline` composes them: `resolve-issue` drives one ticket through a twelve-step pipeline behind a single plan-approval gate, delegating each stage to the skill that owns it — the review, test, and PR skills, plus Claude Code's built-in `security-review`.
+The review, test, and PR plugins are independently useful. `issue-to-pr-pipeline` composes them: `resolve-issue` drives one ticket through the pipeline below behind a single plan-approval gate, delegating each stage to the skill that owns it — the review, test, and PR skills, plus Claude Code's built-in `security-review`.
 
 ```
   PLAN
