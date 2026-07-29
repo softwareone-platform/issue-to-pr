@@ -51,7 +51,7 @@ Resolve the issue from whichever source was given, so the skill works whether or
 
 Enumerate before verifying, as its own pass — judging while enumerating lets the issue's framing pre-filter which claims you bother to write down, and a misframed issue's most load-bearing claim is the one it states most confidently.
 
-**(b) Verify each claim against the code, citing evidence.** Walk the relevant code path and assign each claim a verdict, with the exact location (`file:line`) as evidence:
+**(b) Verify each claim against the code, citing evidence.** Walk the relevant code path and assign each claim a verdict, with the exact location (`file:line`) as evidence. **This pass spawns zero agents** — you do the walking, in this context. Splitting the claims across agents leaves each claim with exactly one judge, so it buys no independent corroboration while multiplying the cost; the independent read is Step 3's, and it is deliberately a separate pass over verdicts that were actually reached here.
 
 - **`confirmed`** — the code corroborates the claim.
 - **`refuted`** — the code contradicts it: the named path does not exist, the behaviour is actually correct, or the root cause is misattributed. On a structural fact, a conflict between issue and code is resolved in the code's favour — that is the whole point of having an oracle.

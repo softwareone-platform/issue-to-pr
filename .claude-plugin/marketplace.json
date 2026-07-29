@@ -8,7 +8,7 @@
     {
       "name": "adversarial-review",
       "description": "Adversarial review skills: review-issue-fact (issue), review-plan-risk (design), review-code-risk (implementation)",
-      "version": "1.4.0",
+      "version": "1.5.0",
       "source": "./plugins/adversarial-review"
     },
     {
