@@ -49,17 +49,21 @@ flowchart TD
 
 ## Where the run stops for you
 
-**Approving the plan does not hand the rest off.** An interactive run waits on you at least three times, and the wait is unbounded — a run left unattended simply sits there until someone comes back. Plan to stay available rather than walking away after approval.
+**Approving the plan does not hand the rest off.** Every run waits on you at least twice, and each wait is unbounded — a run left unattended simply sits there until someone comes back.
 
 The stops fall into two groups, for different reasons.
 
 **Decisions only you can make.** These exist because the alternative is the pipeline guessing, and a guessed decision is what produces a plan that has to be thrown away later.
 
-- **a-elicit-decisions** — settles the open design decisions before anything is planned. Always asks on an interactive run (non-interactively it records `skipped` and continues).
-- **a-gate-approve** — plan approval. Always asks, and no code is touched before it.
+- **a-gate-approve** — plan approval. **Always asks**, and no code is touched before it.
+- **a-elicit-decisions** — asks **only when the ticket actually leaves a load-bearing decision open**; when there is none it is a voiced no-op and the run continues. It is barred from manufacturing decisions, and it must record what made the ticket sufficient, so a thin ticket cannot pass by silently self-declaring. A *fact* it can look up is never asked. (Non-interactively it records `skipped` and `a-draft-plan` drafts on best inference.)
+- **a-harden-plan** — `review-plan-risk` owns two of its own touchpoints here: it confirms the resolved scope before it starts editing, and it offers any eligible edge-case risks as a single opt-in batch. The orchestrator does not re-implement either — it only snapshots the baseline copy.
+- **b-write-tests** — asks when the right test type or scope is genuinely unclear rather than guessing, flags component (Gherkin) coverage rather than auto-running it, and surfaces any quality flag its test verifier raises for you to disposition.
 - **b-security-review** — only when the security pass surfaces findings, or its verification comes back red.
 - **b-code-risk** — only when a risk is left unresolved, or `review-code-risk`'s auto-fixes need accepting before they are committed.
 - **a-fact-check** — advisory only: it surfaces its HALT / RESOLVE verdict and asks whether to continue. It never hard-stops.
+
+Note which of these the orchestrator actually owns: only plan approval and the two review dispositions. The rest belong to the component skills and fire inside them — a distinction that matters when you are editing this pipeline, and not at all when you are waiting on it.
 
 **Confirmation before something irreversible or outward-facing.** A different reason — this is blast-radius control, not plan quality.
 

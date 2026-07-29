@@ -46,32 +46,30 @@ The review, test, and PR plugins are independently useful. `issue-to-pr-pipeline
 
 ```
   PLAN
-   ◇─  1  Fact-check issue    does the bug actually hold in the code?
+   ●─  1  Fact-check issue    does the bug actually hold in the code? (may ask)
    │
-   ◆─  2  Resolve decisions   settle open design decisions before planning
+   ●─  2  Resolve decisions   settle open design decisions before planning (may ask)
    │
    ●─  3  Draft plan          sketch how the fix will be made
    │
-   ●─  4  Harden plan         pre-mortem the plan, fix its design risks
+   ●─  4  Harden plan         pre-mortem the plan, fix its design risks (may ask)
    │
-   ◆─  5  Plan approval       you approve the plan before any code changes
+   ◆─  5  Plan approval       you approve the plan before any code changes (always waits)
   BUILD
    ●─  6  Implement fix       make the code change
    │
-   ●─  7  Write tests         cover the change with tests, then commit them
+   ●─  7  Write tests         cover the change with tests, then commit them (may ask)
    │
-   ◇─  8  Review security     scan the diff for vulnerabilities
+   ●─  8  Review security     scan the diff for vulnerabilities (may ask)
    │
-   ◇─  9  Review fix          pressure-test that the fix resolves the issue
+   ●─  9  Review fix          pressure-test that the fix resolves the issue (may ask)
    │
-   ◆─ 10  Open PR             raise the pull request
+   ●─ 10  Open PR             raise the pull request (always waits)
   DONE
    ◉─ 11  Done                pipeline complete, PR awaiting review
-
-   ◆ always waits for you    ◇ waits only if it finds something    ● runs on its own
 ```
 
-**Approving the plan does not hand the rest off.** The run stops for you again — always at the open-PR confirmation, and additionally whenever a review surfaces something to disposition. Each wait is unbounded, so plan to stay available rather than walking away after approval; a paused run names what it is waiting for in `state.md`, and `resolve-issue-dashboard` shows it. Full breakdown, grouped by why each stop exists: [resolve-issue's README](plugins/issue-to-pr-pipeline/skills/resolve-issue/README.md#where-the-run-stops-for-you).
+**Drafting the plan and making the code change are the only steps that run without you.** Two stops are unconditional — plan approval and the open-PR confirmation — and every other step can pause to ask: a design decision it is barred from guessing, a risk to disposition, a test-type call, a quality flag. Each wait is unbounded — a paused run sits there until it is answered. It names what it is waiting for in `state.md`, and `resolve-issue-dashboard` shows it. Full breakdown, grouped by why each stop exists: [resolve-issue's README](plugins/issue-to-pr-pipeline/skills/resolve-issue/README.md#where-the-run-stops-for-you).
 
 The whole run checkpoints to `.claude/resolve/<ticket>/`, so a fresh session can resume it. `resolve-issue-dashboard` visualises a run live; `resolve-issue-learnings` distils what the pipeline learned across runs.
 

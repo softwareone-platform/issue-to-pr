@@ -26,7 +26,7 @@
     {
       "name": "issue-to-pr-pipeline",
       "description": "Issue-to-PR orchestration: resolve-issue chains the review, test, and PR-lifecycle skills into one resumable pipeline gated on plan approval, pausing again wherever a decision is yours; resolve-issue-dashboard is a read-only dashboard that visualises a run",
-      "version": "0.21.0",
+      "version": "0.21.1",
       "source": "./plugins/issue-to-pr-pipeline"
     }
   ]
