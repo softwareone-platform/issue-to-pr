@@ -3,7 +3,8 @@ name: resolve-issue
 description: >
   Orchestrate the whole issue-to-PR pipeline for one ticket: fact-check the issue, draft a plan,
   harden it, implement the fix, write tests, review the fix, and open the PR — chaining the
-  adversarial-review, test-authoring, and pr-lifecycle component skills behind a single plan-approval gate.
+  adversarial-review, test-authoring, and pr-lifecycle component skills behind a plan-approval gate,
+  pausing again wherever a decision is yours.
   Use whenever someone wants an issue / bug / Jira ticket taken from diagnosis all the way to
   a pull request — even if they don't name the skill.
   Takes the ticket as an argument or from natural language; resumable across sessions from .claude/resolve/<ticket>/.
@@ -18,11 +19,11 @@ description: >
 
 # Resolve issue
 
-Drive one ticket through the full issue-to-PR pipeline, from fact-checking the issue to opening the pull request, by invoking the already-built component skills in order and holding the one human gate the flow needs. This skill is a **sequencer, not a re-implementation**: it never re-derives what a component skill does, and it never threads a component's verdict, risk table, or test selection into the next as a program argument — each component reads its own input (the issue text, the plan file, the git diff) and produces its own output behind its own gates. The orchestrator's whole job is ordering, the single plan-approval gate, and the durable handoff artifacts that make the pipeline resumable.
+Drive one ticket through the full issue-to-PR pipeline, from fact-checking the issue to opening the pull request, by invoking the already-built component skills in order and holding the human gates the flow needs. This skill is a **sequencer, not a re-implementation**: it never re-derives what a component skill does, and it never threads a component's verdict, risk table, or test selection into the next as a program argument — each component reads its own input (the issue text, the plan file, the git diff) and produces its own output behind its own gates. The orchestrator's whole job is ordering, the human gates it owns, and the durable handoff artifacts that make the pipeline resumable.
 
 Run this in the **main conversation loop**, never as a subagent. The component skills spawn their own fresh verifier subagents, and the gates here are interactive — a subagent context loses the human gates and `ExitPlanMode`, and eats the depth budget those verifiers need. If this skill finds itself running inside a subagent, it stops (see the preamble).
 
-The pipeline splits at its one always-on human gate — plan approval — into **Phase A (diagnose and plan)** and **Phase B (build and open the PR)**, and ends at PR-created. Phase B adds conditional review checkpoints (b-security-review and the b-code-risk→b-open-pr checkpoint) that pause only when a review surfaces something the human must disposition, and otherwise pass through — so plan approval stays the single point that blocks every run. Addressing the eventual review comments is **Phase C** (`resolve-pr-comments`), which the human invokes later — it is deliberately not part of this automated run and there is no polling loop.
+The pipeline splits at plan approval — its Phase A→B pivot — into **Phase A (diagnose and plan)** and **Phase B (build and open the PR)**, and ends at PR-created. Phase B adds conditional review checkpoints (b-security-review and the b-code-risk→b-open-pr checkpoint) that pause only when a review surfaces something the human must disposition, and otherwise pass through. **Plan approval is not the last stop, though**: `b-open-pr` pauses unconditionally for the open-PR confirmation, and a-elicit-decisions asks before planning, so an interactive run waits on the human at least three times. Approving the plan does not hand the rest off — the full touchpoint list is under **Degradation and safety** below, and `SKILL_DIR/README.md` groups them by why they exist. Addressing the eventual review comments is **Phase C** (`resolve-pr-comments`), which the human invokes later — it is deliberately not part of this automated run and there is no polling loop.
 
 ## How resume works (read this before the steps)
 

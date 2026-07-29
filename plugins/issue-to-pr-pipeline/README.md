@@ -46,7 +46,7 @@ Run via `/issue-to-pr-pipeline:resolve-issue [ticket]` in the Claude Code prompt
 
 | Skill | Source | Purpose |
 |---|---|---|
-| `resolve-issue` | [SKILL.md](skills/resolve-issue/SKILL.md) · [README](skills/resolve-issue/README.md) | Drive one ticket through the full pipeline — fact-check the issue, draft and harden a plan, implement, write tests, review the fix, open the PR — behind a single plan-approval gate, resumable from `.claude/resolve/<ticket>/`. Ends at PR-created. |
+| `resolve-issue` | [SKILL.md](skills/resolve-issue/SKILL.md) · [README](skills/resolve-issue/README.md) | Drive one ticket through the full pipeline — fact-check the issue, draft and harden a plan, implement, write tests, review the fix, open the PR — gated on plan approval and pausing again wherever a decision is yours, resumable from `.claude/resolve/<ticket>/`. Ends at PR-created. |
 | `resolve-issue-dashboard` | [SKILL.md](skills/resolve-issue-dashboard/SKILL.md) · [README](skills/resolve-issue-dashboard/README.md) | Open a live, **read-only** dashboard that visualises a `resolve-issue` run — pipeline step, per-subagent activity, metrics, and the gate it is paused at — by tailing the transcript and `state.md`. A stdlib-only Python server plus one self-contained HTML page; it observes, never drives. |
 | `resolve-issue-learnings` | [SKILL.md](skills/resolve-issue-learnings/SKILL.md) · [README](skills/resolve-issue-learnings/README.md) | Harvest the generic learnings `resolve-issue` captured across runs from the user-global dead-drop, verify each against the current skill as ground truth, and write the survivors to a user-global conventions file honoured on the next run (or, inside the plugin source, propose them as SKILL.md edits). |
 

@@ -42,13 +42,13 @@ Invoke any skill as `/<plugin>:<skill>`, or just describe the task — each skil
 
 ## How they fit together
 
-The review, test, and PR plugins are independently useful. `issue-to-pr-pipeline` composes them: `resolve-issue` drives one ticket through the pipeline below behind a single plan-approval gate, delegating each stage to the skill that owns it — the review, test, and PR skills, plus Claude Code's built-in `security-review`.
+The review, test, and PR plugins are independently useful. `issue-to-pr-pipeline` composes them: `resolve-issue` drives one ticket through the pipeline below, gated on plan approval and pausing again wherever a decision is yours, delegating each stage to the skill that owns it — the review, test, and PR skills, plus Claude Code's built-in `security-review`.
 
 ```
   PLAN
-   ●─  1  Fact-check issue    does the bug actually hold in the code?
+   ◇─  1  Fact-check issue    does the bug actually hold in the code?
    │
-   ●─  2  Resolve decisions   settle open design decisions before planning
+   ◆─  2  Resolve decisions   settle open design decisions before planning
    │
    ●─  3  Draft plan          sketch how the fix will be made
    │
@@ -60,14 +60,18 @@ The review, test, and PR plugins are independently useful. `issue-to-pr-pipeline
    │
    ●─  7  Write tests         cover the change with tests, then commit them
    │
-   ●─  8  Review security     scan the diff for vulnerabilities
+   ◇─  8  Review security     scan the diff for vulnerabilities
    │
-   ●─  9  Review fix          pressure-test that the fix resolves the issue
+   ◇─  9  Review fix          pressure-test that the fix resolves the issue
    │
-   ●─ 10  Open PR             raise the pull request
+   ◆─ 10  Open PR             raise the pull request
   DONE
    ◉─ 11  Done                pipeline complete, PR awaiting review
+
+   ◆ always waits for you    ◇ waits only if it finds something    ● runs on its own
 ```
+
+**Approving the plan does not hand the rest off.** The run stops for you again — always at the open-PR confirmation, and additionally whenever a review surfaces something to disposition. Each wait is unbounded, so plan to stay available rather than walking away after approval; a paused run names what it is waiting for in `state.md`, and `resolve-issue-dashboard` shows it. Full breakdown, grouped by why each stop exists: [resolve-issue's README](plugins/issue-to-pr-pipeline/skills/resolve-issue/README.md#where-the-run-stops-for-you).
 
 The whole run checkpoints to `.claude/resolve/<ticket>/`, so a fresh session can resume it. `resolve-issue-dashboard` visualises a run live; `resolve-issue-learnings` distils what the pipeline learned across runs.
 
@@ -101,7 +105,7 @@ Test authoring that delegates to writer and verifier subagents (12 in total). A 
 
 Issue-to-PR orchestration. Depends on `adversarial-review`, `test-authoring`, and `pr-lifecycle`.
 
-- **resolve-issue** — Drives one ticket through the full pipeline (see [above](#how-they-fit-together)) behind a single plan-approval gate; resumable from `.claude/resolve/<ticket>/`.
+- **resolve-issue** — Drives one ticket through the full pipeline (see [above](#how-they-fit-together)), gated on plan approval and pausing again wherever a decision is yours; resumable from `.claude/resolve/<ticket>/`.
 - **resolve-issue-dashboard** — A live, read-only dashboard that visualises a run — pipeline step, per-subagent activity, metrics, and the gate it is paused at — by tailing the transcript and `state.md`. Observes only; never drives.
 - **resolve-issue-learnings** — Harvests the cross-repo learnings a run captured, verifies each against the current skill as ground truth, and writes the survivors to a conventions file the pipeline reads next time.
 
