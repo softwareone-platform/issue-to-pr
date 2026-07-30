@@ -127,6 +127,59 @@ def test_main_active():
     check("main_seen noise only", _collector([{"type": "mode"}]).main_seen(), False)
 
 
+# ----- a backgrounded subagent must not read as a yield to the human -----------
+
+def _at(kind, ts, stop="end_turn"):
+    if kind == "assistant":
+        return {"type": "assistant", "timestamp": ts,
+                "message": {"stop_reason": stop, "content": [{"type": "text"}]}}
+    return {"type": "user", "timestamp": ts,
+            "message": {"content": [{"type": "text", "text": "go"}]}}
+
+
+def _collector_with_agent(main_lines, agent_lines):
+    """Same as _collector but also writes one subagent transcript, which the
+    Collector discovers at <project_dir>/<session_id>/subagents/agent-*.jsonl."""
+    d = tempfile.mkdtemp()
+    p = os.path.join(d, "sess.jsonl")
+    with open(p, "w", encoding="utf-8") as f:
+        for o in main_lines:
+            f.write(json.dumps(o) + "\n")
+    sub = os.path.join(d, "sess", "subagents")
+    os.makedirs(sub)
+    with open(os.path.join(sub, "agent-abc12345.jsonl"), "w", encoding="utf-8") as f:
+        for o in agent_lines:
+            f.write(json.dumps(o) + "\n")
+    c = ps.Collector(d, p)
+    c.refresh()
+    return c
+
+
+def test_background_agent_is_not_a_yield():
+    main_yielded = [_at("assistant", "2026-07-13T00:00:10Z", "end_turn")]
+    # the Agent tool backgrounds by default, so the main loop ends its turn while
+    # the subagent runs on: newer subagent records mean working, not parked
+    check("subagent newer than main",
+          _collector_with_agent(main_yielded,
+                                [_at("assistant", "2026-07-13T00:05:00Z")]).main_active(),
+          True)
+    # once the subagent has finished and the main turn is the newest line, the
+    # yield is genuine and must still read as waiting for the human
+    check("main newer than subagent",
+          _collector_with_agent([_at("assistant", "2026-07-13T00:09:00Z", "end_turn")],
+                                [_at("assistant", "2026-07-13T00:05:00Z")]).main_active(),
+          False)
+    # a subagent transcript with no main lines at all keeps the cursor-only reading
+    check("subagent but no main",
+          _collector_with_agent([], [_at("assistant", "2026-07-13T00:05:00Z")]).main_active(),
+          False)
+    # a main turn still mid-work wins regardless of subagent timestamps
+    check("main mid-work wins",
+          _collector_with_agent([_asst("tool_use", "tool_use")],
+                                [_at("assistant", "2020-01-01T00:00:00Z")]).main_active(),
+          True)
+
+
 # ----- run_id / decode_run_id round-trip --------------------------------------
 
 def test_run_id_roundtrip():
@@ -364,9 +417,10 @@ def test_session_selection():
     check("_session_mentions no ticket", ps._session_mentions(older, None), False)
 
 
-_TESTS = (test_status_rules, test_main_active, test_run_id_roundtrip,
-          test_parse_state, test_encoding_tolerance, test_contention, test_timings,
-          test_waiting_detection, test_step_activity, test_session_selection)
+_TESTS = (test_status_rules, test_main_active, test_background_agent_is_not_a_yield,
+          test_run_id_roundtrip, test_parse_state, test_encoding_tolerance,
+          test_contention, test_timings, test_waiting_detection, test_step_activity,
+          test_session_selection)
 
 
 def _run_all():

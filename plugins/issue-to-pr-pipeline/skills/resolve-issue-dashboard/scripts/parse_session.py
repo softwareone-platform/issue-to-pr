@@ -368,6 +368,14 @@ class Collector:
         # genuine yield (a main turn ended in end_turn) from the default-False of a
         # run we never tailed - only the former should read as "waiting for you"
         self._main_seen = False
+        # newest record timestamp seen in the main session and in any subagent.
+        # a main loop that spawns a BACKGROUND subagent ends its own turn to await
+        # the completion notification, so stop_reason alone cannot tell that apart
+        # from yielding to the human - a subagent still writing is the signal that
+        # the run is working, not parked. compared as parsed instants, so the
+        # incremental, possibly out-of-order reads across files stay correct
+        self._main_last_ts = None
+        self._agent_last_ts = None
 
     def refresh(self):
         """Read any bytes appended since the last call across the session file
@@ -456,12 +464,19 @@ class Collector:
         # back or the human's reply, so the loop is about to run either way.
         # verified on live transcripts: an end_turn is never resumed by a tool_use
         # without an intervening user line, so end_turn cleanly marks the yield
+        parsed_ts = parse_ts(ts)
         if agent == "main":
             self._main_seen = True
             if o.get("type") == "assistant":
                 self._main_active = (msg.get("stop_reason") == "tool_use")
             else:
                 self._main_active = True
+            if parsed_ts and (self._main_last_ts is None
+                              or parsed_ts > self._main_last_ts):
+                self._main_last_ts = parsed_ts
+        elif parsed_ts and (self._agent_last_ts is None
+                            or parsed_ts > self._agent_last_ts):
+            self._agent_last_ts = parsed_ts
         usage = msg.get("usage")
         if usage:
             self.tokens_in += usage.get("input_tokens", 0) or 0
@@ -504,11 +519,21 @@ class Collector:
         return self._token_records
 
     def main_active(self):
-        """True while the main session is mid-work (a tool call is imminent or a
-        tool result / human reply is about to be processed), False once its turn
-        has yielded to the user or nothing has been read yet. Lets the model tell
-        'approaching a human gate' from 'actually parked at it'."""
-        return self._main_active
+        """True while the run is mid-work (a tool call is imminent, a tool result /
+        human reply is about to be processed, or a subagent is still writing), False
+        once the run has yielded to the user or nothing has been read yet. Lets the
+        model tell 'approaching a human gate' from 'actually parked at it'.
+
+        The subagent clause is what stops a background delegation reading as a
+        yield: the Agent tool backgrounds by default, so the main loop ends its own
+        turn to await the completion notification and its stop_reason is
+        indistinguishable from handing control back. Subagent records newer than the
+        main session's last line mean the work is still running."""
+        if self._main_active:
+            return True
+        return (self._agent_last_ts is not None
+                and self._main_last_ts is not None
+                and self._agent_last_ts > self._main_last_ts)
 
     def main_seen(self):
         """True once any main-session line has been read. Paired with a False
