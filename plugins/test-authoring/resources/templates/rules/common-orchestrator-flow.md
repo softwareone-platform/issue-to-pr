@@ -41,8 +41,8 @@ Component-track skills (`add-component-test`) use **Mode B only** — see the `a
 
 Before spawning writer agents, pre-fetch sibling context to reduce agent exploration time:
 
-1. For each source file, find the corresponding test directory using the path mapping in `.claude/conventions/tests/{type}-test-conventions.md` and the directory structure in `.claude/conventions/tests/project-architecture.md`.
-2. If sibling test files exist, read them and extract the **convention spec** (fields per `.claude/conventions/tests/{type}-test-conventions.md`).
+1. For each source file, find the corresponding test directory using the directory structure in `.claude/conventions/tests/project-architecture.md`, plus the path mapping in `.claude/conventions/tests/{type}-test-conventions.md` **when that file exists** — the Slim default does not generate it for code-driven types, so derive the mapping from the nearest sibling instead.
+2. If sibling test files exist, read them and extract the **convention spec** (fields per `.claude/conventions/tests/{type}-test-conventions.md` when present, otherwise from the sibling itself).
 3. Pass this context to the writer so it does NOT need to discover conventions itself.
 
 ## Writer delegation

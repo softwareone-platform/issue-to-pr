@@ -69,7 +69,7 @@ setup-test-context produces files only in three per-repo namespaces. Counts scal
 For a typical repo with **unit + integration**:
 - 1 shared (`scope-resolution.md`)
 - 8 rules (`test-rules`, `test-writer-rules`, `fix-protocol`, `sut-analysis`, `common-orchestrator-flow`, `common-writer-instructions`, `common-update-instructions`, `common-verifier-checks`)
-- 3 conventions (`project-architecture`, `unit-test-conventions`, `integration-test-conventions`) + optional `common-test-utilities` / `common-verification-patterns`
+- 1 conventions (`project-architecture`) + optional `common-test-utilities` / `common-verification-patterns` — code-driven per-type `{type}-test-conventions.md` are **NOT** written under the Slim default; writers derive those conventions from the nearest sibling at runtime
 - 1 manifest (`.setup-manifest.json`)
 - 1 README (`.claude/shared/tests/README.md`)
 

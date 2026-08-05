@@ -29,7 +29,7 @@ If CLAUDE.md claims different values, record the drift — use codebase findings
 
 When writer agents need to read framework/external dependency source code, they should read from **local source** when available. **Never decompile compiled artifacts** from the package cache.
 
-**Internal packages often have a naming convention linking package names to repo names**. Example from an org with an `Mpt` prefix:
+**Internal packages often have a naming convention linking package names to repo names**. Example using a placeholder org prefix:
 
 | Package name | Typical local repo folder |
 |---|---|
