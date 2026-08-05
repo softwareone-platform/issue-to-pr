@@ -147,14 +147,9 @@ For the full anti-gaming decision table and verifier-side checks, see [readme-sh
 
 ### Test project mapping
 
-The orchestrator determines the test project before spawning this agent and passes it as input. The mapping follows `.claude/conventions/tests/integration-test-conventions.md` (sibling-derived at runtime; or cached by a full setup-test-context run):
+The orchestrator determines the test project before spawning this agent and passes it as input. The mapping follows `.claude/conventions/tests/integration-test-conventions.md` (sibling-derived at runtime; or cached by a full setup-test-context run).
 
-| Source type | Test project |
-|-------------|--------------|
-| API endpoints, controllers, application commands/queries | `tests/Acme.Billing.Tests.Integration/Api/` |
-| Worker operations, background processing, scheduling | `tests/Acme.Billing.Tests.Integration/Worker/` |
-| Infrastructure (migrations, blob, exclusive writers) | `tests/Acme.Billing.Tests.Integration/Infrastructure/` |
-| Sync consumers (MassTransit event handling) | `tests/Acme.Billing.Tests.Integration.Sync/` |
+**The mapping is repo-specific — this plugin does not prescribe one.** The orchestrator locates the existing integration test project whose tests mirror the source area; where a repo separates concerns such as API endpoints, worker operations, infrastructure, or event consumers across several projects, each source file resolves to the project that already covers its area.
 
 The agent trusts the orchestrator's mapping but verifies it in Step A2 and reports any mismatch.
 

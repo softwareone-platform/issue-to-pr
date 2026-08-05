@@ -205,7 +205,7 @@ For the full anti-gaming decision table and verifier-side checks, see [readme-sh
 
 ### Unit-test scope
 
-This agent operates exclusively on the **unit test project** (`tests/Acme.Billing.Tests.Unit`). It does not touch integration tests, sync tests, or any source code. The corresponding integration-test agent is `test-authoring:update-integration-test-agent`.
+This agent operates exclusively on the **unit test project** the orchestrator passes in. It does not touch integration tests, event-consumer tests, or any source code. The corresponding integration-test agent is `test-authoring:update-integration-test-agent`.
 
 ### Test file organisation
 

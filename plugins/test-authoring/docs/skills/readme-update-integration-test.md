@@ -60,12 +60,7 @@ sequenceDiagram
 
 Each source file is mapped to the correct integration test project before audit agents are spawned. The test project tag is included in every agent prompt so the agent searches the right directory.
 
-| Source type | Test project |
-|---|---|
-| API endpoints, controllers, application commands/queries | `tests/Acme.Billing.Tests.Integration/Api/` |
-| Worker operations, background processing, scheduling | `tests/Acme.Billing.Tests.Integration/Worker/` |
-| Infrastructure (migrations, blob, exclusive writers) | `tests/Acme.Billing.Tests.Integration/Infrastructure/` |
-| Sync consumers (MassTransit event handling) | `tests/Acme.Billing.Tests.Integration.Sync/` |
+**The mapping is repo-specific and derived at runtime — this plugin does not prescribe one.** The orchestrator locates the existing integration test project whose tests mirror the source area. Repos commonly separate concerns such as API endpoints, worker or background operations, infrastructure, and event-consumer flows across different projects or directories, so more than one candidate is normal; when none clearly mirrors the source, the orchestrator states the candidates and asks rather than guessing.
 
 ### Auth policy detection
 

@@ -40,7 +40,7 @@ The verifier is a **single-pass** agent. It runs five checks in sequence, collec
 | **git HEAD pre-change baseline** | Orchestrator (Step 4.5) | `git show HEAD:<file>` committed state, confirmed tracked & clean before Phase 2 |
 | **Execution results** | Update agent (Phase 2) | Files modified, tests updated/deleted, build status (self-reported) |
 | **Test type** | Orchestrator | `unit` or `integration` -- determines build/test commands |
-| **Test project** | Orchestrator | Path to the test project (e.g., `tests/Acme.Billing.Tests.Unit`) |
+| **Test project** | Orchestrator | Path to the test project under change |
 
 ### Output structure
 

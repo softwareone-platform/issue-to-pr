@@ -85,7 +85,7 @@ If the writer observes a discrepancy between the pre-fetched spec and the actual
 When **2 or more** writer agents are spawned, the orchestrator runs a combined build after all agents complete:
 
 ```bash
-dotnet build tests/Acme.Billing.Tests.Unit
+dotnet build <the unit test project>
 ```
 
 This catches cross-file issues (e.g., duplicate class names, conflicting usings). When only a single agent was spawned this step is skipped because the agent already verifies its own build.

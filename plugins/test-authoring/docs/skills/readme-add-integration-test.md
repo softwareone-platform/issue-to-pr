@@ -70,14 +70,7 @@ The verifier is always spawned, even when only one writer agent was used.
 
 ### Test Project Mapping
 
-Before delegating to agents, the orchestrator classifies each source file into the correct integration test project:
-
-| Source type | Test project |
-|---|---|
-| API endpoints, controllers, application commands/queries | `tests/Acme.Billing.Tests.Integration/Api/` |
-| Worker operations, background processing, scheduling | `tests/Acme.Billing.Tests.Integration/Worker/` |
-| Infrastructure (migrations, blob, exclusive writers) | `tests/Acme.Billing.Tests.Integration/Infrastructure/` |
-| Sync consumers (MassTransit event handling) | `tests/Acme.Billing.Tests.Integration.Sync/` |
+Before delegating to agents, the orchestrator classifies each source file into the correct integration test project. **The mapping is repo-specific and derived at runtime — this plugin does not prescribe one.** For each source file, locate the existing integration test project whose tests mirror that source area (an endpoint or handler test for a nearby source file). Repos commonly separate concerns such as API endpoints, worker or background operations, infrastructure, and event-consumer flows into different projects or directories, so more than one candidate is normal. When several exist and none clearly mirrors the source, the orchestrator states the candidates and asks rather than guessing.
 
 ### Auth Policy Detection
 
@@ -110,7 +103,7 @@ The convention spec, auth policy, and list of already-tested endpoints are passe
 When **2 or more** writer agents are spawned, the orchestrator runs a combined build after all agents complete:
 
 ```bash
-dotnet build tests/Acme.Billing.Tests.Integration
+dotnet build <the target integration test project>
 ```
 
 This catches cross-file issues (e.g., duplicate class names, conflicting usings). When only a single agent was spawned this step is skipped because the agent already verifies its own build.

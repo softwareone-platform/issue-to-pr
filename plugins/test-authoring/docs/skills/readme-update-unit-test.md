@@ -22,7 +22,7 @@ See [Scope Resolution](../shared/readme-shared-scope-and-status.md#scope-resolut
 5. **Git safety check** -- before any write, the orchestrator runs a git status check on each target test file: tracked & clean → proceed; untracked or dirty → warn that there is no reliable committed baseline and ask whether to proceed or skip that file.
 6. **Phase 2 update/delete** -- fresh-spawn `test-authoring:update-unit-test-agent` instances with `phase: execute` in the prompt, plus the audit record from Phase 1 and the planned actions; they re-read files at the listed paths and apply the derived updates and deletions.
 7. **Phase 2 add** -- spawn `test-authoring:add-unit-test-agent` instances for missing-coverage items (runs after update/delete completes to avoid file conflicts).
-8. **Build** -- run `dotnet build tests/Acme.Billing.Tests.Unit` to catch cross-file issues.
+8. **Build** -- run the repo's build command for the unit test project to catch cross-file issues.
 9. **Verify** -- spawn `test-authoring:verify-update-unit-test-agent` and `test-authoring:verify-add-unit-test-agent` in parallel to independently check the changes.
 10. **Optional rollback** -- if verification fails, offer to undo each affected tracked file with `git restore <file>`.
 11. **Summary** -- report per-file status, verification results, and unresolved issues.

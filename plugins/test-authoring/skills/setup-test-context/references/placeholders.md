@@ -11,7 +11,7 @@ Read this file during Step 3.2 (subagent dispatch) and Step 3.3 (subagent prompt
 | Placeholder | Example values | Source |
 |---|---|---|
 | `{{LANGUAGE}}` | `C#`, `TypeScript`, `Python`, `Go` | Step 1.2 |
-| `{{PROJECT_DESCRIPTION}}` | `the Acme Billing project (.NET 8, xUnit)` | derived from Step 1.2 + repo name |
+| `{{PROJECT_DESCRIPTION}}` | `the <repo name> project (<runtime>, <test framework>)` | derived from Step 1.2 + repo name |
 | `{{SRC_DIR}}` | `src/`, `lib/`, `app/` | Step 1.3 |
 | `{{TEST_DIR}}` | `tests/`, `__tests__/` | Step 1.3 |
 | `{{SRC_GLOB}}` | `src/**/*.cs`, `src/**/*.ts` | Step 1.3 + Step 1.2 |
