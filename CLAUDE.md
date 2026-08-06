@@ -78,7 +78,15 @@ Distinction that matters when editing content: **rules are non-negotiable**; **c
 
 ## Running skill evals
 
-Each `evals/evals.json` pairs prompts with an `expected_output` and a list of `assertions`. Run and author these via the `skill-creator` skill (its eval/benchmark tooling), not a standalone test runner.
+Each `evals/evals.json` pairs prompts with an `expected_output` and a list of `assertions`. Author these via the `skill-creator` skill, not a standalone test runner.
+
+**They have never been executed, and three things block running the trigger eval from this repo on Windows — verified 2026-08-06, do not re-discover them:**
+
+1. **Wrong artifact.** `skill-creator`'s `scripts/run_eval.py` does not read `evals/evals.json`. It wants a separate flat trigger set, `[{"query": ..., "should_trigger": bool}]`. Ours is the qualitative set (prompt / expected_output / assertions), which belongs to the grader workflow instead. A trigger set can be derived: `should_trigger` = the eval has no `skill_not_triggered` assertion.
+2. **The runner is Windows-incompatible.** Its read loop gates on `select.select([process.stdout], ...)`; on Windows `select` supports sockets only, so it raises `OSError` WinError 10093, unwinds to `return triggered` with `triggered` still `False`, and reports **every** query as not-triggered. Positives all fail, negatives all pass vacuously — a clean 19/19 + 21/21 split that looks like data and is not. Replace the streaming read with `communicate(timeout=...)` to fix it.
+3. **The prompts do not match this repo.** They name a C#/.NET billing domain (`BillingService.CreateInvoice`, `POST /invoices`, `InvoiceConsumer`). Run here, the model greps, finds nothing, and correctly declines — so every positive is a false miss. Running them needs a fixture repo in that domain, or prompts rewritten to this repo's own subject matter.
+
+A fourth, milder caveat: the runner counts the **first** `tool_use`, so any exploratory `Glob`/`Grep` before the skill is selected reads as not-triggered. A skill whose own first step is "locate the artifact" (e.g. `review-plan-risk`) will look like a miss even when it behaves correctly.
 
 ## resolve-issue-dashboard
 
