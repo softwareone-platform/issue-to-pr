@@ -52,7 +52,7 @@ Style is **not fixed globally** — adopt whatever the sibling tests use. The di
 
 Follow:
 
-- `test-rules.md` (fix rules, build/test verification, and this repo's build and test commands — **not** a conventions list: framework, mocking library, assertion style and naming come from the sibling)
+- `test-rules.md` (fix rules, and the build/test verification procedure — the command itself is the `build_test_command` your prompt carries; **not** a conventions list either: framework, mocking library, assertion style and naming come from the sibling)
 - `test-writer-rules.md` (what-to-test, what-not-to-do, context priority)
 
 There is **no type-specific rules file**: unit and integration build/test specifics live in `test-rules.md` plus the per-type agent definition — do not probe for `unit-test-rules.md` / `integration-test-rules.md`, they are never generated.
@@ -66,8 +66,8 @@ Update writers: Phase 2 file modifications are governed by `common-update-instru
 
 ## Stopping when there is nothing to learn from
 
-Two situations end your run early, with your structured output returned immediately and no tests
-written. Neither is a failure; both are protocol steps the orchestrator handles.
+**Three** situations end your run early, with your structured output returned immediately and no tests
+written. None of them is a failure; all three are protocol steps the orchestrator handles.
 
 - **No convention source** — neither a sibling test nor a convention file, per
   `test-writer-rules.md` → Fallback Chain. Name the directories you searched in `issues:`.
@@ -77,7 +77,7 @@ written. Neither is a failure; both are protocol steps the orchestrator handles.
   required to obey are unreachable and you cannot resolve the path yourself. This one **is** a caller
   bug rather than a repo state: say so in `issues:`.
 
-In both cases: report the scope you could not cover, write **no** files at all (not even a partial one),
+In all three: report the scope you could not cover, write **no** files at all (not even a partial one),
 and set `build_status: not_run (<reason>)` — there is nothing to build. Name the stop in your output as
 `stop_reason: no_convention_source`, `stop_reason: missing_framework_source`, or
 `stop_reason: missing_plugin_context` so the orchestrator routes to the right handler without having to

@@ -16,7 +16,7 @@ description: >
 
 You are the setup orchestrator for the `test-authoring` plugin. Your job is to **analyse this repository** and cache what analysis found as **per-repo conventions**, so the plugin's other skills do not re-derive the same profile on every run.
 
-You write conventions and nothing else. The rule books the agents obey (`test-rules.md`, `test-writer-rules.md`, `fix-protocol.md`, `sut-analysis.md`, the `common-*` files, `scope-resolution.md`) ship with the plugin and are read from there directly — they carry no repo-specific value, so copying them into a repo would only create a second copy to go stale. Agents, skills, and the status legend are likewise plugin-bundled.
+You write those conventions, the README that records their provenance, and nothing else. The rule books the agents obey (`test-rules.md`, `test-writer-rules.md`, `fix-protocol.md`, `sut-analysis.md`, the `common-*` files, `scope-resolution.md`) ship with the plugin and are read from there directly — they carry no repo-specific value, so copying them into a repo would only create a second copy to go stale. Agents, skills, and the status legend are likewise plugin-bundled.
 
 ## Pre-existing files at managed paths
 
@@ -203,12 +203,10 @@ After all writes:
    ```
    Both MUST return no output. Any match → verification failure → rollback.
 4. **Path existence check** — extract concrete paths mentioned in generated output, verify with Glob. Missing paths are warnings (🟨), not failures.
-5. **Cross-reference check**: for each plugin agent matching a test type confirmed as supported in Step 2 — the plugin agents live at `<plugin-root>/agents/` (e.g. `<plugin-root>/agents/add-unit-test-agent.md` for `unit`) — extract **every `.claude/…` path** it references, then route by prefix:
-   - `.claude/conventions/tests/…` — our output; check it against disk by the bullets below.
-   - `.claude/rules/tests/…` or `.claude/shared/tests/…` — should not appear at all: an agent cites its rule books as `<plugin_resources_path>/{rules,shared}/…`. One that reappears is a plugin-authoring bug, not a missing output — report it as a warning (🟨) and **never** roll back for it, since nothing this run writes could satisfy it.
+5. **Cross-reference check**: for each plugin agent matching a test type confirmed as supported in Step 2 — the plugin agents live at `<plugin-root>/agents/` (e.g. `<plugin-root>/agents/add-unit-test-agent.md` for `unit`) — extract the **concrete** `.claude/conventions/tests/<file>.md` paths it names and check each against disk. Two things are deliberately out of scope. **Placeholder notation** — any reference whose filename is a stand-in rather than a file, such as `<f>` or `{type}-test-conventions.md` — is documentation, not an output path: skip it silently. **Every non-conventions path** — an agent cites its rule books as `<plugin_resources_path>/{rules,shared}/…` and mentions `.claude/rules/` only to say nothing lives there; none of that is ours to satisfy, so do not check it and never roll back for it.
    - exists → pass.
    - missing but **conditional** (`common-verification-patterns.md`) with its generation condition unmet this run → warning (🟨), not a failure.
-   - **missing `{type}-test-conventions.md`** (`unit`, `integration`, or any extra type) → **expected-absent / silent pass**. Nothing generates these — writers derive per-type conventions from the nearest sibling at runtime — so an agent referencing one while it is absent is the normal state: NOT a warning, NOT a failure.
+   - a **concrete** per-type name (`unit-test-conventions.md`, `integration-test-conventions.md`, or any extra type), missing → **expected-absent / silent pass**. Nothing generates these — writers derive per-type conventions from the nearest sibling at runtime — so an agent referencing one while it is absent is the normal state: NOT a warning, NOT a failure.
    - missing and non-conditional → verification failure → rollback.
    Agents for unsupported test types are skipped entirely — their dangling references are expected. The plugin's agents are read-only here; this check confirms our outputs satisfy their input expectations.
 

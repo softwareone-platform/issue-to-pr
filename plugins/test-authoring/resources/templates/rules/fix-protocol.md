@@ -57,7 +57,7 @@ The block is written in add-flow terms; map the equivalents for other writers. *
 
 ### Protocol stops do not count
 
-A writer that returns early with a `stop_reason` — `no_convention_source`, `missing_framework_source`,
+A subagent that returns early with a `stop_reason` — `no_convention_source`, `missing_framework_source`,
 or `missing_plugin_context` (see `common-orchestrator-flow.md`) — has not failed a fix attempt. It wrote nothing, so there is nothing
 to have got wrong. **Do not increment any counter below for such a return**, and do not route it through
 the fix protocol at all: it has its own handler.

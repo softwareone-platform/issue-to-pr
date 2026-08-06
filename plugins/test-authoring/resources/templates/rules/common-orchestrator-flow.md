@@ -58,7 +58,7 @@ Use the **Agent tool** to spawn the matching per-type writer:
 
 **Fix rounds**: when a verifier flags issues, the orchestrator spawns a **fresh writer** with a `fix_invocation` block per `fix-protocol.md`. Every fix round is a new `Agent` invocation, not a continuation of any previous writer instance.
 
-**Pre-writer source snapshot**: before spawning the first writer, record the current source state: `git diff --` over the repo's **whole** source tree, not the scope Step 1 resolved. The scope can be a single class (Mode B), and a writer editing a source file *outside* its scope is precisely what this baseline exists to catch. The verifier needs it as the baseline for its SUT-modification check — in Mode A the user's own uncommitted source changes are expected, and without this snapshot the verifier cannot tell them apart from writer tampering.
+**Pre-writer source snapshot**: before spawning the first writer, record the current source state: `git diff --` pathspec'd to the repo's **source directories** — the roots themselves (`src/`, `lib/`, …), not the narrower scope Step 1 resolved inside them, and not the test tree. A writer editing a source file *outside* its scope is exactly what this baseline exists to catch, so scoping the snapshot to the files under review would blind it; including the test tree would instead flag the writer's own legitimate test edits. The verifier needs it as the baseline for its SUT-modification check — in Mode A the user's own uncommitted source changes are expected, and without this snapshot the verifier cannot tell them apart from writer tampering.
 
 ## Structured-output enforcement
 
@@ -85,14 +85,17 @@ When a writer output contains such an entry, do NOT proceed to the build check o
 
 This stop is a protocol step, not a failure — it does not count toward any fix circuit breaker.
 
-## Writer stop on missing plugin context
+## Subagent stop on missing plugin context
 
-`stop_reason: missing_plugin_context` means you did not pass `plugin_resources_path` in that spawn.
+Any subagent — writer, verifier, or an update flow's audit / execute phase — returns
+`stop_reason: missing_plugin_context` when you did not pass `plugin_resources_path` in that spawn.
 It is **your** bug, not the repo's, and re-spawning the same prompt reproduces it exactly — so do not
-treat it as a malformed-output case and do not count it toward any circuit breaker. Fix the spawn:
-add `plugin_resources_path` (and `build_test_command`) per **Plugin handoff** above, then spawn once
-more. If the second spawn stops the same way, report to the user that this skill cannot hand its
-subagents the plugin path, and stop — do not fall back to running the subagent without its rule books.
+treat it as a malformed-output case (the Structured-output enforcement rule above does not apply: the
+payload is well-formed, it just reports a stop) and do not count it toward any circuit breaker. Fix the
+spawn: add `plugin_resources_path` (and `build_test_command`) per **Plugin handoff** above, then spawn
+once more. If the second spawn stops the same way, report to the user that this skill cannot hand its
+subagents the plugin path, and stop — never fall back to running a subagent without its rule books,
+and never accept a verifier verdict that was produced without them.
 
 ## Writer stop on no convention source
 

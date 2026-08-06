@@ -24,7 +24,7 @@ Every per-type verifier receives a prompt containing one or more writer agent re
 - **Test results** — which tests the writer reported as passed/failed
 - **Test type** — one of the confirmed test types (all items in a single invocation share the same type)
 - **Original task / spec description** — the task as originally given (not only the writer's reported results), so you can sanity-check the writer's `spec_vs_impl_divergence` flags (see U2b) against what the task actually asked for
-- **Pre-writer source snapshot** — the orchestrator's record of the source tree's state taken before any writer was spawned (a `git diff` over the source roots at that moment); the baseline for the U3 SUT-modification check
+- **Pre-writer source snapshot** — the orchestrator's record of the source directories' state taken before any writer was spawned (a `git diff` pathspec'd to the source roots, excluding the test tree); the baseline for the U3 SUT-modification check
 
 Per-type verifiers may extend this with extra fields. Extensions live in the per-type file, not here.
 
@@ -85,7 +85,7 @@ Search all generated **or modified** test files for signs that the writer bypass
 1. **Skip/ignore attributes** — no test should be skipped. Exact form depends on framework; grep for the equivalents: `[Fact(Skip=...)]`, `[Theory(Skip=...)]`, `@Ignore`, `@pytest.mark.skip`, `xit(`, `test.skip(`, etc.
 2. **Commented-out test methods**
 3. **Test count mismatch** — does the number of test attributes match what the writer reported? For files the writer created, count all test attributes; for files the writer modified, count the added attributes in that file's diff — the writer's `test_count` covers only its own additions.
-4. **SUT modifications** — compare the current state of the source tree against the **pre-writer source snapshot** from your input. The snapshot spans the whole source tree, not the writer's scope — an edit outside the scope is the more serious finding, so do not narrow the comparison to the files under review. In Mode A the user's own uncommitted source changes are expected, so `git diff` alone cannot distinguish them from writer tampering — flag only differences that appeared **after** the writers started.
+4. **SUT modifications** — compare the current state of the source directories against the **pre-writer source snapshot** from your input, over the paths that snapshot covers — the source roots, which is wider than the writer's scope and excludes the test tree. Do not narrow it to the files under review: a source edit outside the writer's scope is the more serious finding. In Mode A the user's own uncommitted source changes are expected, so `git diff` alone cannot distinguish them from writer tampering — flag only differences that appeared **after** the writers started.
 5. **Tautological / vacuous golden value** (deterministic-transform SUTs only) — when a test asserts an **opaque expected value** from a deterministic transform (hash / fingerprint, canonical serialization, encoding, formatting), decide whether that golden is an **implementation-independent oracle** or merely **captured from the SUT's own output** (a tautology: the test asserts the SUT returns what it returns, freezing a day-one bug green). You **cannot** tell from the assertion text alone — an independently-derived golden and a pasted-back one are byte-identical — so check **provenance**: is the golden's derivation stated (a comment, a known-answer vector, an independent tool such as `sha256sum` over a stated input), and can you **independently recompute** it from that stated derivation and get a match? A golden with no stated provenance, or one you cannot independently reproduce, is a **green-but-vacuous** finding. This is a provenance / adequacy check — it shows the golden is not a tautology, it does not prove the oracle is semantically correct.
 
 For each violation, record:
@@ -106,6 +106,14 @@ Build and run the tests, following `test-rules.md` → Build and Test Verificati
 
 Do NOT attempt to fix any failures — only report.
 
+## Stopping without plugin context
+
+If your spawning prompt carried no `plugin_resources_path`, the rule books you review against are
+unreachable and you cannot resolve the path yourself. Do **not** review anyway from memory of these
+rules, and do not treat it as a review failure by the writer: return your structured output now with
+`stop_reason: missing_plugin_context`, no verdict, and a note saying the spawn omitted the field. The
+orchestrator handles it (`common-orchestrator-flow.md` → "Subagent stop on missing plugin context").
+
 ## Universal output schema
 
 > **Output discipline (CRITICAL)**: the structured summary is data the
@@ -119,6 +127,9 @@ Do NOT attempt to fix any failures — only report.
 Per-type verifiers return a structured summary with at minimum the following fields. Per-type verifiers MAY add extra fields — those are declared in the per-type file.
 
 ```
+stop_reason: missing_plugin_context   # only on the protocol stop above; omit it entirely on a normal run,
+                                      # in which case every field below is required
+
 test_type: <one of the confirmed test types>
 
 files_reviewed:

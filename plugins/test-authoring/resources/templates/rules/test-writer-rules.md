@@ -78,7 +78,7 @@ Before writing a new helper, assertion, or test data construct, check whether on
    using it.
 3. **Never introduce a utility that siblings do not use.** A helper nobody in this area calls is a new
    convention rather than a reuse — surface it as a suggestion in your output instead of writing it in.
-4. **If `project-architecture.md` is absent** (the normal state where setup has not run), step 2 has no
+4. **If `.claude/conventions/tests/project-architecture.md` is absent** (the normal state where setup has not run), step 2 has no
    catalogue to consult: widen to the sibling tests you already read and stop there. Do not go hunting
    the repo for a shared test project — an unused helper found that way is step 3's forbidden case.
 

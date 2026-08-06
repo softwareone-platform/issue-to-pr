@@ -132,7 +132,7 @@ and the constraint in the matching rule book — never both
 
 ## Per-repo conventions (descriptive, learned from code)
 
-Repo-specific patterns derived from actual codebase analysis — the only thing written per-repo. Writer agents use these as context; sibling tests still take priority at runtime.
+Repo-specific patterns derived from actual codebase analysis — the only per-repo *content* (the `README.md` beside them records provenance, not conventions). Writer agents use these as context; sibling tests still take priority at runtime.
 
 | File | Source | Purpose |
 |---|---|---|
