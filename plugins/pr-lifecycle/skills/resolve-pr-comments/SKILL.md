@@ -93,7 +93,7 @@ Triage informs the human; it is not an automatic verdict. Respect the reviewer's
 
 ## Step 6 — Verify the code fixes
 
-Scale verification to the size of the change, borrowing the independent-verifier idea from `review-code-risk` without doing a full code-risk review. First determine the repo's build and test command from its own conventions (build files, CI config, a `setup-test-context` record if one exists); if it cannot be determined, ask rather than guess or skip silently.
+Scale verification to the size of the change, borrowing the independent-verifier idea from `review-code-risk` without doing a full code-risk review. First determine the repo's build and test command from the repo itself — its build files and CI config. Nothing caches one for you: `test-authoring` detects the command per session rather than recording it anywhere, so there is no per-repo file to look in. If it cannot be determined, ask rather than guess or skip silently.
 
 - A behavioural fix runs the build and the affected tests; for a non-trivial fix, you may spawn one fresh read-only agent to check it adversarially (one hop, not itself verified). If this skill is itself running inside a subagent and cannot spawn one, mark the fix `not independently verified` at the gate rather than self-verifying or skipping silently.
 - A trivial fix (a rename, a format change, most SonarCloud nits) needs only a build to confirm the process is satisfied.
