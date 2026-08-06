@@ -1,20 +1,22 @@
 ---
 name: setup-test-context
 description: >
-  Analyse the current repo and write per-repo test conventions, rules, and shared utility files
-  to `.claude/{conventions,rules,shared}/tests/`. Plugin-bundled agents and skills (in
-  `test-authoring`) read these per-repo files at runtime. Works for any language with a
-  detectable test framework (C#, Python, TypeScript, Go, Java, etc.) — auto-detects language
-  and derives every convention from the repo's own tests, never a language baseline. Re-running
-  is the refresh: it re-analyses and rewrites every file it manages.
+  Analyse the current repo and cache its test profile as per-repo conventions under
+  `.claude/conventions/tests/`, so the plugin's other skills skip re-deriving it every run.
+  Optional: every test skill works without it. Works for any language with a detectable test
+  framework (C#, Python, TypeScript, Go, Java, etc.) — auto-detects language and derives every
+  convention from the repo's own tests, never a language baseline. Re-running is the refresh:
+  it re-analyses and rewrites every file it manages.
   Trigger phrases: "setup test context", "initialise test conventions", "set up the test plugin",
   "set up tests for my Python repo", "scaffold test conventions for a TypeScript project",
-  "bootstrap test files for this repo", "refresh the generated test conventions".
+  "cache the test conventions for this repo", "refresh the generated test conventions".
 ---
 
 # Setup Test Context
 
-You are the setup orchestrator for the `test-authoring` plugin. Your job is to **analyse this repository** and write the **per-repo files** that the plugin's skills and agents read at runtime: conventions, rules, and shared utilities. Agents and skills themselves live in the plugin and are not scaffolded.
+You are the setup orchestrator for the `test-authoring` plugin. Your job is to **analyse this repository** and cache what analysis found as **per-repo conventions**, so the plugin's other skills do not re-derive the same profile on every run.
+
+You write conventions and nothing else. The rule books the agents obey (`test-rules.md`, `test-writer-rules.md`, `fix-protocol.md`, `sut-analysis.md`, the `common-*` files, `scope-resolution.md`) ship with the plugin and are read from there directly — they carry no repo-specific value, so copying them into a repo would only create a second copy to go stale. Agents, skills, and the status legend are likewise plugin-bundled.
 
 ## Pre-existing files at managed paths
 
@@ -23,34 +25,37 @@ set of paths *this version* writes. So a file already sitting at one of those pa
 **existing**: it is backed up into this run's backup folder and then overwritten (§2.1). A file under
 `.claude/{conventions,rules,shared}/tests/` that is *not* in this version's write set is **reported and
 left alone** — never deleted, because without state the skill cannot tell its own retired output from
-something you wrote yourself.
+something you wrote yourself. A repo set up by an older version has a populated
+`.claude/rules/tests/` and a `scope-resolution.md`; those are all unmanaged now, and the report is
+where you will see them.
 
 Keeping a hand-edit therefore means committing it (or copying it out) before re-running. Re-running
 **is** the refresh.
 
 After a plugin upgrade, prefer a **clean** re-setup: delete `.claude/{conventions,rules,shared}/tests/`
-outright (which also removes the `.setup-manifest.json` an older version left behind), then run. Every
-target is then fresh, so no backup folder is created and nothing is left behind that this version no
-longer writes.
+outright (which also removes the rule-book copies, `scope-resolution.md`, and the
+`.setup-manifest.json` that older versions left behind), then run. Every target is then fresh, so no
+backup folder is created and nothing is left behind that this version no longer writes.
 
 ## Supporting assets
 
 Located relative to this skill's base directory:
 
-- **`<plugin-root>/resources/templates/rules/`** — 8 rules templates with `{{PLACEHOLDER}}` markers.
-- **`<plugin-root>/resources/templates/shared/`** — `scope-resolution.md` template only (`status-legend.md` is plugin-internal at `<plugin-root>/resources/static/`, never written per-repo).
-- **Conventions have no templates** — every conventions file (`project-architecture.md`, the conditional `common-*`) is generated dynamically from Step 1 analysis per `references/tier3-schemas.md`.
-- **`references/`** — detailed detection recipes, placeholder rules, and subagent contracts. Loaded on demand during the relevant step.
+- **`<plugin-root>/resources/templates/{rules,shared}/`** — the 9 rule books the plugin's agents read at runtime. **This skill does not write, fill, or copy them**; they are listed here only so you can see they are accounted for.
+- **`<plugin-root>/resources/static/status-legend.md`** — plugin-internal, never written per-repo.
+- **Conventions have no templates** — both conventions files are generated from Step 1 analysis per `references/generated-conventions.md`.
+- **`references/`** — the detection recipes (`analysis.md`) and the generation schemas (`generated-conventions.md`). Loaded on demand during the relevant step.
 
 ## Output overview
 
-setup-test-context produces files only in three per-repo namespaces. Under the Slim default the set does not vary by test type — only the conditional `common-*` conventions change it:
-- 1 shared (`scope-resolution.md`)
-- 8 rules (`test-rules`, `test-writer-rules`, `fix-protocol`, `sut-analysis`, `common-orchestrator-flow`, `common-writer-instructions`, `common-update-instructions`, `common-verifier-checks`)
-- 1 conventions (`project-architecture`) + optional `common-verification-patterns` — code-driven per-type `{type}-test-conventions.md` are **NOT** written under the Slim default; writers derive those conventions from the nearest sibling at runtime
-- 1 README (`.claude/shared/tests/README.md`)
+Two or three files, and the set does not vary by test type:
+- `.claude/conventions/tests/project-architecture.md` — always
+- `.claude/conventions/tests/common-verification-patterns.md` — only when Step 1.4 found a qualifying cross-layer pattern
+- `.claude/shared/tests/README.md` — what was written, by which plugin version, when
 
-setup-test-context does NOT write any of: agents, commands, skills, status-legend (all plugin-bundled).
+Per-type `{type}-test-conventions.md` are **not** written: writers derive those from the nearest sibling at runtime.
+
+setup-test-context does NOT write any of: rule books, agents, commands, skills, status legend — all plugin-bundled and read from there.
 
 ## Design principles
 
@@ -89,22 +94,15 @@ Files setup-test-context will write (new or refresh):
 Conventions (.claude/conventions/tests/):
 - project-architecture.md
 - common-verification-patterns.md    (if cross-layer pattern detected)
-  NOTE (Slim default): code-driven per-type {type}-test-conventions.md are NOT written
+  NOTE: per-type {type}-test-conventions.md are NOT written
   -- writers derive per-type conventions from the nearest sibling at runtime.
 
-Rules (.claude/rules/tests/):
-- test-rules.md
-- test-writer-rules.md
-- fix-protocol.md
-- sut-analysis.md
-- common-orchestrator-flow.md
-- common-writer-instructions.md
-- common-update-instructions.md
-- common-verifier-checks.md
-
 Shared (.claude/shared/tests/):
-- scope-resolution.md
 - README.md
+
+Not written -- read from the plugin at runtime:
+  the 9 rule books (.claude/rules/tests/* and scope-resolution.md in earlier versions),
+  the status legend, every agent and skill.
 ```
 
 ### Overwrite-safe per-file decision
@@ -150,14 +148,14 @@ Single yes/no for the entire batch. Proceed to Step 3 only after confirmation.
 
 ---
 
-## Step 3 — Generate / Update Per-Repo Files
+## Step 3 — Write the conventions
 
 Apply all changes based on confirmed analysis. Treat as a single atomic operation.
 
 ### 3.1 Backup strategy — timestamped folder
 
 **Reading the real clock.** Wherever a timestamp is needed — the backup folder name (§3.1) and the
-README's "generated at" line (§3.4) — obtain it by **executing a shell command**, never by writing one
+README's "generated at" line (§3.3) — obtain it by **executing a shell command**, never by writing one
 from the model: Claude has no real-time clock and a model-written value comes out as a stub such as a
 date with a `00:00:00Z` time. Two stubbed runs collide on the same backup folder name and the second
 overwrites the first — which now destroys the only copy of what the first run replaced.
@@ -173,45 +171,21 @@ On success, **keep the folder** whenever anything was overwritten and report its
 
 When every target is fresh, an in-memory new-files list drives rollback (`rm` each on failure).
 
-### 3.2 Spawn parallel subagents to write rules + shared + conventions
+### 3.2 Generate the conventions files
 
-Read `references/subagent-contract.md` first. Note that for setup-test-context, subagents own ONLY conventions, rules, and the scope-resolution shared utility — no agents/commands.
+Read `references/generated-conventions.md` and write what it specifies:
 
-**Spawn protocol** — issue a SINGLE message with multiple `Agent` tool calls so all subagents run in parallel. **Subagent kinds, counts, and ownership are defined canonically in `references/subagent-contract.md`** (§ "When the orchestrator spawns subagents" and § "Subagent kinds"). The table below mirrors it for convenience — if the two ever diverge, the contract wins.
+1. `.claude/conventions/tests/project-architecture.md` — always.
+2. `.claude/conventions/tests/common-verification-patterns.md` — only when Step 1.4's pattern detection yielded at least one qualifying pattern. Otherwise skip it and name it in the report; a skip is not a failure.
 
-| Repo shape | Subagents spawned (Slim default) |
-|---|---|
-| 0 supported types | none — Step 2.1 already exited |
-| 1 supported type (unit only) | `shared-tier2`, `shared-tier3` (2) |
-| 2 supported types (unit + integration) | `shared-tier2`, `shared-tier3` (2) |
-| + extra test types | no additional subagent (per-type conventions no longer generated) |
+**Write them yourself — no subagent.** The analysis these are generated from already sits in your
+context, so handing it to a subagent would copy it rather than save it, and two files offer no
+parallelism to win. Keep a write log as you go — path plus category per file — because §3.3's report and
+every Step 4 check read from it rather than re-reading the files.
 
-The `shared-tier2` subagent owns the universal rule set (`test-rules`, `test-writer-rules`, `fix-protocol`, `sut-analysis`, `common-orchestrator-flow`, `common-writer-instructions`, `common-update-instructions`, `common-verifier-checks`) plus the `scope-resolution.md` shared utility.
+### 3.3 Write the README
 
-The `shared-tier3` subagent owns the `project-architecture.md` convention (universal) plus the optional `common-verification-patterns.md` (when applicable).
-
-**Slim default — per-type subagents are not spawned**: `<type>-test-conventions.md` is no longer generated for any test type; writers derive those conventions from the nearest sibling at runtime. Only the two shared subagents run.
-
-### 3.3 Subagent prompt skeleton
-
-Pass everything inline. The prompt MUST include:
-
-1. Working directory (repo root, absolute).
-2. Backup folder path (already created in §3.1, if applicable).
-3. Subagent kind (`shared-tier2` / `shared-tier3`; the legacy `per-type` kind is never dispatched under the Slim default).
-4. Test type label — legacy `per-type` field only, so never populated under the Slim default.
-5. The write set for this run — which target paths are fresh and which already exist (every existing one is backed up by the orchestrator in §3.1 before subagents spawn, then overwritten).
-6. The relevant slice of Step 1 analysis as structured text.
-7. Pre-resolved standard placeholder values (`{{LANGUAGE}}`, `{{SRC_DIR}}`, `{{TEST_DIR}}`, etc. — `{{TEST_TYPE}}` / `{{TEST_TYPE_TITLE}}` are legacy per-type placeholders with no surviving consumer).
-8. Source template paths (e.g. `<plugin-root>/resources/templates/rules/test-rules.md`).
-9. Destination paths (e.g. `.claude/rules/tests/test-rules.md`).
-10. Pointers to `references/placeholders.md` (fill rules) and `references/tier3-schemas.md` (Tier 3 generation schemas), per `references/subagent-contract.md` item 10 — single source of truth, do not duplicate it here.
-
-After every write, the subagent **adds an entry** to its return payload with the path and category — the orchestrator aggregates these into the §3.4 report and uses them as this run's write log for the Step 4 checks.
-
-### 3.4 Aggregate subagent output and write README
-
-After all subagents return, render an aggregation table (same shape as the older bootstrap's §3.4 table). Then write `.claude/shared/tests/README.md` documenting the new layout (see `<plugin-root>/resources/templates/` for the template if needed; for now, write a minimal README with: the list of files generated; the plugin version, read from `<plugin-root>/.claude-plugin/plugin.json` (write `unknown` if unreadable); the generation timestamp, obtained per §3.1's **Reading the real clock**; and a link to the plugin docs). That version line is the only on-disk record of which plugin version produced these files — nothing reads it automatically, but it is what a human checks when the files look wrong.
+Render the write log as a table. Then write `.claude/shared/tests/README.md`. There is no template for it — write a short one carrying: the list of files generated; the plugin version, read from `<plugin-root>/.claude-plugin/plugin.json` (write `unknown` if unreadable); the generation timestamp, obtained per §3.1's **Reading the real clock**; and a link to the plugin docs). That version line is the only on-disk record of which plugin version produced these files — nothing reads it automatically, but it is what a human checks when the files look wrong.
 
 ---
 
@@ -220,7 +194,7 @@ After all subagents return, render an aggregation table (same shape as the older
 After all writes:
 
 1. Confirm every file exists.
-2. **Frontmatter check (bounded read — never re-read whole files into the main context)**: for each written file with frontmatter (every generated conventions and rules file carries one), read only the opening frontmatter block — a bounded read of the first ~20 lines (Read with a line limit, or `sed -n '1,20p'`). Assert the block closes with `---` inside that bound **and** carries a non-empty `description`; either failing is a verification failure → rollback. Whole-file content checks belong to item 3's mechanical sweep; re-reading every generated file would pull the entire rule set into the main context — the exact bloat the per-type skills' lazy loading removed. (Unresolved `{{PLACEHOLDER}}` tokens and leaked HTML comments are item 3's greps — do not re-check them by reading file bodies.)
+2. **Frontmatter check (bounded read — never re-read whole files into the main context)**: for each written file with frontmatter (both generated conventions files carry one; the README does not), read only the opening frontmatter block — a bounded read of the first ~20 lines (Read with a line limit, or `sed -n '1,20p'`). Assert the block closes with `---` inside that bound **and** carries a non-empty `description`; either failing is a verification failure → rollback. Whole-file content checks belong to item 3's mechanical sweep; re-reading every generated file would pull the entire rule set into the main context — the exact bloat the per-type skills' lazy loading removed. (Unresolved `{{PLACEHOLDER}}` tokens and leaked HTML comments are item 3's greps — do not re-check them by reading file bodies.)
 3. **Mechanical grep sweep** — run against the files written THIS run, never the whole directory: unmanaged files (§2.1) are outside this run's contract, and their content (e.g. quoted `{{ }}` template syntax) must not fail verification.
    ```bash
    # <written-files…> = every path in this run's write log
@@ -229,10 +203,10 @@ After all writes:
    ```
    Both MUST return no output. Any match → verification failure → rollback.
 4. **Path existence check** — extract concrete paths mentioned in generated output, verify with Glob. Missing paths are warnings (🟨), not failures.
-5. **Cross-reference check**: for each plugin agent matching a test type confirmed as supported in Step 2 — the plugin agents live at `<plugin-root>/agents/` (e.g. `<plugin-root>/agents/add-unit-test-agent.md` for `unit`) — extract the `.claude/{conventions,rules,shared}/tests/` paths it references and check each against disk:
+5. **Cross-reference check**: for each plugin agent matching a test type confirmed as supported in Step 2 — the plugin agents live at `<plugin-root>/agents/` (e.g. `<plugin-root>/agents/add-unit-test-agent.md` for `unit`) — extract the **`.claude/conventions/tests/`** paths it references and check each against disk. Those are the only repo paths an agent names — its rule books are cited as `<plugin_resources_path>/{rules,shared}/…`, which is the plugin's own directory and nothing this run writes. If a `.claude/rules/tests/` reference ever reappears in an agent, that is a plugin-authoring bug, not a missing output: report it and do not roll back.
    - exists → pass.
    - missing but **conditional** (`common-verification-patterns.md`) with its generation condition unmet this run → warning (🟨), not a failure.
-   - **missing `{type}-test-conventions.md`** (`unit`, `integration`, or any extra type) → **expected-absent / silent pass**. The Slim default does not generate these — writers derive per-type conventions from the nearest sibling at runtime — so an agent referencing one while it is absent is the normal state: NOT a warning, NOT a failure.
+   - **missing `{type}-test-conventions.md`** (`unit`, `integration`, or any extra type) → **expected-absent / silent pass**. Nothing generates these — writers derive per-type conventions from the nearest sibling at runtime — so an agent referencing one while it is absent is the normal state: NOT a warning, NOT a failure.
    - missing and non-conditional → verification failure → rollback.
    Agents for unsupported test types are skipped entirely — their dangling references are expected. The plugin's agents are read-only here; this check confirms our outputs satisfy their input expectations.
 
@@ -240,7 +214,7 @@ After all writes:
 6. **On failure**: roll back per §3.1 strategy. Do NOT leave the system partially updated.
 7. **On success**: keep all written files. Do NOT auto-commit. Keep or delete the backup folder per §3.1's retention rule.
 
-Render the same Verification Results table the older bootstrap uses (Step 4.x).
+Render a Verification Results table: one row per check above, each with its status icon and a one-line result.
 
 ---
 
@@ -248,15 +222,18 @@ Render the same Verification Results table the older bootstrap uses (Step 4.x).
 
 Run this **only after Step 4 reports success** (item 7). If Step 4 rolled back, skip this step entirely — keeping the `.gitignore` change on the success path means a rollback never strands a `.gitignore` edit, so the whole run stays atomic from the user's perspective.
 
-setup-test-context's per-repo files are **user-scope** — local, never committed — so a teammate who has not adopted the test-skills plugin never carries generated files in their tree, and there is no PR clutter or merge conflict. The skills run cacheless without these files, so user-scope costs only a per-developer setup run, not correctness.
+setup-test-context's per-repo files are **user-scope** — local, never committed — so a teammate who has not adopted the test-skills plugin never carries generated files in their tree, and there is no PR clutter or merge conflict. The skills run without these files at all — the rules they obey come from the plugin — so user-scope costs only a per-developer setup run, not correctness.
 
-**4.5a — Add the ignore lines.** Ensure `.gitignore` (at repo root) contains all four lines, each added only if not already present (newline-safety: if `.gitignore` exists but does not end with a newline, append one first so a new line never concatenates onto the previous; create the file with just these lines + newline if it does not exist):
+**4.5a — Add the ignore lines.** Ensure `.gitignore` (at repo root) contains all three lines, each added only if not already present (newline-safety: if `.gitignore` exists but does not end with a newline, append one first so a new line never concatenates onto the previous; create the file with just these lines + newline if it does not exist):
 ```
 .claude/conventions/tests/
-.claude/rules/tests/
 .claude/shared/tests/
 .claude/backup/
 ```
+
+`.claude/rules/tests/` is deliberately **not** on that list any more: nothing writes there, and ignoring
+it would hide the one thing §2.1 wants visible — an older version's rule-book copies still sitting in
+the repo. If the report named some, delete them; they are dead weight, not a fallback.
 
 **4.5b — Untrack anything already committed (migration).** `.gitignore` does not affect files git already tracks. Run `git ls-files .claude/conventions/tests .claude/rules/tests .claude/shared/tests`. If it lists any files, **print this notice; do NOT run the command automatically** — then continue to Step 5 (this skill never auto-commits; untracking is a committable change the user owns and reviews):
 ```
@@ -276,7 +253,7 @@ Render the report below.
 
 ### Repo profile recap
 
-Same shape as the older bootstrap, with the **Files written** count reflecting only conventions + rules + shared + README (no agents / commands).
+**Files written** counts only what this run actually wrote: the conventions files plus the README.
 
 ### File index
 
@@ -286,22 +263,16 @@ Generated files (per-repo, managed by setup-test-context):
 Conventions (.claude/conventions/tests/):
   - project-architecture.md
   - common-verification-patterns.md (if applicable)
-  (Slim default: code-driven {type}-test-conventions.md not written -- sibling-derived at runtime)
-
-Rules (.claude/rules/tests/):
-  - test-rules.md, test-writer-rules.md, fix-protocol.md, sut-analysis.md
-  - common-orchestrator-flow.md, common-writer-instructions.md
-  - common-update-instructions.md, common-verifier-checks.md
+  (per-type {type}-test-conventions.md not written -- sibling-derived at runtime)
 
 Shared (.claude/shared/tests/):
-  - scope-resolution.md
   - README.md
 
-Plugin-bundled (NOT written here — supplied by test-authoring plugin):
-  - status-legend.md (in plugin static)
+Plugin-bundled (NOT written here -- read from the test-authoring plugin at runtime):
+  - 9 rule books (resources/templates/{rules,shared}/)
+  - status-legend.md (resources/static/)
   - 8 agents (test-authoring: namespace)
   - 6 skills (setup-test-context, scan-test-gaps, add-* / update-*)
-  - guarded hook templates
 ```
 
 ### Recommended next steps
@@ -311,6 +282,6 @@ Plugin-bundled (NOT written here — supplied by test-authoring plugin):
 3. Try `/test-authoring:add-unit-test ComponentName` on a small change to verify the add workflow.
 4. (If CLAUDE.md drift was reported) Update CLAUDE.md to reflect the current codebase — setup-test-context did not modify CLAUDE.md.
 5. If a backup folder was kept (§3.1), report its path here and say what it holds — it is the only copy of whatever this run overwrote.
-6. To remove this scaffolding later, delete `.claude/{conventions,rules,shared}/tests/`. Two things live outside those directories: any kept `.claude/backup/setup-*/` folder, and the four lines this skill added to `.gitignore` (§4.5a).
+6. To remove this scaffolding later, delete `.claude/{conventions,shared}/tests/` (and `.claude/rules/tests/` if an older version populated it). Two things live outside those directories: any kept `.claude/backup/setup-*/` folder, and the three lines this skill added to `.gitignore` (§4.5a).
 
 ---

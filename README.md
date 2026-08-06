@@ -92,9 +92,9 @@ Team-agnostic PR lifecycle for Azure DevOps or GitHub — the platform is detect
 
 ### test-authoring
 
-Test authoring that delegates to writer and verifier subagents (8 in total). A one-time `setup-test-context` run profiles the repo and caches per-repo conventions for a faster path; without it, every workflow still runs cacheless by learning from the nearest sibling tests. See the [plugin README](plugins/test-authoring/README.md) for the full architecture.
+Test authoring that delegates to writer and verifier subagents (8 in total). The rules the agents obey ship with the plugin and are read from there, so nothing is copied into your repo. A one-time `setup-test-context` run additionally caches the repo's cross-layer map; without it, every workflow still runs by learning from the nearest sibling tests. See the [plugin README](plugins/test-authoring/README.md) for the full architecture.
 
-- **setup-test-context** — One-time profile of the repo; writes per-repo conventions/rules to `.claude/…/tests/`. Re-runnable, and re-running is the refresh.
+- **setup-test-context** — One-time profile of the repo; caches its cross-layer map as conventions under `.claude/conventions/tests/`. Re-runnable, and re-running is the refresh.
 - **scan-test-gaps** — Finds untested code and stale tests, then iteratively delegates generation and updates.
 - **add-{unit,integration}-test** — Generate tests for changed source or a named target.
 - **update-{unit,integration}-test** — Two-phase audit → execute refresh of existing tests.

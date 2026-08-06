@@ -22,7 +22,7 @@ plugins/<plugin>/
 └── docs/                             # deeper design docs
 ```
 
-`.claude/` is **gitignored** (see `.gitignore`) — it holds local session state, and in *consumer* repos it is where `setup-test-context` writes per-repo files. Never rely on it being present in this repo.
+`.claude/` is **gitignored** (see `.gitignore`) — it holds local session state, and in *consumer* repos it is where `setup-test-context` writes the generated conventions. Never rely on it being present in this repo.
 
 ## The four plugins
 
@@ -54,13 +54,14 @@ The architecture is **orchestrator → writer → verifier**:
 - Writers generate/update tests. Verifiers are strictly read-only and report violations.
 - Crucial constraint: **a subagent cannot spawn another subagent.** So writers/verifiers never spawn follow-ups themselves — they *emit structured output* and the orchestrator merges it and does any downstream spawning.
 
-## test-authoring: cacheless vs fast path
+## test-authoring: what ships vs what is generated
 
-`setup-test-context` is an **optional accelerator**, not a prerequisite. Every test workflow works two ways:
-- **Cacheless path** (no setup run): rules read directly from the plugin's `resources/templates/`; conventions discovered from the nearest sibling tests at runtime.
-- **Fast path** (setup has run in the consumer repo): per-repo files cached under the consumer's `.claude/{conventions,rules,shared}/tests/`.
+`setup-test-context` is an **optional accelerator**, not a prerequisite. Every test workflow works with or without it:
+- **Rule books are never copied.** Every skill and agent reads `resources/templates/{rules,shared}/` from the plugin, in both cases below. A skill resolves that root once in Step -1 and passes it to every subagent (a subagent cannot resolve it itself); if it cannot be resolved, the skill stops rather than running unruled.
+- **Without setup**: conventions are discovered from the nearest sibling tests at runtime.
+- **With setup** (run once in the consumer repo): the cross-layer map is cached at `.claude/conventions/tests/{project-architecture,common-verification-patterns}.md`. Nothing else is written per-repo.
 
-Distinction that matters when editing content: **rules are non-negotiable**; **conventions are descriptive patterns** that observed sibling tests can override. `resources/templates/rules/` = strict; the per-repo `.claude/conventions/tests/` files setup generates = descriptive. There is no conventions *template* dir — every convention file is generated from analysis, not filled from a template.
+Distinction that matters when editing content: **rules are non-negotiable**; **conventions are descriptive patterns** that observed sibling tests can override. `resources/templates/rules/` = strict, and shipped; the per-repo `.claude/conventions/tests/` files setup generates = descriptive, and generated. There is no conventions *template* dir, and after the rule books stopped being copied there is no template *filling* either — the shipped files carry no placeholders and every convention file is written from analysis.
 
 `common-*` files are role-lifecycle documents (one per actor: orchestrator/writer/update-writer/verifier); the other rule files are rule books. Put an actor's procedure in its `common-*` file and a constraint in the matching rule book — never both, or the rule drifts into two sources of truth.
 

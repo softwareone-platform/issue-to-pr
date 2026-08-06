@@ -1,6 +1,8 @@
 # setup-test-context
 
-The `setup-test-context` skill is the **optional** profiler that caches per-repo test conventions for the rest of the `test-authoring` plugin. It analyses the repository's language, test frameworks, project structure, and coding conventions, then writes per-repo conventions/rules/shared files under `.claude/{conventions,rules,shared}/tests/` — putting the runtime skills on the **fast path** (they read those cached files instead of discovering per-invocation). The add/update/scan skills also run **without** it, in **cacheless mode**: rules come from the plugin's bundled `resources/templates/`, conventions from the nearest sibling tests. Under the **Slim default**, setup caches the repo's **cross-layer / global map** — project architecture, cross-layer verification patterns, and the shared-utility catalog — the parts a single sibling test cannot reconstruct. It does **not** cache per-type (`unit` / `integration`) conventions: writers derive those from the nearest sibling at runtime, so caching them would only duplicate what siblings already provide (and add a stale-able surface). Setup is therefore a one-time **cross-layer map**, not a per-type convention baseline.
+The `setup-test-context` skill is the **optional** profiler that caches this repo's **cross-layer test map** for the rest of the `test-authoring` plugin. It analyses the repository's language, test frameworks, project structure, and test conventions, then writes two files under `.claude/conventions/tests/` — `project-architecture.md` and, when the analysis found one, `common-verification-patterns.md`. Those are the parts a single sibling test cannot reconstruct. Every add/update/scan skill runs **with or without** them.
+
+It writes conventions and nothing else. The rule books those skills obey live in the plugin at `resources/templates/{rules,shared}/` and are read from there at runtime; nothing copies them into a repo, so there is no second copy to fall out of date. Per-type (`unit` / `integration`) conventions are not cached either — writers derive those from the nearest sibling, which is more current than any cache could be.
 
 It is re-runnable, and re-running **is** the refresh: managed files are generated artifacts, not user documents. The skill keeps **no state between runs** — no manifest, no recorded hashes, no per-file version. It knows only the fixed set of paths the current version writes: an existing file at one of those paths is backed up into the run's backup folder and rewritten, and anything else under the managed directories is reported and left untouched. All proposed changes are presented as a single atomic confirmation gate — the user accepts or rejects everything.
 
@@ -10,9 +12,9 @@ Unlike the runtime test skills (add/update/scan), this skill spawns **no subagen
 
 ## When to use
 
-- **One-time cross-layer map** — cache the repo's cross-layer / global test map (project architecture, cross-layer verification patterns, the shared-utility catalog) that a single sibling cannot reconstruct. The add/update/scan skills run without setup (cacheless, sibling-driven) and derive per-type conventions from siblings either way; setup is not a prerequisite and no longer caches per-type conventions.
+- **One-time cross-layer map** — cache the project architecture and the cross-layer verification patterns that a single sibling cannot reconstruct. The add/update/scan skills run without setup and derive per-type conventions from siblings either way; setup is not a prerequisite.
 - **Re-baseline after architectural change** — added a new test project, switched test frameworks, or restructured source directories.
-- **Re-sync after plugin upgrade** — a new plugin version may have updated template content; re-running picks it up. Nothing detects the staleness for you, so re-run deliberately after upgrading.
+- **Re-sync after plugin upgrade** — rule-book changes reach you automatically now (they are read from the plugin), but a new version can change how the conventions are generated. Nothing detects that for you, so re-run deliberately after upgrading.
 - **NOT for routine test generation** — for day-to-day work use `/test-authoring:add-unit-test`, `/test-authoring:update-unit-test`, `/test-authoring:scan-test-gaps`, etc. directly (they run with or without setup).
 
 ---
@@ -26,9 +28,10 @@ After upgrading the plugin, the reliable move is to delete and regenerate rather
 rm -rf .claude/conventions/tests .claude/rules/tests .claude/shared/tests
 ```
 
-That directory list is exhaustive for what setup writes, and `rm -rf` also takes the dotfile
-(`.setup-manifest.json`) that an older version left behind. Then run the skill: with every target
-path fresh, no backup folder is created and nothing is reported as unmanaged.
+Only the first of those three is still written by the current version; the other two hold what older
+versions left — rule-book copies, `scope-resolution.md`, and the `.setup-manifest.json` dotfile — and
+clearing them is the point. Then run the skill: with every target path fresh, no backup folder is
+created and nothing is reported as unmanaged.
 
 Overwriting in place also works and is safer if you have hand-edits worth keeping — the previous copy
 goes into `.claude/backup/setup-<timestamp>/` — but it leaves any file the current version no longer
@@ -43,7 +46,7 @@ writes sitting on disk, because the skill will not delete what it cannot prove i
 ```
 
 No arguments. The skill always analyses the entire repository. To remove what it wrote, delete
-`.claude/{conventions,rules,shared}/tests/`, plus any kept `.claude/backup/setup-*/` folder and the four
+`.claude/{conventions,shared}/tests/`, plus any kept `.claude/backup/setup-*/` folder and the three
 lines it added to the repo's `.gitignore`.
 
 ---
@@ -52,10 +55,10 @@ lines it added to the repo's `.gitignore`.
 
 | Phase | Action |
 |-------|--------|
-| 1. Analyse | Read CLAUDE.md hints, detect language/frameworks, map project structure, learn test conventions, identify build/test commands and architectural patterns, classify test projects |
+| 1. Analyse | Read CLAUDE.md hints, detect language/frameworks, map project structure, learn test conventions, identify architectural patterns, classify test projects |
 | 2. Present | Show analysis summary, test-project table, files to create/overwrite, unmanaged files that will be left alone, git working-tree state; ask for atomic confirmation |
 | 3. Backup | Create timestamped `.claude/backup/setup-{timestamp}/` (skipped when every target is fresh); **kept** on success whenever anything was overwritten, with its path reported — deleted only when the run wrote nothing but new files |
-| 4. Generate | Fill plugin templates (`resources/templates/{rules,shared}/`) with placeholders from analysis; generate Tier 3 cross-layer conventions (`project-architecture.md`, `common-*`) directly from analysis. **Slim default: per-type `{type}-test-conventions.md` are NOT generated** (sibling-derived at runtime) |
+| 4. Generate | Write the cross-layer conventions (`project-architecture.md`, and `common-verification-patterns.md` when one was detected) directly from the analysis, then the README. No templates are filled and no rule book is copied. Per-type `{type}-test-conventions.md` are **not** generated — sibling-derived at runtime |
 | 5. Verify | Confirm all written files exist; grep for unresolved placeholders and leaked HTML comments; cross-check agent-referenced paths; rollback on failure |
 
 ---
@@ -70,7 +73,7 @@ flowchart TB
         A2[Detect language and frameworks]
         A3[Map project structure]
         A4[Learn test conventions - sample 3-5 per type]
-        A5[Identify build and test commands]
+        A5[Identify architectural patterns]
         A6[Classify test projects]
         A1 --> A2 --> A3 --> A4 --> A5 --> A6
     end
@@ -90,9 +93,9 @@ flowchart TB
     end
     subgraph P4["Phase 4 — Generate"]
         direction LR
-        D1[Fill rules templates]
-        D2[Fill shared/scope-resolution.md]
-        D3[Generate conventions - Tier 3]
+        D1[Write project-architecture.md]
+        D2[Write common-verification-patterns.md - if detected]
+        D3[Write shared/tests/README.md]
         D1 --> D2 --> D3
     end
     subgraph P5["Phase 5 — Verify"]
@@ -142,16 +145,18 @@ is to commit a hand-edit before re-running.
 
 ### Re-run, refresh & legacy per-type conventions
 
-Re-running setup **is** the refresh: every managed file is re-generated from current templates and the
-current repo state, with the previous copy in the backup folder. Nothing signals *when* a re-run is
+Re-running setup **is** the refresh: both conventions files are re-generated from the current repo
+state, with the previous copy in the backup folder. Nothing signals *when* a re-run is
 due — the analysis-derived cross-layer map (`project-architecture.md` / `common-*`) goes stale as the
 repo evolves, and only you know that has happened.
 
 **Leftovers in an upgraded repo:** a repo set up by an older plugin version may still have files this
-version no longer writes — `unit-test-conventions.md` / `integration-test-conventions.md` from before the
-Slim default, `test-component-rules.md` / `component-test-conventions.md` / `fixture-capabilities.md`
-from before component support was removed, and a `.setup-manifest.json` from before the manifest was
-removed (a dotfile, so list it explicitly — a plain directory listing will hide it). None are regenerated and none are
+version no longer writes — the whole of `.claude/rules/tests/` plus `scope-resolution.md` from before the rule
+books became plugin-read, `unit-test-conventions.md` / `integration-test-conventions.md` from before
+per-type conventions became sibling-derived, `test-component-rules.md` /
+`component-test-conventions.md` / `fixture-capabilities.md` from before component support was removed,
+and a `.setup-manifest.json` from before the manifest was removed (a dotfile, so list it explicitly —
+a plain directory listing will hide it). None are regenerated and none are
 deleted — they all fall under the report-and-leave-alone rule above. Harmless at runtime: nothing reads
 the manifest any more, and siblings are the authoritative source for per-type conventions, so a stale
 per-type doc is overridden rather than obeyed. Delete them by hand if you want them gone.
@@ -162,21 +167,11 @@ Setup does not rely on git for rollback (`.claude/` may be gitignored or uncommi
 
 ### Placeholder substitution
 
-Templates under `<plugin-root>/resources/templates/` contain `{{PLACEHOLDER}}` markers. Standard placeholders include `{{LANGUAGE}}`, `{{PROJECT_DESCRIPTION}}`, `{{SRC_DIR}}`, `{{TEST_DIR}}`, `{{SRC_GLOB}}`, `{{TEST_GLOB}}`. No placeholder is filled from a shipped language baseline — every value comes from what Step 1 observed in this repo. HTML comments in templates serve as fill guidance and are stripped from output.
-
-### Classification-aware filling
-
-Each test project is classified along two dimensions — infrastructure (unit-like / integration-like / hybrid) and authoring model (code-driven / config-driven). Classification affects template filling:
-
-| Classification | Behaviour |
-|---|---|
-| Unit-like | Omit test-project-selection step; omit `env_failure` references; single `test_file:` output |
-| Integration-like | Include test-project-selection step; include `env_failure` references; `test_files:` (plural) output |
-| Hybrid | Document both; runtime detection via siblings |
+Setup fills no templates — the rule books under `<plugin-root>/resources/templates/` carry no placeholders and are read as-is. The only substitution left is in the **generated** conventions' frontmatter: `{{SRC_GLOB}}` and `{{TEST_GLOB}}` resolve to what Step 1.3 observed. No value is ever filled from a shipped language baseline.
 
 ### No test-agent delegation during setup
 
-Step 3 file generation fans out to internal parallel subagents (shared-tier2 / shared-tier3 — see [`subagent-contract.md`](../../skills/setup-test-context/references/subagent-contract.md)), but setup never delegates to the plugin's test writer, update, or verifier agents. Consequently no circuit breaker, no fix loop, no `fix_invocation` routing. Verification is mechanical (file existence, placeholder grep, agent cross-reference) rather than an independent agent review.
+Setup spawns **no subagents at all**. It writes its two or three files itself — the analysis they come from is already in the orchestrator's context, so a subagent would copy that context rather than save it, and two files offer no parallelism to win. It also never delegates to the plugin's test writer, update, or verifier agents. Consequently no circuit breaker, no fix loop, no `fix_invocation` routing. Verification is mechanical (file existence, placeholder grep, agent cross-reference) rather than an independent agent review.
 
 ### Status icons
 
@@ -190,15 +185,15 @@ All diagrams use GitHub fenced code blocks tagged `mermaid` (not Azure DevOps `:
 
 ## Generated output
 
-Setup-test-context writes 11–13 files per consumer repo. Under the **Slim default** the set does not vary by test type — per-type `{type}-test-conventions.md` are no longer written, and only the conditional `common-*` conventions move the count:
+Setup-test-context writes 2–3 files per consumer repo. The set does not vary by test type — only the conditional `common-verification-patterns.md` moves the count:
 
 | Category | Files | Source |
 |---|---|---|
-| Shared (`.claude/shared/tests/`) | `scope-resolution.md`, `README.md` | `resources/templates/shared/scope-resolution.md` + README generated |
-| Rules (`.claude/rules/tests/`) | `test-rules.md`, `test-writer-rules.md`, `fix-protocol.md`, `sut-analysis.md`, `common-orchestrator-flow.md`, `common-writer-instructions.md`, `common-update-instructions.md`, `common-verifier-checks.md` | `resources/templates/rules/*.md` (placeholder-filled) |
-| Conventions (`.claude/conventions/tests/`) | `project-architecture.md`, plus the conditional `common-verification-patterns.md`. **Slim default: per-type conventions are NOT written** — writers derive them from the nearest sibling at runtime | Tier 3 generated from analysis |
+| Conventions (`.claude/conventions/tests/`) | `project-architecture.md`, plus the conditional `common-verification-patterns.md`. Per-type conventions are **not** written — writers derive them from the nearest sibling at runtime | generated from analysis |
+| Shared (`.claude/shared/tests/`) | `README.md` | generated: what was written, by which plugin version, when |
 
 **Not written per-repo** (lives in plugin):
+- the 9 rule books — at `<plugin-root>/resources/templates/{rules,shared}/`, read directly by skills and agents
 - `status-legend.md` — at `<plugin-root>/resources/static/status-legend.md`
 - 8 subagents — at `<plugin-root>/agents/`, invoked via `Agent(subagent_type="test-authoring:<name>")`
 - 6 user-invocable skills (this `setup-test-context` + `scan-test-gaps` + 4 add/update workflows) — at `<plugin-root>/skills/`

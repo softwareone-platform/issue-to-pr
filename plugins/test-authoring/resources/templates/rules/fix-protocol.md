@@ -1,6 +1,5 @@
 ---
 description: Protocol for handling verifier findings — routing deterministic issues to writer agents via fresh-spawn fix_invocation with circuit breaker, presenting non-deterministic issues to user.
-paths: [".claude/rules/tests/fix-protocol.md"]
 ---
 
 # Verifier Fix Protocol
@@ -133,7 +132,7 @@ Anti-gaming violations and quality flags require human judgement. The orchestrat
 ### Anti-gaming violations
 - Skip/ignore attributes found → ask user whether to remove and accept potential test failures
 - Commented-out tests → ask user whether to uncomment
-- SUT modifications detected → diff the current source against the **pre-writer source snapshot**: only changes that appeared after the writers started are writer tampering — the user's own uncommitted changes (expected in Mode A) must NOT be touched. Present the writer-introduced diff to the user and revert it only with their consent; never run a blanket `git restore` on `{{SRC_DIR}}`
+- SUT modifications detected → diff the current source against the **pre-writer source snapshot**: only changes that appeared after the writers started are writer tampering — the user's own uncommitted changes (expected in Mode A) must NOT be touched. Present the writer-introduced diff to the user and revert it only with their consent; never run a blanket `git restore` over the source tree
 - Test count mismatch → investigate and report discrepancy
 
 ### Quality flags

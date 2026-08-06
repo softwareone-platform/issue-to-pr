@@ -1,6 +1,5 @@
 ---
 description: Shared reference for per-type test writer agents (add-*-test-agent). Covers role declaration, input contract, SUT analysis, sibling learning, style rules, fix rules, output schema, output discipline, and spec-vs-impl divergence reporting that every writer follows identically.
-paths: [".claude/rules/tests/common-writer-instructions.md"]
 ---
 
 # Common Writer Instructions
@@ -24,13 +23,13 @@ Every per-type writer receives a prompt containing at minimum:
 - (Optional) context about what changed (new methods, modified logic)
 - Pre-fetched sibling context (convention spec, sibling paths) — acceleration hint; if the sibling differs from the spec, **follow the sibling**.
 
-**Alternate mode — fix round**: the prompt may instead carry a `fix_invocation` block. That spawn is a targeted fix, not fresh generation: skip scope analysis and sibling discovery, read your `previously_produced.files_*` paths, and apply only the changes in `findings_to_fix`. See "Fix rules" below and `.claude/rules/tests/fix-protocol.md` for the full contract.
+**Alternate mode — fix round**: the prompt may instead carry a `fix_invocation` block. That spawn is a targeted fix, not fresh generation: skip scope analysis and sibling discovery, read your `previously_produced.files_*` paths, and apply only the changes in `findings_to_fix`. See "Fix rules" below and `fix-protocol.md` for the full contract.
 
 Per-type writers extend this — integration adds a target test project. Extensions live in the per-type file.
 
 ## SUT analysis
 
-For each source file, follow the **SUT Analysis Procedure** in `.claude/rules/tests/sut-analysis.md`.
+For each source file, follow the **SUT Analysis Procedure** in `sut-analysis.md`.
 
 If that procedure requires stopping on a missing framework source ("Runtime resolution flow"), remember you are a subagent and cannot wait for user input: **return your structured output now**, naming the missing package and the path you tried in `issues:`. The orchestrator presents the options to the user and **re-spawns you fresh** with the user's choice (Option A path or Option B go-ahead) in the prompt — there is no resume of the stopped instance.
 
@@ -38,23 +37,23 @@ Per-type writers may add focused identification items (integration identifies en
 
 ## Locate and learn from sibling tests (CRITICAL)
 
-Follow the procedure in `.claude/conventions/tests/{type}-test-conventions.md` **when that file exists**; under the Slim default it is generated on neither path, so the normal case is to read the same dimensions off the nearest sibling:
+Follow the procedure in `.claude/conventions/tests/{type}-test-conventions.md` **when that file exists**; nothing generates it, so the normal case is to read the same dimensions off the nearest sibling:
 
 - Use the **source → test path mapping** (or test project mapping for integration-like) to find corresponding test files.
 - Apply the **sibling convention checklist** and **learn-from-sibling procedure** to adopt the exact style.
 
 **Before creating a new file**, search the target directory for existing test files that already cover the same class / method / endpoint / area. Do not duplicate.
 
-When context from different sources conflicts, follow the **context priority** and **fallback chain** in `.claude/rules/tests/test-writer-rules.md`: sibling file > orchestrator pre-fetch > convention doc.
+When context from different sources conflicts, follow the **context priority** and **fallback chain** in `test-writer-rules.md`: sibling file > orchestrator pre-fetch > convention doc.
 
 ## Style rules (inherit from sibling)
 
-Style is **not fixed globally** — adopt whatever the sibling tests use. The dimensions worth observing are: test framework and attributes, mocking library and approach, assertion library and style, fixture/setup pattern, test and file naming, AAA comment usage, and how the SUT is constructed. (`.claude/conventions/tests/{type}-test-conventions.md` lists the same set as a checklist on the rare repo that has one; the Slim default does not generate it.)
+Style is **not fixed globally** — adopt whatever the sibling tests use. The dimensions worth observing are: test framework and attributes, mocking library and approach, assertion library and style, fixture/setup pattern, test and file naming, AAA comment usage, and how the SUT is constructed. (`.claude/conventions/tests/{type}-test-conventions.md` lists the same set as a checklist on the rare repo that has a hand-written one; nothing generates it.)
 
 Follow:
 
-- `.claude/rules/tests/test-rules.md` (fix rules, build/test verification, and this repo's build and test commands — **not** a conventions list: framework, mocking library, assertion style and naming come from the sibling)
-- `.claude/rules/tests/test-writer-rules.md` (what-to-test, what-not-to-do, context priority)
+- `test-rules.md` (fix rules, build/test verification, and this repo's build and test commands — **not** a conventions list: framework, mocking library, assertion style and naming come from the sibling)
+- `test-writer-rules.md` (what-to-test, what-not-to-do, context priority)
 
 There is **no type-specific rules file**: unit and integration build/test specifics live in `test-rules.md` plus the per-type agent definition — do not probe for `unit-test-rules.md` / `integration-test-rules.md`, they are never generated.
 
@@ -63,7 +62,7 @@ There is **no type-specific rules file**: unit and integration build/test specif
 - If a test file already exists for the class / endpoint / area, **add new test methods** to it but **never modify or delete existing test methods**. Only touch existing tests if they fail due to a build error or because the source they cover has changed — and any such touch MUST be recorded in `files_modified` and explained in `issues:`, so the verifier reviews the modified file, not just the created ones.
 - If no test file exists, **create a new file** in the correct mirrored directory (or feature directory for integration-like).
 
-Update writers: Phase 2 file modifications are governed by `.claude/rules/tests/common-update-instructions.md` (Steps E2/E3) — this section does not apply to them.
+Update writers: Phase 2 file modifications are governed by `common-update-instructions.md` (Steps E2/E3) — this section does not apply to them.
 
 ## Stopping when there is nothing to learn from
 
@@ -71,8 +70,8 @@ Two situations end your run early, with your structured output returned immediat
 written. Neither is a failure; both are protocol steps the orchestrator handles.
 
 - **No convention source** — neither a sibling test nor a convention file, per
-  `.claude/rules/tests/test-writer-rules.md` → Fallback Chain. Name the directories you searched in `issues:`.
-- **Missing framework source** — per `.claude/rules/tests/sut-analysis.md` → Runtime resolution flow.
+  `test-writer-rules.md` → Fallback Chain. Name the directories you searched in `issues:`.
+- **Missing framework source** — per `sut-analysis.md` → Runtime resolution flow.
   Name the package and the path you tried in `issues:`.
 
 In both cases: report the scope you could not cover, write **no** files at all (not even a partial one),
@@ -82,15 +81,15 @@ to the right handler without having to parse your prose; omit the field entirely
 
 ## Build and test verification
 
-After writing all tests, follow the **build and test verification** procedure from `.claude/rules/tests/test-rules.md` — it is the only rules file that pins build/test commands.
+After writing all tests, follow the **build and test verification** procedure from `test-rules.md` — it is the only rules file that pins build/test commands.
 
-Use the filter pattern for your test runner to run only the newly added tests (e.g., `FullyQualifiedName~ClassName` for .NET + xUnit, `-Dtest=ClassName` for Maven + JUnit). The repo's actual command comes from `test-rules.md` on the fast path, or from the `build_test_command` your prompt carries on the cacheless path.
+Use the filter pattern for your test runner to run only the newly added tests (e.g., `FullyQualifiedName~ClassName` for .NET + xUnit, `-Dtest=ClassName` for Maven + JUnit). The repo's actual command is the `build_test_command` your prompt carries — `test-rules.md` describes how to use it, and deliberately lists none.
 
 **Iteration rule** — do not run the whole project repeatedly during fix loops. Run a focused filter (target class / target feature / target module).
 
 ## Fix rules (CRITICAL)
 
-Reference `.claude/rules/tests/test-rules.md` for universal fix rules:
+Reference `test-rules.md` for universal fix rules:
 
 - Never weaken assertions to make a test pass
 - Never delete a failing test to clean up
@@ -98,7 +97,7 @@ Reference `.claude/rules/tests/test-rules.md` for universal fix rules:
 - Never modify SUT to make a test pass
 - Max 2 fix attempts per test before reporting `failed` honestly
 
-A writer may also be re-invoked via the `Agent` tool with `fix_invocation: true` in its prompt — meaning a verifier flagged issues (or the user approved a quality-flag/anti-gaming fix) and the orchestrator needs the writer to apply targeted fixes. When this happens, read your `previously_produced.files_*` paths, apply the changes listed in `findings_to_fix`, and return the universal output schema. See `.claude/rules/tests/fix-protocol.md` for the full `fix_invocation` contract.
+A writer may also be re-invoked via the `Agent` tool with `fix_invocation: true` in its prompt — meaning a verifier flagged issues (or the user approved a quality-flag/anti-gaming fix) and the orchestrator needs the writer to apply targeted fixes. When this happens, read your `previously_produced.files_*` paths, apply the changes listed in `findings_to_fix`, and return the universal output schema. See `fix-protocol.md` for the full `fix_invocation` contract.
 
 ## Universal output schema
 
@@ -154,7 +153,7 @@ Per-type writers add fields — integration adds `test_project`. Those are decla
 
 ### `spec_vs_impl_divergence` — when the SUT contradicts the task spec
 
-The rule itself — test the observed behaviour, never modify the SUT, never assert spec behaviour the code does not exhibit, and populate this block for **every** such case — lives in `.claude/rules/tests/test-writer-rules.md` → "When observed behaviour contradicts the spec" (the single source of truth). This schema block is how you report it: leaving it empty when a divergence exists hides a potential bug behind a passing test — the exact failure mode this field prevents.
+The rule itself — test the observed behaviour, never modify the SUT, never assert spec behaviour the code does not exhibit, and populate this block for **every** such case — lives in `test-writer-rules.md` → "When observed behaviour contradicts the spec" (the single source of truth). This schema block is how you report it: leaving it empty when a divergence exists hides a potential bug behind a passing test — the exact failure mode this field prevents.
 
 ## Env_failure handling (integration-like writers)
 

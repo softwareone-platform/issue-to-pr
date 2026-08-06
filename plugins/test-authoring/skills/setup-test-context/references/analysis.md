@@ -1,6 +1,6 @@
 # Step 1 Analysis — Detection Recipes
 
-Read this file at the start of Step 1. It contains the full detection recipes for §1.1–1.7.
+Read this file at the start of Step 1. It carries the detection recipe for each numbered sub-step Step 1 works through. The numbering is stable so other documents can cite it, which is why it has gaps.
 Return to SKILL.md for Step 2 once analysis is complete.
 
 ---
@@ -11,7 +11,7 @@ Read `CLAUDE.md` (if it exists) to gather **hints** about build/test commands, p
 
 Do NOT treat CLAUDE.md as authoritative. Record what it claims so drift can be compared against codebase findings in Step 2.1.
 
-If no `CLAUDE.md` exists, inform the user and recommend running `/init` separately (not as part of bootstrap), but continue with codebase-based analysis.
+If no `CLAUDE.md` exists, inform the user and recommend running `/init` separately (not as part of this setup run), but continue with codebase-based analysis.
 
 ## 1.2 Detect language and frameworks (from codebase)
 
@@ -49,6 +49,8 @@ The exact format and placeholder shape is specified in `SKILL.md` §2.1 under "P
 
 ### Layered sampling
 
+This sampling feeds **one** consumer: the verification-pattern detection below, which writes `common-verification-patterns.md`. Per-file style dimensions (mocking approach, naming, AAA usage, assertion style) are deliberately **not** recorded — nothing generates a per-type conventions file to hold them, and the writer reads them off the nearest sibling at the moment it writes, which is always more current than a cache.
+
 Use the architectural patterns detected in Step 1.6 to map each test file to a **layer** (Handler, Controller, Service, Repository, Consumer, Worker, etc. — use the repo's actual naming).
 
 Sample tests in a **layered** fashion:
@@ -57,23 +59,6 @@ Sample tests in a **layered** fashion:
 - If a layer has fewer than 3 test files, record it but skip pattern detection for that layer (sample too small).
 - If the repo has **no clear layers** (small project, single layer), fall back to project-wide sampling (3–5 files per test project).
 
-### Per-file observations
-
-> **Slim mode (default): skip this sub-pass.** These per-file dimensions feed only the per-type `{type}-test-conventions.md` checklist, which the Slim default does not generate for code-driven types — writers derive them from the nearest sibling at runtime (siblings are the primary source of truth). Run this sub-pass ONLY when a per-type conventions file is actually being generated (a manual full regeneration). The **layered sampling above** and the **verification-pattern detection below** are independent of this sub-pass and run regardless — they feed `common-verification-patterns.md`, which Slim retains. So the layered sampling read is NOT eliminated by skipping per-file observations.
-
-For each sampled file, note:
-- Which test project it belongs to
-- Which layer it covers (if identifiable)
-- Mocking approach and library
-- Fixture/setup pattern
-- Test naming pattern
-- Assertion style
-- AAA comment usage
-- SUT construction approach
-- **Test data creation patterns** — including builder/factory/generator directory location (e.g., sibling `Generators/` or `Builders/` subfolder). Repo-specific — may or may not exist.
-- File organization pattern
-- Member ordering within test classes
-
 ### Verification pattern detection (for `common-verification-patterns.md`)
 
 For each `(layer, test type)` bucket, extract all mock verification calls (`.Received()`, `.Verify()`, `expect(...).toHaveBeenCalled()` — language/framework-specific).
@@ -81,7 +66,7 @@ For each `(layer, test type)` bucket, extract all mock verification calls (`.Rec
 Compute frequency per `(layer, test type)`. Classify:
 - **Layer common**: appears in ≥2 samples within the same layer (any count of test types) → will go into `common-verification-patterns.md` under that layer's section.
 - **Cross-layer common**: appears across multiple layers → "General" section of `common-verification-patterns.md`.
-- **Type-specific** (only in one test type, not layer-correlated) → `{type}-test-conventions.md` common patterns section. **Slim mode (default):** no code-driven `{type}-test-conventions.md` is generated, so a type-specific pattern has no destination — do not separately capture it (the nearest sibling conveys it to the writer at runtime). Only layer-common / cross-layer-common patterns feed the retained `common-verification-patterns.md`.
+- **Type-specific** (only in one test type, not layer-correlated) → **discard**. Nothing generates a per-type conventions file, so a type-specific pattern has nowhere to go — and it needs nowhere: the nearest sibling carries it to the writer at runtime. Only layer-common and cross-layer-common patterns feed `common-verification-patterns.md`.
 - **Single-sample occurrences** → discard (noise).
 
 Fallback for no-layer repos: project-wide, >50% of samples (≥5/8) → `common-verification-patterns.md` general section.

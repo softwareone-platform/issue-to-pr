@@ -1,6 +1,5 @@
 ---
 description: Guidelines for test generation — what to test, what not to do, and how to report spec-vs-implementation divergence. Applies to writer agents only, not verifiers.
-paths: [".claude/rules/tests/test-writer-rules.md"]
 ---
 
 # Test Generation Guidelines
@@ -32,7 +31,7 @@ Do this instead:
 
 1. **Test the observable behaviour** so the suite stays honest and green.
 2. **Do NOT modify the SUT** to match the spec — that is out of a test writer's remit (see fix rules in `test-rules.md`).
-3. **Populate the `spec_vs_impl_divergence` block** in your output (schema in `.claude/rules/tests/common-writer-instructions.md` → "Universal output schema") for every such case. The orchestrator routes it to the user as a non-deterministic finding; the user decides whether to fix the source or accept the current behaviour. Your job is to surface it, not to decide it.
+3. **Populate the `spec_vs_impl_divergence` block** in your output (schema in `common-writer-instructions.md` → "Universal output schema") for every such case. The orchestrator routes it to the user as a non-deterministic finding; the user decides whether to fix the source or accept the current behaviour. Your job is to surface it, not to decide it.
 
 This keeps the writer from quietly resolving a design question that belongs to the user.
 
@@ -53,7 +52,7 @@ Writer agents may receive context from three sources. When they disagree, follow
 
 1. **Sibling tests** (highest) — what you observe in the actual nearest sibling file is the source of truth.
 2. **Orchestrator pre-fetched context** — provided as an acceleration hint. If it conflicts with what you see in the sibling, **follow the sibling**.
-3. **Convention file** (`.claude/conventions/tests/<type>-test-conventions.md` — e.g., `unit-test-conventions.md`, `integration-test-conventions.md`) — documents the most common patterns in the repo. Use as fallback only when no sibling exists. **Normally absent**: the Slim default does not generate these, so expect this source only after a manual full regeneration.
+3. **Convention file** (`.claude/conventions/tests/<type>-test-conventions.md` — e.g., `unit-test-conventions.md`, `integration-test-conventions.md`) — documents the most common patterns in the repo. Use as fallback only when no sibling exists. **Normally absent**: nothing generates this file. A repo has one only where someone deliberately wrote it to pin a convention the siblings do not show.
 
 ## Fallback Chain (when no sibling exists in the immediate directory)
 
@@ -64,7 +63,7 @@ If the target directory has no existing test files, **widen the search** before 
 3. Same layer in a different feature (e.g., another handler's tests)
 4. Any test file in the same test project
 
-Only if all of the above yield nothing: use the convention file's documented patterns as the sole reference **when that file exists**. When it does not — the normal case under the Slim default — **stop and report**: return your structured output now with no tests written, naming in `issues:` that neither a sibling nor a convention source was found and which directories you searched. Do not invent conventions, and do not write a test against conventions you inferred from the language alone. The orchestrator handles this stop (`common-orchestrator-flow.md` → "Writer stop on no convention source").
+Only if all of the above yield nothing: use the convention file's documented patterns as the sole reference **when that file exists**. When it does not — the normal case — **stop and report**: return your structured output now with no tests written, naming in `issues:` that neither a sibling nor a convention source was found and which directories you searched. Do not invent conventions, and do not write a test against conventions you inferred from the language alone. The orchestrator handles this stop (`common-orchestrator-flow.md` → "Writer stop on no convention source").
 
 ## Common Utilities Check
 

@@ -1,6 +1,5 @@
 ---
 description: Shared reference for per-type test verifier agents. Covers the universal review methodology, anti-gaming checks, spec-vs-impl divergence cross-check, build/test execution, output discipline, output schema, and orchestrator routing. Each verify-add-{type}-test-agent (and verify-update-{type}-test-agent) references this file and adds its own type-specific checks on top.
-paths: [".claude/rules/tests/common-verifier-checks.md"]
 ---
 
 # Common Verifier Checks
@@ -25,7 +24,7 @@ Every per-type verifier receives a prompt containing one or more writer agent re
 - **Test results** — which tests the writer reported as passed/failed
 - **Test type** — one of the confirmed test types (all items in a single invocation share the same type)
 - **Original task / spec description** — the task as originally given (not only the writer's reported results), so you can sanity-check the writer's `spec_vs_impl_divergence` flags (see U2b) against what the task actually asked for
-- **Pre-writer source snapshot** — the orchestrator's record of `{{SRC_DIR}}`'s state taken before any writer was spawned (e.g. the `git diff -- {{SRC_DIR}}` output at that moment); the baseline for the U3 SUT-modification check
+- **Pre-writer source snapshot** — the orchestrator's record of the source tree's state taken before any writer was spawned (a `git diff` over the source roots at that moment); the baseline for the U3 SUT-modification check
 
 Per-type verifiers may extend this with extra fields. Extensions live in the per-type file, not here.
 
@@ -37,7 +36,7 @@ Per-type verifiers run these five checks (U1, U2, U2b, U3, U4) in order before a
 
 The writer reports which conventions it adopted. You MUST NOT blindly trust this — **read 1-2 sibling test files** from the provided paths to independently verify the claim.
 
-Check against the sibling convention checklist in the applicable `.claude/conventions/tests/{test-type}-test-conventions.md` **when that file exists** — the Slim default generates it on neither path, so the normal case is to take the checklist's dimensions from the sibling the writer worked from.
+Check against the sibling convention checklist in the applicable `.claude/conventions/tests/{test-type}-test-conventions.md` **when that file exists** — nothing generates it, so the normal case is to take the checklist's dimensions from the sibling the writer worked from.
 
 If the writer's reported spec does not match the actual sibling, use **what you observe in the sibling** as the source of truth — not what the writer claimed.
 
@@ -69,7 +68,7 @@ Per-type verifiers add type-specific compliance checks (e.g. assertion-style fid
 
 ### U2b. Spec-vs-implementation divergence cross-check (report only)
 
-A writer tests **observable behaviour**, which is correct — but when the SUT contradicts the task spec, the writer is required to report it via `spec_vs_impl_divergence` rather than silently codify it (see `.claude/rules/tests/test-writer-rules.md` → "When observed behaviour contradicts the spec"). You are the safety net that this was not lost:
+A writer tests **observable behaviour**, which is correct — but when the SUT contradicts the task spec, the writer is required to report it via `spec_vs_impl_divergence` rather than silently codify it (see `test-writer-rules.md` → "When observed behaviour contradicts the spec"). You are the safety net that this was not lost:
 
 1. Read the **original task / spec description** from your input.
 2. For each `spec_vs_impl_divergence` entry the writer reported, confirm the test was written against the observed behaviour (not the spec) and that the note accurately describes the mismatch.
@@ -86,7 +85,7 @@ Search all generated **or modified** test files for signs that the writer bypass
 1. **Skip/ignore attributes** — no test should be skipped. Exact form depends on framework; grep for the equivalents: `[Fact(Skip=...)]`, `[Theory(Skip=...)]`, `@Ignore`, `@pytest.mark.skip`, `xit(`, `test.skip(`, etc.
 2. **Commented-out test methods**
 3. **Test count mismatch** — does the number of test attributes match what the writer reported? For files the writer created, count all test attributes; for files the writer modified, count the added attributes in that file's diff — the writer's `test_count` covers only its own additions.
-4. **SUT modifications** — compare the current `{{SRC_DIR}}` state against the **pre-writer source snapshot** from your input. In Mode A the user's own uncommitted source changes are expected, so `git diff` alone cannot distinguish them from writer tampering — flag only differences that appeared **after** the writers started.
+4. **SUT modifications** — compare the current state of the source tree against the **pre-writer source snapshot** from your input, over the same paths the snapshot covers. In Mode A the user's own uncommitted source changes are expected, so `git diff` alone cannot distinguish them from writer tampering — flag only differences that appeared **after** the writers started.
 5. **Tautological / vacuous golden value** (deterministic-transform SUTs only) — when a test asserts an **opaque expected value** from a deterministic transform (hash / fingerprint, canonical serialization, encoding, formatting), decide whether that golden is an **implementation-independent oracle** or merely **captured from the SUT's own output** (a tautology: the test asserts the SUT returns what it returns, freezing a day-one bug green). You **cannot** tell from the assertion text alone — an independently-derived golden and a pasted-back one are byte-identical — so check **provenance**: is the golden's derivation stated (a comment, a known-answer vector, an independent tool such as `sha256sum` over a stated input), and can you **independently recompute** it from that stated derivation and get a match? A golden with no stated provenance, or one you cannot independently reproduce, is a **green-but-vacuous** finding. This is a provenance / adequacy check — it shows the golden is not a tautology, it does not prove the oracle is semantically correct.
 
 For each violation, record:
@@ -99,7 +98,7 @@ For each violation, record:
 
 ### U4. Build and run verification (report only)
 
-Build and run the tests. Reference `.claude/rules/tests/test-rules.md` for the exact build/test commands per test project.
+Build and run the tests. Reference `test-rules.md` for the exact build/test commands per test project.
 
 - If the build fails, report the errors.
 - If tests fail, report which tests failed and why.
@@ -154,9 +153,9 @@ issues:
 
 ## Routing for the orchestrator
 
-See `.claude/rules/tests/fix-protocol.md` for the authoritative fix-protocol. In summary:
+See `fix-protocol.md` for the authoritative fix-protocol. In summary:
 
-- **Deterministic** — orchestrator fresh-spawns the writer with a `fix_invocation` block, with circuit breaker (limits per `.claude/rules/tests/fix-protocol.md` — the single source of truth for the counters):
+- **Deterministic** — orchestrator fresh-spawns the writer with a `fix_invocation` block, with circuit breaker (limits per `fix-protocol.md` — the single source of truth for the counters):
   - `convention_violations`
   - `build_status: failed`
   - `test_results: failed` (non-environmental)
@@ -167,7 +166,7 @@ See `.claude/rules/tests/fix-protocol.md` for the authoritative fix-protocol. In
   - `spec_vs_impl_divergence` (the user decides whether the SUT is buggy or the spec is stale — never auto-fixed)
   - `env_failure`
 
-  When the user approves a fix for a non-deterministic finding, the orchestrator routes the approved instruction via the same fresh-spawn `fix_invocation` block (with `findings_to_fix.user_approved_actions` populated). The orchestrator does NOT edit files itself — see `.claude/rules/tests/common-orchestrator-flow.md` → "Role boundary".
+  When the user approves a fix for a non-deterministic finding, the orchestrator routes the approved instruction via the same fresh-spawn `fix_invocation` block (with `findings_to_fix.user_approved_actions` populated). The orchestrator does NOT edit files itself — see `common-orchestrator-flow.md` → "Role boundary".
 
 Re-verification after each fix round spawns a **fresh** verifier instance (do NOT reuse the previous one — independence is a quality-control requirement).
 

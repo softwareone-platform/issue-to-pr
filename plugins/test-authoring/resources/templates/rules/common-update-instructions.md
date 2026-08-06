@@ -1,13 +1,12 @@
 ---
 description: Shared reference for per-type update writer agents (update-*-test-agent). Covers the two-phase fresh-spawn pattern, audit flow, output discipline, Phase 2 fresh-spawn invocation contract, and git-based rollback coordination (including the source-change advisory) that every update writer follows identically.
-paths: [".claude/rules/tests/common-update-instructions.md"]
 ---
 
 # Common Update Instructions
 
 > **Consumers** — `test-authoring:update-unit-test-agent` / `test-authoring:update-integration-test-agent`. Each per-type update writer references this file and adds type-specific audit / execute pieces inline.
 >
-> Universal writer concerns (SUT analysis, sibling learning, fix rules, style rules) live in `.claude/rules/tests/common-writer-instructions.md` — update writers reference both.
+> Universal writer concerns (SUT analysis, sibling learning, fix rules, style rules) live in `common-writer-instructions.md` — update writers reference both.
 
 ## Two-phase fresh-spawn pattern
 
@@ -52,8 +51,8 @@ Agent(subagent_type="test-authoring:update-<type>-test-agent"):
 
   consent_proceeded_files: [...]      # files Step 4.5 found untracked/dirty and proceeded on user consent — see Step E1; empty when none
 
-  cacheless_context:                  # cacheless path ONLY — the orchestrator omits this block on the fast path
-    plugin_resources_path: ...        # absolute plugin templates root; read rules/shared from <here>/{rules,shared}, per your agent's Path-resolution preamble
+  plugin_context:                     # always present — the agent can resolve neither field itself
+    plugin_resources_path: ...        # absolute plugin resources root; read rules/shared from <here>/{rules,shared}, per your agent's Path-resolution preamble
     build_test_command: ...           # session-detected build/test invocation (adjust --filter to the actual test class)
 
   instructions: |
@@ -78,11 +77,11 @@ Per-type writers extend this — integration adds a target test project.
 
 ### Step A1 — Understand the SUT
 
-Follow `.claude/rules/tests/sut-analysis.md` and the pointers in `.claude/rules/tests/common-writer-instructions.md` → "SUT analysis".
+Follow `sut-analysis.md` and the pointers in `common-writer-instructions.md` → "SUT analysis".
 
 ### Step A2 — Locate and read existing tests
 
-Follow the **learn from sibling tests** procedure in `.claude/rules/tests/common-writer-instructions.md` → "Sibling learning" — the same dimensions apply here. (`.claude/conventions/tests/{type}-test-conventions.md` restates them as a checklist on the rare repo that has one; the Slim default generates it on neither path.)
+Follow the **learn from sibling tests** procedure in `common-writer-instructions.md` → "Sibling learning" — the same dimensions apply here. (`.claude/conventions/tests/{type}-test-conventions.md` restates them as a checklist on the rare repo that has a hand-written one; nothing generates it.)
 
 For each source file:
 
@@ -118,7 +117,7 @@ Compare the SUT's public / internal methods (or endpoints for integration-like) 
 
 ### Step A5 — Run existing tests
 
-Run existing tests to record their current pass/fail state per `.claude/rules/tests/test-rules.md` — it is the only rules file that pins build/test commands.
+Run existing tests to record their current pass/fail state per `test-rules.md` — it is the only rules file that pins build/test commands.
 
 For integration-like writers, distinguish `passed` / `failed (<reason>)` / `env_failure (<reason>)`.
 
@@ -128,7 +127,7 @@ Return a structured summary and terminate. The orchestrator will spawn a fresh P
 
 > **Output discipline (CRITICAL)**: the audit record is data the orchestrator
 > renders for the user — not a human-facing message. The same three rules as in
-> `.claude/rules/tests/common-writer-instructions.md` → "Output discipline"
+> `common-writer-instructions.md` → "Output discipline"
 > apply: **payload first** (no prose preamble), **verbatim always**, **English
 > payload**. "Verbatim always" matters most here: even when the spawning prompt
 > already lists known-failing tests or prior findings, return the **full** audit
@@ -215,11 +214,11 @@ git diff -- <test_file_path>
 - **NEVER** touch a test with `audit_status: valid` and `action: none`
 - **NEVER** process `action: add` items — those are handled by the corresponding `test-authoring:add-<type>-test-agent`
 
-All other fix rules are defined in `.claude/rules/tests/test-rules.md`.
+All other fix rules are defined in `test-rules.md`.
 
 ### Step E4 — Build and test verification
 
-After applying all changes, follow the build and test verification procedure from `.claude/rules/tests/test-rules.md`.
+After applying all changes, follow the build and test verification procedure from `test-rules.md`.
 
 ### Execute output contract
 

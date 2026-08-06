@@ -5,51 +5,50 @@ description: >
 ---
 
 
-## Step -1 — Resolve context source (fast path vs cacheless)
+## Step -1 — Resolve where the rule books and conventions come from
 
-This skill runs **with or without** a prior `setup-test-context`. First resolve where rules/conventions come from, then proceed.
+This skill runs **with or without** a prior `setup-test-context`.
 
-**Resolve the plugin templates root once** — you pass it to every subagent (audit, execute, add, and both verifiers), because subagents cannot resolve it themselves. The bundled templates sit two directories above this `SKILL.md`, under `resources/templates`. Prefer bash injection at load time:
+**Resolve the plugin resources root once, unconditionally** — you also pass it to every subagent (audit, execute, add, and both verifiers), because subagents cannot resolve it themselves. The bundled rule books sit two directories above this `SKILL.md`, under `resources/templates`. Prefer bash injection at load time:
 
 !`echo "${CLAUDE_SKILL_DIR}/../../resources/templates"`
 
-Call the result `PLUGIN_TEMPLATES`. If that line did not expand to a real absolute path (it still shows a literal `${CLAUDE_SKILL_DIR}`): on the **cacheless path** (where it is load-bearing) resolve it at runtime — run `echo "$CLAUDE_SKILL_DIR/../../resources/templates"` with the Bash tool, and if `$CLAUDE_SKILL_DIR` is empty, ask the user for the `test-authoring` plugin install path. On the **fast path** its only use is the status-legend icons (Steps 3/4/7) — do **not** prompt; if it stays unresolved, use plain status labels. The Read tool normalises the `../..` segments.
+Call the result `PLUGIN_TEMPLATES`. If that line did not expand to a real absolute path (it still shows a literal `${CLAUDE_SKILL_DIR}`), run `echo "$CLAUDE_SKILL_DIR/../../resources/templates"` with the Bash tool; if `$CLAUDE_SKILL_DIR` is empty too, **stop and ask the user for the `test-authoring` plugin install path**. Do not carry on with it unresolved: every rule this skill obeys lives under it, so continuing would drop the rule books silently instead of failing. The Read tool normalises the `../..` segments.
 
-Then check `.claude/conventions/tests/project-architecture.md`:
+Two kinds of file, resolved differently:
 
-- **Exists → fast path.** A prior setup cached per-repo files. **Resolve, do not bulk-read**: every `.claude/{conventions,rules,shared}/tests/<f>` reference below resolves to the repo file — read each file lazily, at the first step that uses it (see "Orchestrator reading list" below). **Per-file fallback still applies at read time**: any individual file that is absent falls through to the cacheless source below — a missing file is never fatal.
-- **Absent → cacheless.** setup has never run. **Do NOT stop.** Announce once: `"No precomputed test conventions found — running cacheless (sibling-driven). Run /test-authoring:setup-test-context once to cache the repo cross-layer test map."` Then for the rest of the flow:
-  - Resolve every `.claude/rules/tests/<f>` and `.claude/shared/tests/<f>` reference to `<PLUGIN_TEMPLATES>/{rules,shared}/<f>` instead (includes `common-update-instructions.md`) — same lazy rule: read at the step that uses it, never as an upfront batch. Cosmetic frontmatter/example tokens are inert when read explicitly.
-  - Treat `.claude/conventions/tests/<f>` as **optional**: prefer the nearest sibling test for the scope (the audit's top-priority source anyway); when no sibling exists either, the writer reports the gap rather than inventing conventions — there is no language baseline to fall back to. Infer the target test project from siblings per Step 1.5.
-  - **Detect once, reuse this session**: the language, and the *executable* build/test invocation **form** (test-project path + filter syntax) from the project manifest. `test-rules.md` carries no command list — the detected form is the only source, used everywhere (audit test-run, execute build, both verifiers' build, the final multi-agent build). Integration may span several test projects (Step 1.5): **instantiate the form per target test project** and pass each spawn the command for ITS project as `build_test_command`; subagents adjust its `--filter` to the actual test class.
+- **Rule books.** Every `<PLUGIN_TEMPLATES>/rules/…` and `<PLUGIN_TEMPLATES>/shared/…` path below is literal — read it from there. Nothing writes these into a repo, so there is no per-repo copy to prefer and none to fall out of date. Read each lazily, at the step that uses it — never as an upfront batch (see "Orchestrator reading list").
+- **Conventions.** `.claude/conventions/tests/…` is the repo's own cache, written only where `setup-test-context` has run. Treat every one as **optional**: prefer the nearest sibling test for the scope (the audit's top-priority source anyway); when no sibling exists either, the writer reports the gap rather than inventing conventions — there is no language baseline to fall back to. Infer the target test project from siblings per Step 1.5. A missing conventions file is never fatal.
 
-Resolve `common-orchestrator-flow.md` the same way: fast path reads `.claude/rules/tests/common-orchestrator-flow.md`; cacheless reads `<PLUGIN_TEMPLATES>/rules/common-orchestrator-flow.md`.
+If `.claude/conventions/tests/project-architecture.md` is absent, say so once: `"No cached repo profile — deriving from siblings. Run /test-authoring:setup-test-context once to cache the repo cross-layer test map."` Then carry on — it blocks nothing.
+
+**Detect once, reuse this session**: the language, and the *executable* build/test invocation **form** (test-project path + filter syntax) from the project manifest. `test-rules.md` carries no command list — the detected form is the only source, used everywhere (audit test-run, execute build, both verifiers' build, the final multi-agent build). Integration may span several test projects (Step 1.5): **instantiate the form per target test project** and pass each spawn the command for ITS project as `build_test_command`; subagents adjust its `--filter` to the actual test class.
 
 **Orchestrator reading list (context discipline).** Load into the main context only what this orchestrator itself needs, when it needs it:
 
 - **Now**: `common-orchestrator-flow.md` (previous paragraph).
-- **At the step that uses it**: Step 1 → `.claude/shared/tests/scope-resolution.md`. Step 1.5 → `.claude/conventions/tests/integration-test-conventions.md` (test project mapping; cacheless: sibling inference instead of a read). Step 3 (an audit issue cites the Source-change advisory) or Step 5a (the full `phase: execute` structure beyond the inlined block) → `.claude/rules/tests/common-update-instructions.md`, and only its orchestrator-facing sections ("Phase 2 invocation contract", the advisory) — the Phase 1 audit and Phase 2 execute procedure bodies are the update-writer's own rule book. Final multi-agent build → `.claude/rules/tests/test-rules.md` (cacheless: skip the read — use the session-detected per-project `build_test_command`). First verifier finding or attributable build failure → `.claude/rules/tests/fix-protocol.md`. A writer stopping on missing framework source → `.claude/rules/tests/sut-analysis.md` → "Runtime resolution flow". A writer stopping on no convention source → `.claude/rules/tests/common-orchestrator-flow.md` → "Writer stop on no convention source".
+- **At the step that uses it**: Step 1 → `<PLUGIN_TEMPLATES>/shared/scope-resolution.md`. Step 1.5 → `.claude/conventions/tests/integration-test-conventions.md` (test project mapping, when a prior setup cached it; otherwise infer from siblings). Step 3 (an audit issue cites the Source-change advisory) or Step 5a (the full `phase: execute` structure beyond the inlined block) → `<PLUGIN_TEMPLATES>/rules/common-update-instructions.md`, and only its orchestrator-facing sections ("Phase 2 invocation contract", the advisory) — the Phase 1 audit and Phase 2 execute procedure bodies are the update-writer's own rule book. Final multi-agent build → `<PLUGIN_TEMPLATES>/rules/test-rules.md` (use the session-detected per-project `build_test_command`). First verifier finding or attributable build failure → `<PLUGIN_TEMPLATES>/rules/fix-protocol.md`. A writer stopping on missing framework source → `<PLUGIN_TEMPLATES>/rules/sut-analysis.md` → "Runtime resolution flow". A writer stopping on no convention source → `<PLUGIN_TEMPLATES>/rules/common-orchestrator-flow.md` → "Writer stop on no convention source".
 - **Never**: `common-writer-instructions.md`, `common-verifier-checks.md`, `test-writer-rules.md`. They are subagent rule books — the writers/verifiers read them in their own isolated contexts; preloading them here only bloats the main context.
 
 
 # Update Integration Tests
 
-You are the orchestrator for integration test maintenance. Your job is to **audit existing tests**, **present findings**, and then **delegate changes** derived from the audit status to subagents (no confirmation gate — git is the rollback). Follow the universal flow in `.claude/rules/tests/common-orchestrator-flow.md`; this file only documents integration-specific pieces.
+You are the orchestrator for integration test maintenance. Your job is to **audit existing tests**, **present findings**, and then **delegate changes** derived from the audit status to subagents (no confirmation gate — git is the rollback). Follow the universal flow in `<PLUGIN_TEMPLATES>/rules/common-orchestrator-flow.md`; this file only documents integration-specific pieces.
 
-> Every `.claude/{conventions,rules,shared}/tests/…` read below follows **Step -1's resolution** (repo on fast path; `<PLUGIN_TEMPLATES>/…` rules/shared + sibling-derived conventions on cacheless) — and happens lazily, at the step that uses it, never as an upfront batch; a body reference to one of these files at a step IS that step's read instruction: Read the file before acting on it, never from memory of its name. On the cacheless path, pass `plugin_resources_path` and `build_test_command` (the latter instantiated **per target test project**) into **every** subagent spawn — audit, execute, add, and both verifiers — they cannot resolve these themselves. All `<plugin-root>/resources/static/status-legend.md` references below resolve to `<PLUGIN_TEMPLATES>/../static/status-legend.md` (Step -1); if `PLUGIN_TEMPLATES` is unresolved, use plain text status labels rather than prompting.
+> Every `<PLUGIN_TEMPLATES>/…` and `.claude/conventions/tests/…` read below follows **Step -1's resolution** — and happens lazily, at the step that uses it, never as an upfront batch; a body reference to one of these files at a step IS that step's read instruction: Read the file before acting on it, never from memory of its name. Pass `plugin_resources_path` and `build_test_command` (the latter instantiated **per target test project**) into **every** subagent spawn — audit, execute, add, and both verifiers — they cannot resolve these themselves. All `<plugin-root>/resources/static/status-legend.md` references below resolve to `<PLUGIN_TEMPLATES>/../static/status-legend.md` (Step -1), which is always resolved by then — Step -1 stops rather than continuing without it.
 
 > **CRITICAL — Deletion safety**: deletions and rewrites are driven by the **audit status** (not a user gate) and applied automatically. A test may be deleted only when the audit classified it `wrong` or `duplicated` — never when `valid` or `outdated-major` (an outdated-major test still carries intent worth preserving: it is rewritten, never deleted). Every action is recorded in an **action record** and passed to `test-authoring:verify-update-integration-test-agent`, which independently re-checks each deletion against `git show HEAD:<file>`. Git is the safety net: a tracked test file can be restored with `git restore`.
 
 ## Step 1 — Identify Scope
 
-Follow the procedure in `.claude/shared/tests/scope-resolution.md`.
+Follow the procedure in `<PLUGIN_TEMPLATES>/shared/scope-resolution.md`.
 
 - **Mode A** (no argument): Use git diff. Focus on modified API endpoints (controllers, routes), command/query handlers, worker operations or event consumers, sync consumers, and changes to persistence logic.
 - **Mode B** (argument provided, e.g., `/test-authoring:update-integration-test ComponentName`): Resolve by directory, component, class, endpoint, or file name.
 
 ## Step 1.5 — Determine Test Project Mapping
 
-Before auditing, determine which test project each source file maps to. Use the **test project mapping** in `.claude/conventions/tests/integration-test-conventions.md`. **Cacheless** (the conventions doc is absent): infer the target test project(s) from siblings — locate the integration test project(s) whose tests mirror the source area; if several exist and none clearly mirrors the source, ask the user rather than guess. If a single source file maps to multiple test projects (e.g., both API and worker), audit each (source, project) pair separately — one Phase 1 agent per pair, so neither project's stale tests are missed.
+Before auditing, determine which test project each source file maps to. Use the **test project mapping** in `.claude/conventions/tests/integration-test-conventions.md`. **When that doc is absent** (no prior setup, or it cached no per-type conventions): infer the target test project(s) from siblings — locate the integration test project(s) whose tests mirror the source area; if several exist and none clearly mirrors the source, ask the user rather than guess. If a single source file maps to multiple test projects (e.g., both API and worker), audit each (source, project) pair separately — one Phase 1 agent per pair, so neither project's stale tests are missed.
 
 ## Step 2 — Audit via Agent
 
@@ -64,7 +63,7 @@ Agent(subagent_type="test-authoring:update-integration-test-agent"):
   Audit existing integration tests for:
   - <source file path>
   Target test project: <path from Step 1.5>
-  Cacheless context (include ONLY on the cacheless path — omit entirely on the fast path):
+  Plugin context (always — the subagent cannot resolve either of these itself):
     plugin_resources_path: <PLUGIN_TEMPLATES>
     build_test_command: <build/test command for this Target test project>
 ```
@@ -108,7 +107,7 @@ Render as a single markdown table. Use only icons from `<plugin-root>/resources/
 
 ### Audit Issues
 
-Surface any `issues:` entries from the audit records verbatim — in particular the **source-change advisory** (the audit detected that test staleness comes from uncommitted source changes; see `.claude/rules/tests/common-update-instructions.md` → "Source-change advisory"). The advisory is informational — execution proceeds without a gate — but surfacing it now lets the user interrupt and commit/stash the source, keeping a single coherent git baseline for rollback.
+Surface any `issues:` entries from the audit records verbatim — in particular the **source-change advisory** (the audit detected that test staleness comes from uncommitted source changes; see `<PLUGIN_TEMPLATES>/rules/common-update-instructions.md` → "Source-change advisory"). The advisory is informational — execution proceeds without a gate — but surfacing it now lets the user interrupt and commit/stash the source, keeping a single coherent git baseline for rollback.
 
 ## Step 4 — Determine Actions (from audit status)
 
@@ -154,11 +153,11 @@ Record, per modified file, that the pre-change baseline is `git show HEAD:<file>
 
 ## Step 5 — Execute Changes
 
-Before spawning the first execution agent (5a or 5b), record the **pre-writer source snapshot** per `.claude/rules/tests/common-orchestrator-flow.md` → "Pre-writer source snapshot" — the add-verifier needs it as the baseline for its SUT-modification check.
+Before spawning the first execution agent (5a or 5b), record the **pre-writer source snapshot** per `<PLUGIN_TEMPLATES>/rules/common-orchestrator-flow.md` → "Pre-writer source snapshot" — the add-verifier needs it as the baseline for its SUT-modification check.
 
 ### Step 5a — Update and Delete (fresh-spawn Phase 2)
 
-Phase 2 is a **fresh-spawn** `Agent` invocation with `phase: execute` in the prompt. Do not attempt to continue a Phase 1 agent — every Phase 2 is a new spawn that re-reads files from the paths in the prompt. See `.claude/rules/tests/common-update-instructions.md` → "Phase 2 invocation contract" for the full structure.
+Phase 2 is a **fresh-spawn** `Agent` invocation with `phase: execute` in the prompt. Do not attempt to continue a Phase 1 agent — every Phase 2 is a new spawn that re-reads files from the paths in the prompt. See `<PLUGIN_TEMPLATES>/rules/common-update-instructions.md` → "Phase 2 invocation contract" for the full structure.
 
 Spawn one `test-authoring:update-integration-test-agent` per (source, project) pair whose action record has update/delete actions — a class audited as two pairs gets two Phase 2 agents, each carrying its own pair's audit record and `test_project`; collapsing pairs into one per-class spawn silently drops the other project's actions.
 
@@ -191,7 +190,7 @@ Agent(subagent_type="test-authoring:update-integration-test-agent"):
   test_project: <from audit_record.test_project>
   consent_proceeded_files: [<from Step 4.5, or empty>]
 
-  cacheless_context:   # include ONLY on the cacheless path — omit entirely on the fast path
+  plugin_context:      # always — the subagent cannot resolve either of these itself
     plugin_resources_path: <PLUGIN_TEMPLATES>
     build_test_command: <build/test command for THIS pair's Target test project>
 ```
@@ -208,18 +207,18 @@ Agent(subagent_type="test-authoring:add-integration-test-agent"):
   Target test project: <path>
   Sibling tests found during audit (adopt their conventions):
   - <path> (<convention spec summary>)
-  Cacheless context (include ONLY on the cacheless path — omit entirely on the fast path):
+  Plugin context (always — the subagent cannot resolve either of these itself):
     plugin_resources_path: <PLUGIN_TEMPLATES>
     build_test_command: <build/test command for THIS pair's Target test project>
 ```
 
-If the audit reported `no_existing_tests: true` (no siblings found), omit the sibling lines and state instead: `No sibling tests found and no convention source — apply test-writer-rules.md → Fallback Chain`. Under the Slim default `{type}-test-conventions.md` is generated on neither path, so do not point the writer at it. Never invent a sibling path to satisfy the template.
+If the audit reported `no_existing_tests: true` (no siblings found), omit the sibling lines and state instead: `No sibling tests found and no convention source — apply test-writer-rules.md → Fallback Chain`. Nothing generates `{type}-test-conventions.md`, so do not point the writer at it. Never invent a sibling path to satisfy the template.
 
 Skip if the action record has no add actions.
 
 ### Multi-agent build check
 
-If multiple agents were spawned across 5a and 5b, run a final build of **each affected test project**. Follow `.claude/rules/tests/test-rules.md` → Build and Test Verification, using each project's `build_test_command`.
+If multiple agents were spawned across 5a and 5b, run a final build of **each affected test project**. Follow `<PLUGIN_TEMPLATES>/rules/test-rules.md` → Build and Test Verification, using each project's `build_test_command`.
 
 ## Step 6 — Verify
 
@@ -235,11 +234,11 @@ Spawn **one** `test-authoring:verify-update-integration-test-agent` per affected
 7. Raw Phase 1 audit outputs (retained in Step 2) — so the verifier can cross-check that the action record faithfully transcribes each audit classification
 8. Consent-proceeded files from Step 4.5 (untracked/dirty at check time) — their HEAD baseline is unreliable; the verifier treats diff-based findings on them as advisory, not violations
 9. Step 5b add-writer outputs (`files_created` / `files_modified` / `test_count`), when Step 5b ran — the add writer may insert tests into the SAME files 6a inspects, and without these the verifier's test-count cross-check reads the additions as out-of-record changes
-10. **Cacheless context** (cacheless path only): `plugin_resources_path` + the `build_test_command` for this project — so the verifier reads rules from the plugin templates and runs the build/test via the detected command (it cannot resolve these itself)
+10. **Plugin context** (always): `plugin_resources_path` + the `build_test_command` for this project — so the verifier reads its rule books from the plugin and runs the build/test via the detected command (it cannot resolve either itself)
 
 ### Step 6b — Verify Added Tests
 
-If Step 5b produced new tests, spawn **one** `test-authoring:verify-add-integration-test-agent`. Read-only. Pass the inputs per `.claude/rules/tests/common-orchestrator-flow.md` → "Verifier spawn": the Step 5b writer outputs (including `files_modified`), the original task, and the pre-writer source snapshot (cacheless: also pass `plugin_resources_path` + the project's `build_test_command`, per the governing note).
+If Step 5b produced new tests, spawn **one** `test-authoring:verify-add-integration-test-agent`. Read-only. Pass the inputs per `<PLUGIN_TEMPLATES>/rules/common-orchestrator-flow.md` → "Verifier spawn": the Step 5b writer outputs (including `files_modified`), the original task, and the pre-writer source snapshot (plus `plugin_resources_path` + the project's `build_test_command`, per the governing note).
 
 6a and 6b can run **in parallel**. Skip 6a if no update/delete actions were executed; skip 6b if no add actions were executed.
 
@@ -297,6 +296,6 @@ Note: do NOT rollback on env_failures alone — those are not the writer's fault
 
 ### Status per file
 
-Per `.claude/rules/tests/common-orchestrator-flow.md` → "Summary reporting". Icons from `<plugin-root>/resources/static/status-legend.md` (plugin-internal controlled vocabulary).
+Per `<PLUGIN_TEMPLATES>/rules/common-orchestrator-flow.md` → "Summary reporting". Icons from `<plugin-root>/resources/static/status-legend.md` (plugin-internal controlled vocabulary).
 
 

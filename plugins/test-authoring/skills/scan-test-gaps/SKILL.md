@@ -5,30 +5,29 @@ description: >
 ---
 
 
-## Step -1 — Resolve context source (fast path vs cacheless)
+## Step -1 — Resolve where the rule books and conventions come from
 
-This skill runs **with or without** a prior `setup-test-context`. First resolve where rules/conventions come from, then proceed.
+This skill runs **with or without** a prior `setup-test-context`.
 
-**Resolve the plugin templates root once** — you pass it to every subagent you delegate to (add / update writers and their verifiers), because subagents cannot resolve it themselves. The bundled templates sit two directories above this `SKILL.md`, under `resources/templates`. Prefer bash injection at load time:
+**Resolve the plugin resources root once, unconditionally** — you also pass it to every subagent you delegate to (add / update writers and their verifiers), because subagents cannot resolve it themselves. The bundled rule books sit two directories above this `SKILL.md`, under `resources/templates`. Prefer bash injection at load time:
 
 !`echo "${CLAUDE_SKILL_DIR}/../../resources/templates"`
 
-Call the result `PLUGIN_TEMPLATES`. If that line did not expand to a real absolute path (it still shows a literal `${CLAUDE_SKILL_DIR}`): on the **cacheless path** (where it is load-bearing) resolve it at runtime — run `echo "$CLAUDE_SKILL_DIR/../../resources/templates"` with the Bash tool, and if `$CLAUDE_SKILL_DIR` is empty, ask the user for the `test-authoring` plugin install path. On the **fast path** its only use is the Step 8 status icons — do **not** prompt; if it stays unresolved, use plain status labels. The Read tool normalises the `../..` segments.
+Call the result `PLUGIN_TEMPLATES`. If that line did not expand to a real absolute path (it still shows a literal `${CLAUDE_SKILL_DIR}`), run `echo "$CLAUDE_SKILL_DIR/../../resources/templates"` with the Bash tool; if `$CLAUDE_SKILL_DIR` is empty too, **stop and ask the user for the `test-authoring` plugin install path**. Do not carry on with it unresolved: every rule this skill obeys lives under it, so continuing would drop the rule books silently instead of failing. The Read tool normalises the `../..` segments.
 
-Then check `.claude/conventions/tests/project-architecture.md`:
+Two kinds of file, resolved differently:
 
-- **Exists → fast path.** A prior setup cached per-repo files. **Resolve, do not bulk-read**: every `.claude/{conventions,rules,shared}/tests/<f>` reference below resolves to the repo file — read each file lazily, at the first step that uses it (see "Orchestrator reading list" below). **Per-file fallback still applies at read time**: any individual file that is absent falls through to the cacheless source below — a missing file is never fatal.
-- **Absent → cacheless.** setup has never run. **Do NOT stop.** Announce once: `"No precomputed test conventions found — running cacheless (sibling-driven). Run /test-authoring:setup-test-context once to cache the repo cross-layer test map."` Then for the rest of the flow:
-  - Resolve every `.claude/rules/tests/<f>` and `.claude/shared/tests/<f>` reference to `<PLUGIN_TEMPLATES>/{rules,shared}/<f>` instead — same lazy rule: read at the step that uses it, never as an upfront batch. Cosmetic frontmatter/example tokens are inert when read explicitly.
-  - Treat `.claude/conventions/tests/<f>` as **optional**: derive source/test layout and conventions from the repo structure + nearest sibling tests; the delegated writers/verifiers are themselves cacheless and prefer siblings.
-  - **Detect once, reuse this session**: the language, and the *executable* build/test invocation **form** (test-project path + filter syntax). `test-rules.md` carries no command list — the detected form is the only source: it drives this skill's own quick build (Step 3) and is passed to every delegated agent as `build_test_command`. For integration spanning several test projects, instantiate the form per target test project (Step 7); subagents adjust its `--filter`.
+- **Rule books.** Every `<PLUGIN_TEMPLATES>/rules/…` and `<PLUGIN_TEMPLATES>/shared/…` path below is literal — read it from there. Nothing writes these into a repo, so there is no per-repo copy to prefer and none to fall out of date. Read each lazily, at the step that uses it — never as an upfront batch (see "Orchestrator reading list").
+- **Conventions.** `.claude/conventions/tests/…` is the repo's own cache, written only where `setup-test-context` has run. Treat every one as **optional**: derive source/test layout and conventions from the repo structure + nearest sibling tests; the delegated writers and verifiers prefer siblings too. A missing conventions file is never fatal.
 
-Resolve `common-orchestrator-flow.md` the same way: fast path reads `.claude/rules/tests/common-orchestrator-flow.md`; cacheless reads `<PLUGIN_TEMPLATES>/rules/common-orchestrator-flow.md`.
+If `.claude/conventions/tests/project-architecture.md` is absent, say so once: `"No cached repo profile — deriving from siblings. Run /test-authoring:setup-test-context once to cache the repo cross-layer test map."` Then carry on — it blocks nothing.
+
+**Detect once, reuse this session**: the language, and the *executable* build/test invocation **form** (test-project path + filter syntax). `test-rules.md` carries no command list — the detected form is the only source: it drives this skill's own quick build (Step 3) and is passed to every delegated agent as `build_test_command`. For integration spanning several test projects, instantiate the form per target test project (Step 7); subagents adjust its `--filter`.
 
 **Orchestrator reading list (context discipline).** Load into the main context only what this orchestrator itself needs, when it needs it:
 
-- **Now**: `common-orchestrator-flow.md` (previous paragraph), then `.claude/conventions/tests/project-architecture.md` — the "Placeholder resolution" note below needs it before Step 1 (cacheless: per-invocation detection per that note, no read).
-- **At the step that uses it**: Step 1 → `.claude/shared/tests/scope-resolution.md`. Steps 2–3 reuse `project-architecture.md` (already loaded). The "Stale test detection" quick build → `.claude/rules/tests/test-rules.md` (cacheless: skip the read — use the session-detected `build_test_command`). Delegation and update segments, on demand → `.claude/conventions/tests/integration-test-conventions.md` (target test project mapping), `.claude/rules/tests/common-update-instructions.md` (orchestrator-facing sections only), `.claude/rules/tests/fix-protocol.md` (first verifier finding or attributable build failure).
+- **Now**: `common-orchestrator-flow.md` (previous paragraph), then `.claude/conventions/tests/project-architecture.md` — the "Placeholder resolution" note below needs it before Step 1 (absent: per-invocation detection per that note, no read).
+- **At the step that uses it**: Step 1 → `<PLUGIN_TEMPLATES>/shared/scope-resolution.md`. Steps 2–3 reuse `project-architecture.md` (already loaded). The "Stale test detection" quick build → `<PLUGIN_TEMPLATES>/rules/test-rules.md` (use the session-detected `build_test_command`). Delegation and update segments, on demand → `.claude/conventions/tests/integration-test-conventions.md` (target test project mapping), `<PLUGIN_TEMPLATES>/rules/common-update-instructions.md` (orchestrator-facing sections only), `<PLUGIN_TEMPLATES>/rules/fix-protocol.md` (first verifier finding or attributable build failure).
 - **Never**: `common-writer-instructions.md`, `common-verifier-checks.md`, `test-writer-rules.md`. They are subagent rule books — the writers/verifiers read them in their own isolated contexts; preloading them here only bloats the main context.
 
 
@@ -53,9 +52,9 @@ You are a test coverage analyst for {{PROJECT_DESCRIPTION}}. Your job is to find
 
 > **Placeholder resolution (plugin-bundled file)**: tokens like `{{PROJECT_DESCRIPTION}}`, `{{TEST_TYPES_LIST}}`, `{{LANGUAGE_EXCLUSIONS}}`, `{{COVERAGE_EXCLUSION_HANDLING}}`, `{{HIGH_PRIORITY_CRITERIA}}`, `{{TEST_TYPES_COUNT_BREAKDOWN}}` are NOT pre-filled — this file ships with the plugin, not generated per-repo. Resolve them at runtime: project description and language from `.claude/conventions/tests/project-architecture.md`, supported test types inferred from the filesystem per the note below, exclusions and priority criteria derived from the detected language and repo conventions. Never render a `{{...}}` token literally in user-facing output.
 >
-> **Inferring the test types (always), and the cacheless case:** resolve `{{PROJECT_DESCRIPTION}}` and language from `project-architecture.md` when it exists, and from per-invocation detection (project manifest + file extensions) when it does not — never render the token literally. The plugin records no confirmed type list between runs, so **infer the supported test types from the filesystem every time** — unit-like (mirrors source, mocks deps) and/or integration-like (HTTP/DB/container fixtures). **A test project containing `.feature` / Gherkin files (or Gherkin-binding step classes) is not a supported target — exclude it from the inferred types even though it uses containers/fixtures** (do NOT count it as integration-like). Use the inferred count to drive the SINGLE_TYPE_ONLY vs MULTI_TYPE_ONLY behaviour below, and **echo the inferred types in the Step 1.5 scope echo** so the user can correct them. Exclusions and priority criteria come from the detected language + nearest siblings.
+> **Inferring the test types (always):** resolve `{{PROJECT_DESCRIPTION}}` and language from `project-architecture.md` when a prior setup cached it, and from per-invocation detection (project manifest + file extensions) when it did not — never render the token literally. The plugin records no confirmed type list between runs, so **infer the supported test types from the filesystem every time** — unit-like (mirrors source, mocks deps) and/or integration-like (HTTP/DB/container fixtures). **A test project containing `.feature` / Gherkin files (or Gherkin-binding step classes) is not a supported target — exclude it from the inferred types even though it uses containers/fixtures** (do NOT count it as integration-like). Use the inferred count to drive the SINGLE_TYPE_ONLY vs MULTI_TYPE_ONLY behaviour below, and **echo the inferred types in the Step 1.5 scope echo** so the user can correct them. Exclusions and priority criteria come from the detected language + nearest siblings.
 
-> Every `.claude/{conventions,rules,shared}/tests/…` read below follows **Step -1's resolution** — and happens lazily, at the step that uses it, never as an upfront batch; a body reference to one of these files at a step IS that step's read instruction: Read the file before acting on it, never from memory of its name. On the cacheless path, pass `plugin_resources_path` and `build_test_command` (per target test project for integration) into **every** subagent you delegate to — add / update writers and their verifiers — they cannot resolve these themselves. The `<plugin-root>/resources/static/status-legend.md` reference (Step 8) resolves to `<PLUGIN_TEMPLATES>/../static/status-legend.md` (Step -1); if `PLUGIN_TEMPLATES` is unresolved, use plain text status labels.
+> Every `.claude/{conventions,rules,shared}/tests/…` read below follows **Step -1's resolution** — and happens lazily, at the step that uses it, never as an upfront batch; a body reference to one of these files at a step IS that step's read instruction: Read the file before acting on it, never from memory of its name. Pass `plugin_resources_path` and `build_test_command` (per target test project for integration) into **every** subagent you delegate to — add / update writers and their verifiers — they cannot resolve these themselves. The `<plugin-root>/resources/static/status-legend.md` reference (Step 8) resolves to `<PLUGIN_TEMPLATES>/../static/status-legend.md` (Step -1); `PLUGIN_TEMPLATES` is always resolved by then — Step -1 stops rather than continuing without it.
 
 ## Scope: unit and integration tests only
 
@@ -64,11 +63,11 @@ This skill analyses **unit and integration test gaps only**. Both are code-drive
 **Not analysed:**
 
 - **Gherkin scenario tests** (`.feature` files and their step classes). They map by feature area, not by source class, and an N:M mapping between source classes and scenarios cannot be resolved reliably from code alone. Scan does not read `.feature` files, does not count scenarios as cross-coverage, and does not list them as a gap type. **This plugin does not author Gherkin scenarios at all** — if the user asks for one, say so plainly rather than routing them to another skill.
-- **Config-driven or otherwise non-code test projects** — out of scope by construction (bootstrap only wires this skill against code-driven unit/integration projects).
+- **Config-driven or otherwise non-code test projects** — out of scope by construction: this skill authors only code-driven unit and integration tests.
 
 ## Step 1 — Identify Scope
 
-Follow the procedure in `.claude/shared/tests/scope-resolution.md`.
+Follow the procedure in `<PLUGIN_TEMPLATES>/shared/scope-resolution.md`.
 
 - **Mode A** (no argument): Use git diff to find modified/added source files. Scope the scan to only those files and their corresponding tests.
 - **Mode B** (argument provided, e.g., `/test-authoring:scan-test-gaps ComponentName`): Resolve by directory, component, class, method, or file name.
@@ -79,7 +78,7 @@ Reference `.claude/conventions/tests/project-architecture.md` for source directo
 
 Collect production source files within the resolved scope. Exclude:
 {{LANGUAGE_EXCLUSIONS}}
-<!-- Bootstrap fills with language-specific exclusions, e.g.:
+<!-- Resolve at runtime from the detected language, e.g.:
   C#: `migrations/`, `obj/`, `bin/`, `Properties/`, auto-generated (`*.Designer.cs`, `*.g.cs`, `GlobalUsings.cs`), `Program.cs`/`Startup.cs` unless logic
   TypeScript: `node_modules/`, `dist/`, `.next/`, `*.d.ts`, generated code
   Python: `__pycache__/`, `venv/`, `build/`, `__init__.py` without logic
@@ -183,7 +182,7 @@ Assign priority based on:
 | **Medium** | Supporting services, validation logic, data transformations |
 | **Low** | Utilities, extensions, configuration, simple CRUD with no business rules |
 
-<!-- Bootstrap fills HIGH_PRIORITY_CRITERIA based on the repo's domain, e.g.:
+<!-- Resolve HIGH_PRIORITY_CRITERIA at runtime from the repo's domain, e.g.:
   Billing: "Business-critical logic: command handlers, billing calculations, state transitions, financial operations, sync consumers"
   Auth service: "Token handling, permission checks, session lifecycle"
   Data pipeline: "Transformation logic, error recovery, exactly-once guarantees"
@@ -248,7 +247,7 @@ Process at most **5–8 items per batch**. If the user selects more, split into 
 
 Based on the user's selection, group the items by type and spawn subagents.
 
-Before spawning the first writer of a batch, record the **pre-writer source snapshot** per `.claude/rules/tests/common-orchestrator-flow.md` → "Pre-writer source snapshot" — the verifiers need it as the baseline for their SUT-modification check.
+Before spawning the first writer of a batch, record the **pre-writer source snapshot** per `<PLUGIN_TEMPLATES>/rules/common-orchestrator-flow.md` → "Pre-writer source snapshot" — the verifiers need it as the baseline for their SUT-modification check.
 
 - For **add** gaps → spawn one `test-authoring:add-<type>-test-agent` per source class (per type, e.g., `test-authoring:add-unit-test-agent`, `test-authoring:add-integration-test-agent`)
 - For **Update** gaps → spawn one `test-authoring:update-<type>-test-agent` per source class (per type)
@@ -257,7 +256,7 @@ For integration-like types, include the target test project in the agent prompt.
 
 ### Passing context to agents
 
-When the gap analysis identified sibling test files, pass that to the agent to avoid redundant exploration. **Cacheless:** also pass `plugin_resources_path` (= the `PLUGIN_TEMPLATES` value resolved in Step -1) and `build_test_command` (the integration project's command per (source, project) pair) into every delegated add / update writer and every Step 7.5 verifier — per the governing note; they cannot resolve these themselves.
+When the gap analysis identified sibling test files, pass that to the agent to avoid redundant exploration. Always pass `plugin_resources_path` (= the `PLUGIN_TEMPLATES` value resolved in Step -1) and `build_test_command` (the integration project's command per (source, project) pair) into every delegated add / update writer and every Step 7.5 verifier — per the governing note; they cannot resolve these themselves.
 
 ### Parallelism
 
@@ -275,20 +274,20 @@ When the gap analysis identified sibling test files, pass that to the agent to a
 
 ### Update workflow caveat
 
-For Type = `Update` items, the Phase 1 agent performs the audit only and terminates. Present the audit findings inline within the scan results **as a single markdown table** (same rendering rules as the `update-<type>-test` skill's Step 3 — never a bullet list or separator-bar format), and surface the audit's `issues:` entries verbatim alongside — in particular the source-change advisory, per the `update-<type>-test` skill's "Audit Issues" section. Then derive the action plan from each item's audit status (no per-item confirmation gate — same as `update-*-test`). **Fresh-spawn** the Phase 2 agent via `Agent` with `phase: execute` and the audit-derived `planned_actions` (per `.claude/rules/tests/common-update-instructions.md` → "Phase 2 invocation contract") — do not continue a live Phase 1 instance. The Step 4.5 git safety check and audit-status-based deletion justification apply as in `update-*-test`.
+For Type = `Update` items, the Phase 1 agent performs the audit only and terminates. Present the audit findings inline within the scan results **as a single markdown table** (same rendering rules as the `update-<type>-test` skill's Step 3 — never a bullet list or separator-bar format), and surface the audit's `issues:` entries verbatim alongside — in particular the source-change advisory, per the `update-<type>-test` skill's "Audit Issues" section. Then derive the action plan from each item's audit status (no per-item confirmation gate — same as `update-*-test`). **Fresh-spawn** the Phase 2 agent via `Agent` with `phase: execute` and the audit-derived `planned_actions` (per `<PLUGIN_TEMPLATES>/rules/common-update-instructions.md` → "Phase 2 invocation contract") — do not continue a live Phase 1 instance. The Step 4.5 git safety check and audit-status-based deletion justification apply as in `update-*-test`.
 
 ## Step 7.5 — Review via Verify Agents
 
 After all writer/update agents in the batch complete, spawn verifiers **per test type and workflow**:
 
-- For items routed to add writers → spawn one `test-authoring:verify-add-<type>-test-agent` per type (e.g., `test-authoring:verify-add-unit-test-agent`, `test-authoring:verify-add-integration-test-agent`), passing the inputs per `.claude/rules/tests/common-orchestrator-flow.md` → "Verifier spawn": all writer outputs (including `files_modified`), the original task, and the pre-writer source snapshot.
+- For items routed to add writers → spawn one `test-authoring:verify-add-<type>-test-agent` per type (e.g., `test-authoring:verify-add-unit-test-agent`, `test-authoring:verify-add-integration-test-agent`), passing the inputs per `<PLUGIN_TEMPLATES>/rules/common-orchestrator-flow.md` → "Verifier spawn": all writer outputs (including `files_modified`), the original task, and the pre-writer source snapshot.
 - For items routed to update writers (if Phase 2 was executed) → spawn one `test-authoring:verify-update-<type>-test-agent` per type, passing the **full input set from the `update-<type>-test` skill's Step 6a**: pre-change state, action record, execution results, the `git show HEAD:<file>` baseline, test type, test project, raw Phase 1 audit outputs, and consent-proceeded files.
 
 Spawn multiple verifiers in parallel if the batch spans multiple test types / workflows.
 
 ## Step 7.7 — Handle Verifier Findings
 
-Follow the **Verifier Fix Protocol** in `.claude/rules/tests/fix-protocol.md` and the role boundary in `.claude/rules/tests/common-orchestrator-flow.md`:
+Follow the **Verifier Fix Protocol** in `<PLUGIN_TEMPLATES>/rules/fix-protocol.md` and the role boundary in `<PLUGIN_TEMPLATES>/rules/common-orchestrator-flow.md`:
 
 - **Deterministic** → fresh-spawn the respective writer (`test-authoring:add-<type>-test-agent` or `test-authoring:update-<type>-test-agent`) with a `fix_invocation` block per `fix-protocol.md`.
 - **Non-deterministic** → present to user. If the user approves a fix, route via the same fresh-spawn `fix_invocation` block with `findings_to_fix.user_approved_actions` populated.

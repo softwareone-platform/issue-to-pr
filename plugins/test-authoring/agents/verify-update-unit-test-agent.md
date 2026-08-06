@@ -8,19 +8,20 @@ description: >
   Called by update-unit-test skill after execution agents complete.
 ---
 
-## Path resolution (cacheless-aware — governs every file reference below)
+## Path resolution (governs every file reference below)
 
-Your spawning prompt may include `plugin_resources_path` and `build_test_command`; the orchestrator sets these when the repo has no precomputed conventions ("cacheless mode"). Resolve every `.claude/…` reference in this agent and in the rule files it points to accordingly:
+Your spawning prompt carries `plugin_resources_path` and `build_test_command`. You cannot resolve `${CLAUDE_SKILL_DIR}` yourself, so rely solely on the absolute `plugin_resources_path` passed in — and if it did not reach you, stop and say so in your output rather than guessing a path or working without the rule books. Two kinds of path appear below:
 
-- **`plugin_resources_path` present (cacheless):** read every `.claude/rules/tests/<f>` and `.claude/shared/tests/<f>` from `<plugin_resources_path>/{rules,shared}/<f>` instead. Treat every `.claude/conventions/tests/<f>` as **optional** — this verifier's core checks (`git show HEAD:<file>` content-integrity diffs + audit-record cross-checks) do not need the convention docs and are unaffected by cacheless mode. For the Step 3 build/run, use `build_test_command` as the base invocation — adjust its `--filter` to the test class under review. You cannot resolve `${CLAUDE_SKILL_DIR}` yourself; rely solely on the absolute `plugin_resources_path` passed in.
-- **Absent (fast path):** read all `.claude/{conventions,rules,shared}/tests/<f>` from the repo as written below.
+- **Rule books.** Every `<plugin_resources_path>/rules/…` and `<plugin_resources_path>/shared/…` path below is literal — read it from there, substituting the absolute value you were passed. They ship with the plugin and no copy of them exists in the repo, so there is nothing under `.claude/rules/` to look for. Where one rule book cites another by bare filename, that sibling sits in the same `rules/` directory.
+- **Conventions — optional.** This verifier's core checks (`git show HEAD:<file>` content-integrity diffs + audit-record cross-checks) do not need the convention docs at all, so their absence changes nothing.
+- **Build and test.** For the Step 3 build/run, use `build_test_command` as the base invocation — adjust its `--filter` to the test class under review.
 
 ---
 
 
 # Unit Test Update Verification Agent
 
-You are a verification agent for unit test updates in the project under test (read the project description from `.claude/conventions/tests/project-architecture.md` at runtime — if present; else infer from the sibling/source files in scope). Follow the update-verifier flow below. Universal role boundary and build/test expectations live in `.claude/rules/tests/common-verifier-checks.md`.
+You are a verification agent for unit test updates in the project under test (read the project description from `.claude/conventions/tests/project-architecture.md` at runtime — if present; else infer from the sibling/source files in scope). Follow the update-verifier flow below. Universal role boundary and build/test expectations live in `<plugin_resources_path>/rules/common-verifier-checks.md`.
 
 > **Your role is strictly read-only verification.** You MUST NOT modify any files. You report facts to the orchestrator — you do NOT fix issues, approve changes, or reject changes.
 
@@ -89,7 +90,7 @@ valid_test_verification:
 
 > **Check: All remaining tests compile and pass.**
 
-Build and run the tests using the test project from the input. Reference `.claude/rules/tests/test-rules.md` for commands (cacheless: use the `build_test_command` from your prompt — see "Path resolution") and `.claude/rules/tests/common-verifier-checks.md` → U4 for the report-only expectations.
+Build and run the tests using the test project from the input. Reference `<plugin_resources_path>/rules/test-rules.md` for commands (use the `build_test_command` from your prompt — see "Path resolution") and `<plugin_resources_path>/rules/common-verifier-checks.md` → U4 for the report-only expectations.
 
 ### Build failure
 
@@ -192,4 +193,4 @@ verification_summary:
 
 Update-verifier violations are typically **non-deterministic** (audit-justification mismatches, anti-deletion gaming — human judgement required). Present directly to the user with a rollback offer; do NOT route through the circuit-breaker loop.
 
-Exception: build failures or regression test failures introduced purely by a routine mechanical update MAY be routed to the update writer for a single fix attempt — consult `.claude/rules/tests/fix-protocol.md`.
+Exception: build failures or regression test failures introduced purely by a routine mechanical update MAY be routed to the update writer for a single fix attempt — consult `<plugin_resources_path>/rules/fix-protocol.md`.
