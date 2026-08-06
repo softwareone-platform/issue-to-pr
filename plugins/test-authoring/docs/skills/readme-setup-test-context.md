@@ -166,7 +166,7 @@ Setup does not rely on git for rollback (`.claude/` may be gitignored or uncommi
 
 ### Placeholder substitution
 
-Templates under `<plugin-root>/resources/templates/` contain `{{PLACEHOLDER}}` markers. Standard placeholders include `{{LANGUAGE}}`, `{{PROJECT_DESCRIPTION}}`, `{{SRC_DIR}}`, `{{TEST_DIR}}`, `{{SRC_GLOB}}`, `{{TEST_GLOB}}`. File-specific placeholders (e.g., `{{PROJECT_WIDE_RULES}}`, `{{BUILD_AND_TEST_COMMANDS}}`, `{{KNOWN_PACKAGES_TABLE}}`) come from analysis. HTML comments in templates serve as fill guidance and are stripped from output.
+Templates under `<plugin-root>/resources/templates/` contain `{{PLACEHOLDER}}` markers. Standard placeholders include `{{LANGUAGE}}`, `{{PROJECT_DESCRIPTION}}`, `{{SRC_DIR}}`, `{{TEST_DIR}}`, `{{SRC_GLOB}}`, `{{TEST_GLOB}}`. File-specific placeholders (e.g., `{{PROJECT_WIDE_RULES}}`, `{{BUILD_AND_TEST_COMMANDS}}`) come from analysis — from what Step 1 observed in this repo, never from a shipped language baseline. HTML comments in templates serve as fill guidance and are stripped from output.
 
 ### Classification-aware filling
 

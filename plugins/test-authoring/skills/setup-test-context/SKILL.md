@@ -6,7 +6,7 @@ description: >
   to `.claude/{conventions,rules,shared}/tests/`. Plugin-bundled agents and skills (in
   `test-authoring`) read these per-repo files at runtime. Works for any language with a
   detectable test framework (C#, Python, TypeScript, Go, Java, etc.) — auto-detects language
-  and dispatches the matching baseline via `resources/templates/lang/` fragments. Pass
+  and derives every convention from the repo's own tests, never a language baseline. Pass
   `uninstall` as the first argument to remove every file this skill previously wrote, classified
   pristine vs user-modified.
   Trigger phrases: "setup test context", "initialise test conventions", "set up the test plugin",
@@ -222,7 +222,7 @@ Pass everything inline. The prompt MUST include:
 7. Pre-resolved standard placeholder values (`{{LANGUAGE}}`, `{{SRC_DIR}}`, `{{TEST_DIR}}`, etc. — `{{TEST_TYPE}}` / `{{TEST_TYPE_TITLE}}` are legacy per-type placeholders with no surviving consumer), **including `{{CONVENTIONS_SCHEMA_VERSION}}`** read from `<plugin-root>/resources/templates/template-schema-versions.json` field `conventions`. This placeholder is used by Tier 3 conventions recipes (see `references/tier3-schemas.md`) to fill their frontmatter `schema_version`; the same JSON value is also written into the manifest `files[].schema_version` for matching files in §3.5 — single source of truth.
 8. Source template paths (e.g. `<plugin-root>/resources/templates/rules/test-rules.md`).
 9. Destination paths (e.g. `.claude/rules/tests/test-rules.md`).
-10. Pointers to `references/placeholders.md` (fill rules + Language fragments § dispatch documentation) and `references/tier3-schemas.md` (Tier 3 generation schemas), plus **pre-resolved absolute paths of language fragment files** per `references/subagent-contract.md` item 10 (covers the derivation rule, filesystem probe, per-subagent ownership, and the missing-fragment sentinel — single source of truth, do not duplicate the dispatch spec here).
+10. Pointers to `references/placeholders.md` (fill rules) and `references/tier3-schemas.md` (Tier 3 generation schemas), per `references/subagent-contract.md` item 10 — single source of truth, do not duplicate it here.
 
 After every write, the subagent **adds an entry** to its return payload with the path, sha256 (computed over the written content with line endings normalised CRLF→LF before hashing — see `references/manifest.md` § SHA-256 calculation), and category — these are aggregated by the orchestrator into the manifest in §3.5.
 

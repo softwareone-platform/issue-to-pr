@@ -62,20 +62,15 @@ The orchestrator passes everything inline as structured text in the prompt.
 4. **Test type label + authoring model** — legacy `per-type` field only (e.g. `unit`, `integration`; `code-driven` or `config-driven`, the user-confirmed values from Step 2.1). Never populated under the Slim default, which dispatches no per-type subagent. Item numbers below are stable — other documents cite them by number.
 5. **Per-file decision flags** — from Step 2.2: which targets to overwrite (pristine and user-modified alike — user-modified files are backed up by the orchestrator in §3.1 before subagents spawn), and which legacy targets the user chose to keep.
 6. **Analysis slice** — only the parts of Step 1 output relevant to this subagent. Examples by kind:
-   - shared-tier2: language (drives fragment dispatch per `references/placeholders.md` § Language fragments), universal rule set inputs (verifier expectations, fix protocol settings), full build/test commands across all test projects (for `test-rules.md`), internal package paths from §1.2.1 (for `sut-analysis.md`'s `{{KNOWN_PACKAGES_TABLE}}`).
+   - shared-tier2: language, universal rule set inputs (verifier expectations, fix protocol settings), full build/test commands across all test projects (for `test-rules.md`), and the project-wide conventions observed in §1.4 (for `test-rules.md`'s `{{PROJECT_WIDE_RULES}}`).
    - shared-tier3: project structure (§1.3), shared test project info if any, cross-layer verification patterns (§1.4 global), architectural patterns (§1.6).
 7. **Pre-resolved standard placeholders** — `{{LANGUAGE}}`, `{{PROJECT_DESCRIPTION}}`, `{{SRC_DIR}}`, `{{TEST_DIR}}`, `{{SRC_GLOB}}`, `{{TEST_GLOB}}`, `{{TEST_TYPE}}`, `{{TEST_TYPE_TITLE}}`, and `{{CONVENTIONS_SCHEMA_VERSION}}` (from `template-schema-versions.json` field `conventions`). The orchestrator has already computed these.
 8. **Files to write** — explicit list of absolute target paths under `.claude/{conventions,rules,shared}/tests/`.
 9. **Files NOT to touch** — explicit list of paths owned by other subagents (defensive boundary).
 10. **References to consult** — paths to:
-    - `references/placeholders.md` (plugin-side fill rules + Language fragments § dispatch documentation)
+    - `references/placeholders.md` (plugin-side fill rules)
     - `references/tier3-schemas.md` (Tier 3 generation schemas)
-    - **Pre-resolved language fragment files for the detected language**, absolute paths. The orchestrator derives the fragment directory name from `{{LANGUAGE}}` via the rule in `references/placeholders.md` § Language fragments, then probes `<plugin-root>/resources/templates/lang/<derived>/` on the filesystem. Only the fragments relevant to this subagent's owned templates are resolved. Examples (assuming the directory exists):
-      - shared-tier2 receives: `<plugin-root>/resources/templates/lang/<derived>/project-wide-rules.md`, `<plugin-root>/resources/templates/lang/<derived>/visibility-note.md`, `<plugin-root>/resources/templates/lang/<derived>/known-packages-naming.md`
-      - shared-tier3: no language fragments today — Tier 3 conventions are sampler-driven from siblings.
-    If the derived directory does not exist, OR a specific fragment file is missing from a directory that does exist, the orchestrator passes the literal sentinel `"(no fragment available for <lang>; rely on Step 1 analysis only)"` in place of that path. The sentinel signals to the subagent: no baseline available, generate the placeholder content from Step 1 analysis observations only.
-
-    Subagents read these for fill rules, generation schemas, and language-specific baselines; do not duplicate the schemas in the prompt.
+    Subagents read these for fill rules and generation schemas; do not duplicate the schemas in the prompt.
 
 ### Boundary condition (note, do not design around)
 

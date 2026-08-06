@@ -20,62 +20,23 @@ Read this file during Step 3.2 (subagent dispatch) and Step 3.3 (subagent prompt
 | `{{TEST_TYPE_TITLE}}` | `Unit`, `Integration` | Title-case of `{{TEST_TYPE}}` |
 | `{{CONVENTIONS_SCHEMA_VERSION}}` | `1.0` | `<plugin-root>/resources/templates/template-schema-versions.json` field `conventions`. Used only in `tier3-schemas.md` dynamic conventions recipes; the same value is also written to manifest `files[].schema_version` for matching files (single source of truth). |
 
-## Language fragments
+## No language baselines
 
-Language-specific baselines for placeholder fills live under `resources/templates/lang/<derived-dir>/`. The orchestrator (Step 3.3) derives the directory name from the detected `{{LANGUAGE}}` via the rule below, probes the filesystem for that directory, and — if it exists — passes the relevant fragment file paths to the subagent. If the directory or a specific fragment is missing, the orchestrator passes a degradation sentinel so the subagent falls back to Step 1 analysis only. This is **open by default** — adding a language is purely a `lang/<derived-dir>/` filesystem addition; no edit to this document or to skill code.
+The plugin ships **no** language-specific baseline content. Every language-varying value in a
+template — project-wide rules, visibility checks, naming conventions, build and filter syntax —
+is filled from what Step 1 actually observed in this repo, or not filled at all.
 
-### Directory name derivation rule
+Two reasons this is a rule rather than a gap:
 
-The orchestrator computes the fragment directory name from `{{LANGUAGE}}` by applying these substitutions, in order:
+- **A baseline is an assumption about someone else's codebase.** The baselines this plugin used to
+  ship were generalised from a handful of repos; applied to a repo whose layout differs, they
+  present a convention the code does not follow as if it were established.
+- **Subagent priming.** Any language example visible in a template becomes an in-context prior. A
+  subagent handed both an example and the real siblings drifts toward the example. Keeping templates
+  language-neutral leaves observation as the only signal.
 
-1. Lowercase the string.
-2. Replace `#` with `sharp` (so `C#` → `csharp`, `F#` → `fsharp`).
-3. Replace `++` with `pp` (so `C++` → `cpp`).
-4. Remove whitespace and hyphens.
-
-Examples: `C#` → `csharp`, `Python` → `python`, `TypeScript` → `typescript`, `Go` → `go`, `Java` → `java`, `JavaScript` → `javascript`, `Rust` → `rust`, `Kotlin` → `kotlin`.
-
-### Probe-based discovery
-
-After deriving the directory name, the orchestrator probes `<plugin-root>/resources/templates/lang/<derived-dir>/`:
-
-- **Directory exists** → resolve absolute paths to the fragment files relevant to each spawned subagent's owned templates (see § Placeholder → fragment mapping below), and pass them in the subagent prompt (`references/subagent-contract.md` item 10).
-- **Directory does not exist** → emit a Step 2.1 informational notice (`"Language <lang>: no fragments under lang/<derived-dir>/ — subagents will rely on Step 1 analysis observations only"`) and, in subagent prompts, pass the literal sentinel `"(no fragment available for <lang>; rely on Step 1 analysis only)"` in place of each fragment path. The subagent treats the sentinel as "no baseline — write the placeholder from Step 1 analysis alone".
-- **Directory exists but a specific fragment file is missing** (partial coverage) → pass the sentinel for that specific file only; other fragments in the same directory still flow normally.
-
-### Placeholder → fragment mapping
-
-Each fragment file provides the language-specific baseline for one or more placeholders. Fragment **file names** are fixed across languages (so the probe is uniform); the **directory** carries the per-language content. The owning subagent reads only the fragments relevant to the templates it owns (see `references/subagent-contract.md` § Subagent kinds for ownership).
-
-| Placeholder(s) | Fragment file name | Owning subagent | Template |
-|---|---|---|---|
-| `{{PROJECT_WIDE_RULES}}` | `project-wide-rules.md` | shared-tier2 | `rules/test-rules.md` |
-| `{{VISIBILITY_NOTE}}` | `visibility-note.md` | shared-tier2 | `rules/sut-analysis.md` |
-| `{{KNOWN_PACKAGES_TABLE}}` (and naming-convention prose preceding it) | `known-packages-naming.md` | shared-tier2 | `rules/sut-analysis.md` |
-
-### Adding a language
-
-1. Derive the directory name per the rule above (e.g., `Python` → `python`).
-2. Create `resources/templates/lang/<derived-dir>/` with the fragment files that apply to your case. The `lang/csharp/` directory is the canonical reference for fragment shape and frontmatter.
-3. Partial coverage is fine — ship only the fragments where the language baseline differs meaningfully from "let the writer infer from siblings". Missing fragments degrade per the sentinel rule above.
-
-**Size guideline**: keep each fragment terse — ideally under 50 lines. Fragments are language-specific *baselines*, not exhaustive style guides. If content is growing past that, ask whether it belongs in:
-
-- the Tier 3 sampler logic (`references/tier3-schemas.md`), which generates per-repo conventions from sibling code, or
-- the per-repo conventions file itself (regenerated from observation at each setup-test-context run).
-
-The baseline answers "what does the language bring to the table by default"; sibling observation overrides it.
-
-No template changes required, no edit to this document required — the HTML-comment guidance in `rules/*.md` already routes through the language fragment via the derivation-and-probe mechanism, and the orchestrator picks up the new directory on next setup-test-context run.
-
-### Why language-specific examples must not be inlined in templates
-
-Templates carry no language-specific examples in HTML comments — fragments under `lang/<derived-dir>/` are the single dispatch point. Two reasons:
-
-- **N-place update risk**: adding a new language would require remembering to update every template that has an inline example. Miss one and the subagent receives an inconsistent baseline (fragment says one thing, template comment says another).
-- **Subagent priming**: when the subagent reads the template, any inline language example becomes an in-context prior. Even with the fragment supplied, the subagent biases toward whatever language is most visible in the template prose. Keeping templates language-neutral keeps the fragment as the sole source of language signal.
-
-When a new language-varying placeholder appears, add its fragment file name to § Placeholder → fragment mapping above, extract the example to `lang/<derived-dir>/<concern>.md`, and update the template's HTML comment to point at it (no inline example).
+When observation yields nothing, the correct output is a **report**, not an inferred default — see
+`rules/test-writer-rules.md` → Fallback Chain.
 
 ## File-specific placeholders
 
@@ -86,10 +47,10 @@ Templates are **per-type** (not `{{TEST_TYPE}}`-parameterised). Bootstrap copies
 | Template | Destination | Special placeholders |
 |---|---|---|
 | `templates/shared/scope-resolution.md` | `.claude/shared/tests/scope-resolution.md` | (standard only) |
-| `templates/rules/test-rules.md` | `.claude/rules/tests/test-rules.md` | `{{PROJECT_WIDE_RULES}}` — bullet list from Step 1.4; `{{BUILD_AND_TEST_COMMANDS}}` — one section per test project from Step 1.5 |
+| `templates/rules/test-rules.md` | `.claude/rules/tests/test-rules.md` | `{{PROJECT_WIDE_RULES}}` — bullet list of conventions observed in Step 1.4 (empty if none were observed); `{{BUILD_AND_TEST_COMMANDS}}` — one section per test project from Step 1.5 |
 | `templates/rules/test-writer-rules.md` | `.claude/rules/tests/test-writer-rules.md` | (standard only) |
 | `templates/rules/fix-protocol.md` | `.claude/rules/tests/fix-protocol.md` | (standard only) |
-| `templates/rules/sut-analysis.md` | `.claude/rules/tests/sut-analysis.md` | `{{VISIBILITY_NOTE}}` — language-appropriate visibility check; `{{KNOWN_PACKAGES_TABLE}}` — table from Step 1.2.1 |
+| `templates/rules/sut-analysis.md` | `.claude/rules/tests/sut-analysis.md` | (standard only) |
 | `templates/rules/common-orchestrator-flow.md` | `.claude/rules/tests/common-orchestrator-flow.md` | (standard only) |
 | `templates/rules/common-writer-instructions.md` | `.claude/rules/tests/common-writer-instructions.md` | (standard only) |
 | `templates/rules/common-update-instructions.md` | `.claude/rules/tests/common-update-instructions.md` | (standard only) |

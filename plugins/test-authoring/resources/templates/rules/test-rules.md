@@ -11,9 +11,8 @@ These rules apply to ALL test agents (writers, updaters, verifiers) when working
 ## Mandatory Project-wide Rules
 
 {{PROJECT_WIDE_RULES}}
-<!-- Bootstrap (shared-tier2 subagent) fills this with a bullet list extracted from Step 1.4 analysis.
-Use `<plugin-root>/resources/templates/lang/<derived>/project-wide-rules.md` as the language-specific baseline, then refine with codebase-specific bullets observed in Step 1.4.
-The orchestrator pre-resolves the fragment path and passes it in the subagent prompt (see references/placeholders.md § Language fragments). -->
+<!-- Bootstrap (shared-tier2 subagent) fills this with a bullet list extracted from Step 1.4 analysis — conventions actually observed in this codebase's sibling tests, nothing else.
+There is no language baseline to start from: a rule the codebase does not exhibit does not belong here. If Step 1.4 observed nothing, leave the list empty rather than filling it from what the language usually does. -->
 
 ## Fix Rules (CRITICAL)
 

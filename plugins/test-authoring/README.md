@@ -132,7 +132,7 @@ and the constraint in the matching rule book — never both
 | `test-rules.md` | [resources/templates/rules/test-rules.md](resources/templates/rules/test-rules.md) | Mandatory project-wide rules: fix rules (never weaken/skip/delete-failing), build/test verification |
 | `test-writer-rules.md` | [resources/templates/rules/test-writer-rules.md](resources/templates/rules/test-writer-rules.md) | What to test (happy path, validation, exceptions, edges) and what not to do |
 | `fix-protocol.md` | [resources/templates/rules/fix-protocol.md](resources/templates/rules/fix-protocol.md) | Verifier fix protocol; circuit breaker (3 global / 2 per-issue) |
-| `sut-analysis.md` | [resources/templates/rules/sut-analysis.md](resources/templates/rules/sut-analysis.md) | SUT analysis procedure; known internal package → local source path mappings |
+| `sut-analysis.md` | [resources/templates/rules/sut-analysis.md](resources/templates/rules/sut-analysis.md) | SUT analysis procedure; runtime resolution flow for external / internal package source |
 | `common-orchestrator-flow.md` | [resources/templates/rules/common-orchestrator-flow.md](resources/templates/rules/common-orchestrator-flow.md) | Universal orchestrator flow: scope resolution, writer delegation, verifier spawn, fix-verify loop, summary |
 | `common-writer-instructions.md` | [resources/templates/rules/common-writer-instructions.md](resources/templates/rules/common-writer-instructions.md) | Universal writer procedure: role, input contract, SUT analysis, sibling learning, output schema |
 | `common-update-instructions.md` | [resources/templates/rules/common-update-instructions.md](resources/templates/rules/common-update-instructions.md) | Universal two-phase audit→execute procedure for update writers |

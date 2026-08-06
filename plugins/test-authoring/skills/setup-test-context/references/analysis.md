@@ -29,15 +29,7 @@ If CLAUDE.md claims different values, record the drift — use codebase findings
 
 When writer agents need to read framework/external dependency source code, they should read from **local source** when available. **Never decompile compiled artifacts** from the package cache.
 
-**Internal packages often have a naming convention linking package names to repo names**. Example using a placeholder org prefix:
-
-| Package name | Typical local repo folder |
-|---|---|
-| `Acme.Framework` | `acme-library-framework` |
-| `Acme.Rql` | `acme-library-rql` |
-| `Acme.<Something>` | `acme-library-<something>` (commonly) |
-
-Try to detect the convention by inspecting `CLAUDE.md` or asking the user.
+Some repos map internal package names to sibling checkout folders by a stable prefix; many do not — their internal packages come from a private feed with no local source at all. **Do not assume a convention.** Look for one the repo documents itself (`CLAUDE.md`, a workspace or solution file, an existing sibling checkout), and if none is documented, record that: the runtime resolution flow in `sut-analysis.md` already handles a missing local path by stopping and asking, which is the correct behaviour and needs no convention.
 
 **What to record for each detected internal package**:
 - Package name
@@ -50,7 +42,7 @@ Try to detect the convention by inspecting `CLAUDE.md` or asking the user.
 
 Missing paths do not affect bootstrap. When an agent later needs to read from a missing path, the runtime resolution flow in `sut-analysis.md` handles the situation (stops and asks the user).
 
-These results are documented in `sut-analysis.md` (Status column in the `{{KNOWN_PACKAGES_TABLE}}`).
+These results inform the writer's runtime resolution flow in `sut-analysis.md`; they are not written into a table there.
 
 If no internal packages detected, still generate `sut-analysis.md` with the universal "never decompile" rule.
 

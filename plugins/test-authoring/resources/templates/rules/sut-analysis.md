@@ -10,9 +10,7 @@ When reading a source file (SUT) before generating or auditing tests, perform al
 
 1. **Read the source file** — understand its public/internal methods, dependencies, return types, exception handling, and control flow.
 2. **Check framework base class** — if the SUT inherits from a framework base class, read that base class to understand the lifecycle and virtual method call order. Test the overridden methods, not the base class plumbing.
-3. **Check visibility for tests** — {{VISIBILITY_NOTE}}
-<!-- Bootstrap (shared-tier2 subagent) fills VISIBILITY_NOTE from the `visibility-note.md` fragment under the detected language's directory. See references/placeholders.md § Language fragments. -->
-<!-- Bootstrap (shared-tier2 subagent) fills VISIBILITY_NOTE from the `visibility-note.md` fragment under the detected language's directory. See references/placeholders.md § Language fragments. -->
+3. **Check visibility for tests** — confirm the SUT's visibility lets the test project reach it. Where the language has assembly-, module-, or package-level access control, verify the grant the test project needs actually exists; if it is missing, note that in the result so the caller can inform the user. Never widen the SUT's visibility to suit a test.
 4. **Note recent changes** — look for signs of recent modifications: new patterns, renamed parameters, added validation, changed business rules. This context helps identify outdated tests during audits and informs test generation.
 5. **Check for stale test dependencies** — when existing tests use auto-wiring frameworks (e.g., AutoFixture `fixture.Create<SUT>()`, auto-mocking containers), verify that explicitly registered dependencies still match the SUT's actual constructor parameters. Auto-wiring frameworks silently ignore surplus registrations, so a test may pass despite configuring dependencies the SUT no longer accepts. Explicit `Inject()`, `Register()`, or `Customize()` calls whose target type does not appear in the SUT's current constructor are a stale-dependency signal — flag them during audits. Note: a `Freeze<T>()` is not necessarily stale even if the SUT constructor does not directly accept `T` — auto-wiring containers may inject it into a nested dependency, or the test may `Freeze` it to verify mock interactions.
 
@@ -22,18 +20,11 @@ When reading a source file (SUT) before generating or auditing tests, perform al
 
 **NEVER decompile compiled artifacts from the package cache** (e.g., DLLs, JARs, `.whl` binaries). Decompilation output is unreliable and can lead to incorrect tests.
 
-### Known internal packages
-
-{{KNOWN_PACKAGES_TABLE}}
-<!-- Bootstrap (shared-tier2 subagent) fills this with a table of detected internal packages, their expected local paths, and verification status (from Step 1.2.1).
-Use `<plugin-root>/resources/templates/lang/<derived>/known-packages-naming.md` for the language-specific naming convention, table format (filled / empty), and status legend.
-See references/placeholders.md § Language fragments. -->
-
 ### Runtime resolution flow
 
 When you need to read a framework/external type:
 
-1. **Check the expected local path exists** (from the table above, or derived from any documented naming convention).
+1. **Check whether a local checkout exists** at the path this repo's own documented convention implies. Do not assume one: many internal packages are consumed from a private feed with no local source at all, so treat "no convention documented" as the normal case and go straight to step 3.
 2. **If the path exists** → read the source directly from there.
 3. **If the path does not exist** (not cloned, moved, different machine, etc.):
    - **DO NOT decompile artifacts** from the package cache.
