@@ -18,7 +18,6 @@ Read this file during Step 3.2 (subagent dispatch) and Step 3.3 (subagent prompt
 | `{{TEST_GLOB}}` | `tests/**/*.cs`, `__tests__/**/*.ts` | Step 1.3 + Step 1.2 |
 | `{{TEST_TYPE}}` | `unit`, `integration` | per-type, Step 1.7 |
 | `{{TEST_TYPE_TITLE}}` | `Unit`, `Integration` | Title-case of `{{TEST_TYPE}}` |
-| `{{CONVENTIONS_SCHEMA_VERSION}}` | `1.0` | `<plugin-root>/resources/templates/template-schema-versions.json` field `conventions`. Used only in `tier3-schemas.md` dynamic conventions recipes; the same value is also written to manifest `files[].schema_version` for matching files (single source of truth). |
 
 ## No language baselines
 

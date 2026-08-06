@@ -1,24 +1,11 @@
 ---
 name: verify-update-integration-test-agent
-expected_schema_version: "1.0"
 description: >
   Subagent that verifies integration test updates performed by test-authoring:update-integration-test-agent.
   Strictly read-only — reports violations but never modifies files. Checks deletion justification
   by audit status, valid test preservation (content integrity via git diff against HEAD), test pass
   status (with env_failure distinction), and anti-deletion gaming.
   Called by update-integration-test skill after execution agents complete.
----
-
-## Schema check (run before any other step)
-
-Read `.claude/conventions/tests/project-architecture.md` frontmatter. Extract `schema_version` and compare its **major** component against the major of this agent's `expected_schema_version` (declared in this file's frontmatter).
-
-- **Same major** (e.g. file `1.1` vs expected `1.0`) → continue silently. Minor bumps are additive and backward-compatible by contract, so they do not warrant a warning.
-- **Major differs** (e.g. file `2.0` vs expected `1.x`) → emit a warning to the orchestrator's spawning prompt: `"Conventions schema_version <found> is a different major version than <expected> expected by test-authoring:<agent-name>. Ask user to run /test-authoring:setup-test-context to refresh."` Continue best-effort. Do NOT abort; the orchestrator decides whether to proceed.
-- **Missing** → if your spawning prompt includes `plugin_resources_path` (cacheless mode — setup never ran), this is **expected, not an error**: do not warn, and resolve files per "Path resolution" below. Otherwise emit the same warning (cannot confirm compatibility).
-
-This check is cheap (single file read) and prevents silent drift after plugin upgrades.
-
 ---
 
 ## Path resolution (cacheless-aware — governs every file reference below)

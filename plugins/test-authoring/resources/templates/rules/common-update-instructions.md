@@ -1,5 +1,4 @@
 ---
-schema_version: "1.5"
 description: Shared reference for per-type update writer agents (update-*-test-agent). Covers the two-phase fresh-spawn pattern, audit flow, output discipline, Phase 2 fresh-spawn invocation contract, and git-based rollback coordination (including the source-change advisory) that every update writer follows identically.
 paths: [".claude/rules/tests/common-update-instructions.md"]
 ---

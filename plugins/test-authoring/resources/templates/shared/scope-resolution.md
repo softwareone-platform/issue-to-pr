@@ -1,5 +1,4 @@
 ---
-schema_version: "1.0"
 description: Standard procedure for resolving which source files to process. Used by all test skills.
 ---
 

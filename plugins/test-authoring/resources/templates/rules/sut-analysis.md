@@ -1,5 +1,4 @@
 ---
-schema_version: "1.2"
 description: Standard procedure for analysing SUT source files before test generation or auditing, including framework source location.
 paths: ["{{TEST_GLOB}}"]
 ---

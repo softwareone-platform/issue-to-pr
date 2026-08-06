@@ -1,5 +1,4 @@
 ---
-schema_version: "1.2"
 description: Protocol for handling verifier findings — routing deterministic issues to writer agents via fresh-spawn fix_invocation with circuit breaker, presenting non-deterministic issues to user.
 paths: [".claude/rules/tests/fix-protocol.md"]
 ---

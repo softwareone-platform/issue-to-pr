@@ -1,5 +1,4 @@
 ---
-schema_version: "1.3"
 description: Guidelines for test generation — what to test, what not to do, and how to report spec-vs-implementation divergence. Applies to writer agents only, not verifiers.
 paths: [".claude/rules/tests/test-writer-rules.md"]
 ---

@@ -64,7 +64,7 @@ The orchestrator passes everything inline as structured text in the prompt.
 6. **Analysis slice** — only the parts of Step 1 output relevant to this subagent. Examples by kind:
    - shared-tier2: language, universal rule set inputs (verifier expectations, fix protocol settings), full build/test commands across all test projects (for `test-rules.md`), and the internal packages detected in §1.2.1 with their install models and verified paths (for `sut-analysis.md`'s `{{KNOWN_PACKAGES_TABLE}}`).
    - shared-tier3: project structure (§1.3), shared test project info if any, cross-layer verification patterns (§1.4 global), architectural patterns (§1.6).
-7. **Pre-resolved standard placeholders** — `{{LANGUAGE}}`, `{{PROJECT_DESCRIPTION}}`, `{{SRC_DIR}}`, `{{TEST_DIR}}`, `{{SRC_GLOB}}`, `{{TEST_GLOB}}`, `{{TEST_TYPE}}`, `{{TEST_TYPE_TITLE}}`, and `{{CONVENTIONS_SCHEMA_VERSION}}` (from `template-schema-versions.json` field `conventions`). The orchestrator has already computed these.
+7. **Pre-resolved standard placeholders** — `{{LANGUAGE}}`, `{{PROJECT_DESCRIPTION}}`, `{{SRC_DIR}}`, `{{TEST_DIR}}`, `{{SRC_GLOB}}`, `{{TEST_GLOB}}`, and `{{TEST_TYPE}}` / `{{TEST_TYPE_TITLE}}` (legacy per-type placeholders with no surviving consumer). The orchestrator has already computed these.
 8. **Files to write** — explicit list of absolute target paths under `.claude/{conventions,rules,shared}/tests/`.
 9. **Files NOT to touch** — explicit list of paths owned by other subagents (defensive boundary).
 10. **References to consult** — paths to:
@@ -81,13 +81,12 @@ Inline handoff scales fine for typical repos — per-type analysis slice is a fe
 
 The subagent returns a structured response.
 Format MUST be parseable by the orchestrator without re-reading file content —
-in particular, the manifest (SKILL.md §3.5) is built directly from these payloads,
+in particular, the orchestrator's §3.4 report and the Step 4 write log come directly from these payloads,
 so every `written` entry carries the hash and category inline.
 
 ```
 written:
   - path: <absolute file path>
-    sha256: <lowercase hex digest of the written content, line endings normalised CRLF→LF before hashing — see manifest.md § SHA-256 calculation>
     category: <conventions | rules | shared>
 skipped:
   - <absolute file path> — <reason, e.g. "no shared test project detected", "legacy keep, per Step 2 decision">
@@ -105,7 +104,7 @@ Rules:
 
 - **Subagent does not delete files on its own failure.** It writes what it can, populates `errors`, and stops.
 - **Orchestrator waits for ALL spawned subagents to return** before deciding success/failure. There is no mid-flight cancellation — subagents already in flight run to completion.
-- If any subagent returns a non-empty `errors` list, the orchestrator skips §3.4 (README) and §3.5 (manifest) and goes straight to rollback.
+- If any subagent returns a non-empty `errors` list, the orchestrator skips §3.4 (README) and goes straight to rollback.
 - Rollback at the orchestrator: take the union of every subagent's `written:` list, restore overwritten files from the §3.1 backup folder, and delete files that were fresh writes (per the §3.1 in-memory new-files list).
 - Backup folder is preserved for inspection.
 
@@ -125,7 +124,6 @@ Orchestrator-only responsibilities (subagents do not participate):
 - Step 2 user confirmation
 - §3.1 backup folder creation
 - §3.4 aggregation table + `.claude/shared/tests/README.md` (must enumerate every written file, runs after all subagents return)
-- §3.5 `.claude/shared/tests/.setup-manifest.json` (built from aggregated subagent payloads)
 - Step 4 verification (mechanical greps, path existence, cross-reference checks)
 - Step 4 rollback decision and execution
 - Step 5 final report

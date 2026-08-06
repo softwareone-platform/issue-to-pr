@@ -1,6 +1,0 @@
-{
-  "$comment": "Per-category template content schema versions for test-authoring. Bumped when a category's markdown templates change in a way that requires consumer-side regeneration of per-repo files (e.g. structural format change, new required section, breaking placeholder rename). Read by /test-authoring:setup-test-context Step 0 to detect drift against the consumer's .setup-manifest.json schema_versions.{category} field.",
-  "conventions": "1.3",
-  "rules": "2.5",
-  "shared": "1.0"
-}

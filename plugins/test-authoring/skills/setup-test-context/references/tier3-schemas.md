@@ -2,7 +2,7 @@
 
 Read this file during Step 3.5. It contains the generation recipes for all analysis-derived files. These files are too repo-specific for templates — generate them directly using the analysis from Step 1. All Tier 3 files live under `.claude/conventions/tests/`.
 
-Each frontmatter `schema_version` field below uses the placeholder `{{CONVENTIONS_SCHEMA_VERSION}}`, resolved by the orchestrator (Step 3.3) to `template-schema-versions.json` field `conventions` (see `placeholders.md`). All four dynamic files belong to the `conventions` category, so the same placeholder applies everywhere; the orchestrator must substitute it before write, and the same value is recorded in the manifest `files[].schema_version` for each (single source of truth).
+The frontmatter shown below is what each generated file must carry — a `description` and, where the file is scoped to particular paths, a `paths` list. Generated conventions carry no version field: the plugin keeps no per-run state, so there is nothing to compare a version against.
 
 Keep every generated frontmatter block closing within the first 20 lines — Step 4's verification reads only that bounded window,
 and a later closing `---` would be mis-read as invalid frontmatter (false rollback).
@@ -14,7 +14,6 @@ and a later closing `---` would be mis-read as invalid frontmatter (false rollba
 Frontmatter:
 ```yaml
 ---
-schema_version: "{{CONVENTIONS_SCHEMA_VERSION}}"
 description: Documents the source and test directory structure, naming conventions, and feature organisation.
 paths: ["{{SRC_GLOB}}", "{{TEST_GLOB}}"]
 ---
@@ -35,7 +34,6 @@ Content:
 Frontmatter:
 ```yaml
 ---
-schema_version: "{{CONVENTIONS_SCHEMA_VERSION}}"
 description: Derivation rules, sibling convention checklist, and type-specific patterns for {type} tests.
 paths: ["<test project path>/**/*.<ext>"]
 ---
@@ -71,7 +69,6 @@ Generate ONLY if Step 1.3 detected a shared test project (Tests.Common-style) pr
 Frontmatter:
 ```yaml
 ---
-schema_version: "{{CONVENTIONS_SCHEMA_VERSION}}"
 description: Shared test utilities available across test types (extensions, helpers, custom assertions from a shared test project).
 paths: ["<shared test project path>/**/*.<ext>"]
 ---
@@ -97,7 +94,6 @@ Generate ONLY if Step 1.4 pattern detection yielded ≥1 "layer common" or "cros
 Frontmatter:
 ```yaml
 ---
-schema_version: "{{CONVENTIONS_SCHEMA_VERSION}}"
 description: Layer-specific and cross-layer recurring verification patterns observed across test types. Writer agents consult this before finalising tests.
 paths: ["{{TEST_GLOB}}"]
 ---

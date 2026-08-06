@@ -1,5 +1,4 @@
 ---
-schema_version: "2.4"
 description: Shared reference for per-type orchestrator skills (add-*-test, update-*-test). Covers scope resolution, verifier spawn, structured-output enforcement, fix protocol, spec-vs-impl divergence routing, and summary reporting patterns that every orchestrator follows identically.
 paths: [".claude/rules/tests/common-orchestrator-flow.md"]
 ---

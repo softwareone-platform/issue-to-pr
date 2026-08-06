@@ -10,9 +10,6 @@
           "text": "skill_triggered: scan-test-gaps is selected"
         },
         {
-          "text": "schema_check_executed: schema_version compared before any writes"
-        },
-        {
           "text": "confirmation_gate_shown: user is asked to confirm scope before any Write/Edit (scan-test-gaps may use its Step 6 gate instead)"
         }
       ]
@@ -24,9 +21,6 @@
       "assertions": [
         {
           "text": "skill_triggered: scan-test-gaps is selected"
-        },
-        {
-          "text": "schema_check_executed: schema_version compared before any writes"
         },
         {
           "text": "confirmation_gate_shown: user is asked to confirm scope before any Write/Edit (scan-test-gaps may use its Step 6 gate instead)"
@@ -42,9 +36,6 @@
           "text": "skill_triggered: scan-test-gaps is selected"
         },
         {
-          "text": "schema_check_executed: schema_version compared before any writes"
-        },
-        {
           "text": "confirmation_gate_shown: user is asked to confirm scope before any Write/Edit (scan-test-gaps may use its Step 6 gate instead)"
         }
       ]
@@ -56,9 +47,6 @@
       "assertions": [
         {
           "text": "skill_triggered: scan-test-gaps is selected"
-        },
-        {
-          "text": "schema_check_executed: schema_version compared before any writes"
         },
         {
           "text": "confirmation_gate_shown: user is asked to confirm scope before any Write/Edit (scan-test-gaps may use its Step 6 gate instead)"

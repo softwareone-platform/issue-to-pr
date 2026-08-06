@@ -10,9 +10,6 @@
           "text": "skill_triggered: update-unit-test is selected"
         },
         {
-          "text": "schema_check_executed: schema_version compared before any writes"
-        },
-        {
           "text": "audit_presented: audit summary and proposed-actions tables are shown; actions derive from audit status without a confirmation gate"
         }
       ]
@@ -24,9 +21,6 @@
       "assertions": [
         {
           "text": "skill_triggered: update-unit-test is selected"
-        },
-        {
-          "text": "schema_check_executed: schema_version compared before any writes"
         },
         {
           "text": "audit_presented: audit summary and proposed-actions tables are shown; actions derive from audit status without a confirmation gate"

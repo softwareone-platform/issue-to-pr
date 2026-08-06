@@ -1,5 +1,4 @@
 ---
-schema_version: "1.8"
 description: Shared reference for per-type test verifier agents. Covers the universal review methodology, anti-gaming checks, spec-vs-impl divergence cross-check, build/test execution, output discipline, output schema, and orchestrator routing. Each verify-add-{type}-test-agent (and verify-update-{type}-test-agent) references this file and adds its own type-specific checks on top.
 paths: [".claude/rules/tests/common-verifier-checks.md"]
 ---

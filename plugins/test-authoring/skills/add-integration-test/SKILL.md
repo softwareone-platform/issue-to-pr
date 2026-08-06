@@ -1,7 +1,5 @@
 ---
 name: add-integration-test
-expected_schema_version: "1.0"
-expected_rules_schema_version: "2.1"
 description: >
   Generate integration tests for changed source files or a user-specified target (endpoint, handler, command, service). Trigger phrases: "add integration tests for X", "create endpoint test for /foo", "write integration test for HandlerY". Do NOT trigger for: discussions about test infrastructure, container setup questions, or end-to-end test strategy.
 ---
@@ -19,13 +17,13 @@ Call the result `PLUGIN_TEMPLATES`. If that line did not expand to a real absolu
 
 Then check `.claude/conventions/tests/project-architecture.md`:
 
-- **Exists → fast path.** A prior setup cached per-repo files. Compare its `schema_version` **major** against this skill's `expected_schema_version`: same major → continue silently; major differs or key missing → warn `"Conventions schema major <found> differs from <expected>. Run /test-authoring:setup-test-context to refresh."` and continue best-effort (may-be-stale). **Resolve, do not bulk-read**: every `.claude/{conventions,rules,shared}/tests/<f>` reference below resolves to the repo file — read each file lazily, at the first step that uses it (see "Orchestrator reading list" below). **Per-file fallback still applies at read time**: any individual file that is absent falls through to the cacheless source below — a missing file is never fatal.
+- **Exists → fast path.** A prior setup cached per-repo files. **Resolve, do not bulk-read**: every `.claude/{conventions,rules,shared}/tests/<f>` reference below resolves to the repo file — read each file lazily, at the first step that uses it (see "Orchestrator reading list" below). **Per-file fallback still applies at read time**: any individual file that is absent falls through to the cacheless source below — a missing file is never fatal.
 - **Absent → cacheless.** setup has never run. **Do NOT stop.** Announce once: `"No precomputed test conventions found — running cacheless (sibling-driven). Run /test-authoring:setup-test-context once to cache the repo cross-layer test map."` Then for the rest of the flow:
   - Resolve every `.claude/rules/tests/<f>` and `.claude/shared/tests/<f>` reference to `<PLUGIN_TEMPLATES>/{rules,shared}/<f>` instead — same lazy rule: read at the step that uses it, never as an upfront batch. Cosmetic frontmatter/example tokens (`{{TEST_GLOB}}`, `{{SRC_DIR}}`) are inert when read explicitly — substitute the detected value.
   - Treat `.claude/conventions/tests/<f>` as **optional**: prefer the nearest sibling test for the scope (the writer's top-priority source anyway); when no sibling exists either, the writer reports the gap rather than inventing conventions — there is no language baseline to fall back to.
   - **Detect once, reuse this session**: the language, and the *executable* build/test invocation **form** (test-project path + filter syntax, e.g. `dotnet test <proj> --filter "FullyQualifiedName~<Class>"`) from the project manifest. In cacheless mode the template `test-rules.md` carries an unfilled `{{BUILD_AND_TEST_COMMANDS}}` token whose filled form lists **one command per test project** — the detected form replaces it everywhere (writer build, verifier U4 build, this orchestrator's final build). Integration may span several test projects (Step 1.5): **instantiate the form per target test project** and pass each writer the command for ITS project as `build_test_command` (do not reuse one project's path for another).
 
-Resolve `common-orchestrator-flow.md` the same way: fast path reads `.claude/rules/tests/common-orchestrator-flow.md` (same schema-major check against `expected_rules_schema_version`); cacheless reads `<PLUGIN_TEMPLATES>/rules/common-orchestrator-flow.md`.
+Resolve `common-orchestrator-flow.md` the same way: fast path reads `.claude/rules/tests/common-orchestrator-flow.md`; cacheless reads `<PLUGIN_TEMPLATES>/rules/common-orchestrator-flow.md`.
 
 **Orchestrator reading list (context discipline).** Load into the main context only what this orchestrator itself needs, when it needs it:
 

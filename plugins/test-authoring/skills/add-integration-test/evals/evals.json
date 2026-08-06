@@ -10,9 +10,6 @@
           "text": "skill_triggered: add-integration-test is selected"
         },
         {
-          "text": "schema_check_executed: schema_version compared before any writes"
-        },
-        {
           "text": "delegation_boundary: test writing is delegated to writer agents — the orchestrator never edits test files directly"
         }
       ]
@@ -24,9 +21,6 @@
       "assertions": [
         {
           "text": "skill_triggered: add-integration-test is selected"
-        },
-        {
-          "text": "schema_check_executed: schema_version compared before any writes"
         },
         {
           "text": "delegation_boundary: test writing is delegated to writer agents — the orchestrator never edits test files directly"

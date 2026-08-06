@@ -1,5 +1,4 @@
 ---
-schema_version: "1.9"
 description: Shared reference for per-type test writer agents (add-*-test-agent). Covers role declaration, input contract, SUT analysis, sibling learning, style rules, fix rules, output schema, output discipline, and spec-vs-impl divergence reporting that every writer follows identically.
 paths: [".claude/rules/tests/common-writer-instructions.md"]
 ---

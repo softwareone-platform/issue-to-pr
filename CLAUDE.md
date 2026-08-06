@@ -47,7 +47,7 @@ The `description` field is **load-bearing**: it is how Claude decides when to au
 
 ## Subagents (test-authoring)
 
-Only `test-authoring` ships subagents, in a flat `agents/` dir with bare-name files (e.g. `add-unit-test-agent.md`). Frontmatter carries `name` (bare), `description`, `model`, and `expected_schema_version`. At runtime Claude Code applies the plugin namespace, so they are spawned as `Agent(subagent_type="test-authoring:<agent-name>")`.
+Only `test-authoring` ships subagents, in a flat `agents/` dir with bare-name files (e.g. `add-unit-test-agent.md`). Frontmatter carries `name` (bare), `description`, and `model`. At runtime Claude Code applies the plugin namespace, so they are spawned as `Agent(subagent_type="test-authoring:<agent-name>")`.
 
 The architecture is **orchestrator → writer → verifier**:
 - A skill body is the *orchestrator* (top-level caller). It resolves scope, delegates to writer agents, spawns read-only verifier agents, and runs the fix→verify loop.
@@ -64,7 +64,7 @@ Distinction that matters when editing content: **rules are non-negotiable**; **c
 
 `common-*` files are role-lifecycle documents (one per actor: orchestrator/writer/update-writer/verifier); the other rule files are rule books. Put an actor's procedure in its `common-*` file and a constraint in the matching rule book — never both, or the rule drifts into two sources of truth.
 
-Schema versioning: `resources/templates/template-schema-versions.json` holds per-category versions (`conventions`, `rules`, `shared`); each generated file carries its own `schema_version` in frontmatter. Bump the category version when a required header, a `{{PLACEHOLDER}}`, or the semantic contract changes — consumers get a guided refresh prompt on their next `setup-test-context`.
+**No versioning of the generated files, and no state between runs.** There is no manifest, no recorded hashes, and no per-file `schema_version`: `setup-test-context` knows only the fixed set of paths the current version writes. Existing files at those paths are backed up and rewritten; anything else under `.claude/{conventions,rules,shared}/tests/` is reported and left alone. Re-running is the refresh, so a template change reaches a repo when someone re-runs setup — nothing detects staleness for them.
 
 ## Making changes
 
@@ -73,7 +73,7 @@ Schema versioning: `resources/templates/template-schema-versions.json` holds per
 - **Adding a skill**: create `plugins/<plugin>/skills/<skill>/SKILL.md` with `name` + `description` frontmatter; add `evals/evals.json` if it warrants evals.
 - **Adding a plugin hook**: no plugin ships one today. If you add one it belongs at `plugins/<plugin>/hooks/hooks.json` — a **plugin-root** directory, not inside `.claude-plugin/` and not under `resources/` — and `/reload-plugins` picks it up. Getting the location wrong fails silently: the hook simply never loads.
 - **Changing the step registry**: `plugins/issue-to-pr-pipeline/resources/resolve-issue-steps.json` is canonical, but `parse_session.py`'s `_DEFAULT_STEPS` is an embedded fallback copy that **must stay in the same order** — the dashboard does index arithmetic over it. Removing a step id also needs a redirect in `resolve-issue/SKILL.md`'s State reconcile, so a run whose `state.md` still names it resumes cleanly.
-- **Validating**: there is no linter. At minimum verify JSON parses (`marketplace.json`, `plugin.json`, `evals.json`, manifests) and that frontmatter is well-formed before committing.
+- **Validating**: there is no linter. At minimum verify JSON parses (`marketplace.json`, `plugin.json`, `evals.json`) and that frontmatter is well-formed before committing.
 
 ## Running skill evals
 

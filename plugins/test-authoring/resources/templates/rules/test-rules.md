@@ -1,5 +1,4 @@
 ---
-schema_version: "1.1"
 description: Mandatory rules for all test writing and editing — fix rules and build verification. Conventions come from the nearest sibling, not from here.
 paths: ["{{TEST_GLOB}}"]
 ---

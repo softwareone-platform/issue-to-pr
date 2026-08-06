@@ -1,7 +1,5 @@
 ---
 name: update-integration-test
-expected_schema_version: "1.0"
-expected_rules_schema_version: "2.1"
 description: >
   Audit and update integration tests for changed handlers/endpoints. Two-phase: audit first, then execute automatically (no confirmation gate — actions derive from audit status; git is the rollback). Trigger phrases: "update integration tests for X", "refresh endpoint test for /foo". Do NOT trigger for: integration test infrastructure questions, container/fixture refactoring, or test strategy discussions.
 ---
@@ -19,13 +17,13 @@ Call the result `PLUGIN_TEMPLATES`. If that line did not expand to a real absolu
 
 Then check `.claude/conventions/tests/project-architecture.md`:
 
-- **Exists → fast path.** A prior setup cached per-repo files. Compare its `schema_version` **major** against this skill's `expected_schema_version`: same major → continue silently; major differs or key missing → warn `"Conventions schema major <found> differs from <expected>. Run /test-authoring:setup-test-context to refresh."` and continue best-effort (may-be-stale). **Resolve, do not bulk-read**: every `.claude/{conventions,rules,shared}/tests/<f>` reference below resolves to the repo file — read each file lazily, at the first step that uses it (see "Orchestrator reading list" below). **Per-file fallback still applies at read time**: any individual file that is absent falls through to the cacheless source below — a missing file is never fatal.
+- **Exists → fast path.** A prior setup cached per-repo files. **Resolve, do not bulk-read**: every `.claude/{conventions,rules,shared}/tests/<f>` reference below resolves to the repo file — read each file lazily, at the first step that uses it (see "Orchestrator reading list" below). **Per-file fallback still applies at read time**: any individual file that is absent falls through to the cacheless source below — a missing file is never fatal.
 - **Absent → cacheless.** setup has never run. **Do NOT stop.** Announce once: `"No precomputed test conventions found — running cacheless (sibling-driven). Run /test-authoring:setup-test-context once to cache the repo cross-layer test map."` Then for the rest of the flow:
   - Resolve every `.claude/rules/tests/<f>` and `.claude/shared/tests/<f>` reference to `<PLUGIN_TEMPLATES>/{rules,shared}/<f>` instead (includes `common-update-instructions.md`) — same lazy rule: read at the step that uses it, never as an upfront batch. Cosmetic frontmatter/example tokens are inert when read explicitly.
   - Treat `.claude/conventions/tests/<f>` as **optional**: prefer the nearest sibling test for the scope (the audit's top-priority source anyway); when no sibling exists either, the writer reports the gap rather than inventing conventions — there is no language baseline to fall back to. Infer the target test project from siblings per Step 1.5.
   - **Detect once, reuse this session**: the language, and the *executable* build/test invocation **form** (test-project path + filter syntax) from the project manifest. In cacheless mode the template `test-rules.md` carries an unfilled `{{BUILD_AND_TEST_COMMANDS}}` token whose filled form lists **one command per test project** — the detected form replaces it everywhere (audit test-run, execute build, both verifiers' build, the final multi-agent build). Integration may span several test projects (Step 1.5): **instantiate the form per target test project** and pass each spawn the command for ITS project as `build_test_command`; subagents adjust its `--filter` to the actual test class.
 
-Resolve `common-orchestrator-flow.md` the same way: fast path reads `.claude/rules/tests/common-orchestrator-flow.md` (same schema-major check against `expected_rules_schema_version`); cacheless reads `<PLUGIN_TEMPLATES>/rules/common-orchestrator-flow.md`.
+Resolve `common-orchestrator-flow.md` the same way: fast path reads `.claude/rules/tests/common-orchestrator-flow.md`; cacheless reads `<PLUGIN_TEMPLATES>/rules/common-orchestrator-flow.md`.
 
 **Orchestrator reading list (context discipline).** Load into the main context only what this orchestrator itself needs, when it needs it:
 
