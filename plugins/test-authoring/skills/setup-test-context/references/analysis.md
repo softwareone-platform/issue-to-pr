@@ -1,6 +1,6 @@
 # Step 1 Analysis — Detection Recipes
 
-Read this file at the start of Step 1. It carries the detection recipe for each numbered sub-step Step 1 works through. The numbering is stable so other documents can cite it, which is why it has gaps.
+Read this file at the start of Step 1. **Sections are ordered by identifier, not by execution order** — SKILL.md Step 1 gives the order to run them in (§1.7 before §1.6 before §1.4, because each consumes the previous). It carries the detection recipe for each numbered sub-step Step 1 works through. The numbering is stable so other documents can cite it, which is why it has gaps.
 Return to SKILL.md for Step 2 once analysis is complete.
 
 ---
@@ -9,7 +9,7 @@ Return to SKILL.md for Step 2 once analysis is complete.
 
 Read `CLAUDE.md` (if it exists) to gather **hints** about build/test commands, project structure, coding conventions, and test-related instructions.
 
-Do NOT treat CLAUDE.md as authoritative. Record what it claims so drift can be compared against codebase findings in Step 2.1.
+Do NOT treat CLAUDE.md as authoritative. Record what it claims, and where the codebase contradicts it, carry that contradiction into §2.1's findings table as a **CLAUDE.md drift** row (what CLAUDE.md says / what the codebase shows). If you record drift and never surface it there, Step 5's follow-up about updating CLAUDE.md can never fire.
 
 If no `CLAUDE.md` exists, inform the user and recommend running `/init` separately (not as part of this setup run), but continue with codebase-based analysis.
 
@@ -30,7 +30,7 @@ If CLAUDE.md claims different values, record the drift — use codebase findings
 Determine:
 - **Source directories** (e.g., `src/`, `lib/`, `app/`)
 - **Test directories** (e.g., `tests/`, `__tests__/`, `*_test.go`)
-- **Source ↔ test mirroring pattern** — read 3–5 existing test files to understand directory mirroring and file naming
+- **Source ↔ test mirroring pattern** — read 3–5 existing test files to understand directory mirroring and file naming. If the repo has **no test files at all**, record that and stop the analysis here: §2.1's zero-supported exit is the outcome, and every later sub-step assumes tests exist.
 - **File organization pattern** — flat files (`FooTests.cs`) or subfolder-per-SUT (`FooTests/BarTest.cs`). Different areas may use different patterns — generated agents must detect and match sibling pattern, not assume a global default.
 - **Test project separation** — list ALL test projects found. Do not assume a fixed number or naming convention.
 - **Shared test utilities** — detect shared test projects (Tests.Common-style) that provide extensions, helpers, base classes, or custom assertions used across multiple test projects. Record its path and which test projects reference it — that pair is all `project-architecture.md` carries. Do **not** inventory the utilities themselves: a writer needs to know the project exists, then reads the one helper it needs from the sibling that already calls it. Repo-specific: may or may not exist.
@@ -43,7 +43,7 @@ Render the source layout as an **ASCII tree** with `├──`, `│`, `└─�
 
 Render `File organisation` (test placement pattern + exceptions) as a flat bullet list following the tree — it is not hierarchical data.
 
-The exact format and placeholder shape is specified in `SKILL.md` §2.1 under "Project structure". Do not bake any specific repo's project names into the format spec — placeholders are filled at presentation time from the analysis above.
+This tree is **not** rendered at the §2.1 confirmation gate — that gate shows the findings table and the write list. The tree's destination is `project-architecture.md` itself, per `generated-conventions.md` → Source structure / Test structure. Do not bake any specific repo's project names into the format spec.
 
 ## 1.4 Learn test conventions
 
@@ -51,7 +51,7 @@ The exact format and placeholder shape is specified in `SKILL.md` §2.1 under "P
 
 This sampling feeds **one** consumer: the verification-pattern detection below, which writes `common-verification-patterns.md`. Per-file style dimensions (mocking approach, naming, AAA usage, assertion style) are deliberately **not** recorded — nothing generates a per-type conventions file to hold them, and the writer reads them off the nearest sibling at the moment it writes, which is always more current than a cache.
 
-Use the architectural patterns detected in Step 1.6 to map each test file to a **layer** (Handler, Controller, Service, Repository, Consumer, Worker, etc. — use the repo's actual naming).
+Use the architectural patterns detected in §1.6 — already run by this point, per SKILL.md Step 1's order — to map each test file to a **layer** (Handler, Controller, Service, Repository, Consumer, Worker, etc. — use the repo's actual naming).
 
 Sample tests in a **layered** fashion:
 - Sample 2–3 files per `(layer, test type)` combination.

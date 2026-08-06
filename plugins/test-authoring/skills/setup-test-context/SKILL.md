@@ -61,7 +61,7 @@ Located relative to this skill's base directory:
 
 One or two files, in one directory, and the set does not vary by test type:
 - `.claude/conventions/tests/project-architecture.md` — always
-- `.claude/conventions/tests/common-verification-patterns.md` — only when Step 1.4 found a qualifying cross-layer pattern
+- `.claude/conventions/tests/common-verification-patterns.md` — only when §1.4 found at least one **qualifying** pattern (layer-common **or** cross-layer-common; `generated-conventions.md` is the single definition)
 
 Per-type `{type}-test-conventions.md` are **not** written: writers derive those from the nearest sibling at runtime.
 
@@ -77,14 +77,19 @@ setup-test-context does NOT write any of: rule books, agents, commands, skills, 
 
 ## Step 1 — Analyse the Repository
 
-Read `references/analysis.md` before starting this step. Work through §1.1–1.7 in order:
+Read `references/analysis.md` before starting this step. **Work through them in the order below, which
+is not the order they are numbered in** — the numbers are stable identifiers other documents cite, and
+§1.4 consumes what §1.6 and §1.7 produce:
 
 1. §1.1 — read CLAUDE.md as hints only
 2. §1.2 — detect language and frameworks
 3. §1.3 — map project structure (source dirs, test dirs, mirroring pattern, shared test project)
-4. §1.4 — learn test conventions via layered sampling
-5. §1.6 — identify architectural patterns
-6. §1.7 — classify each test project (combo-cell matrix)
+4. §1.7 — classify each test project (combo-cell matrix). **Run it here, not last**: it needs only §1.3, and it tells you which projects are worth sampling.
+   - **No test project at all, or no 🟩 project** → skip §1.6 and §1.4 entirely and go straight to §2.1's zero-supported exit. Sampling a repo you cannot write for is wasted work, and §1.3's "read 3–5 existing test files" and §1.4's "minimum of 8 files" have no meaning when there are none.
+5. §1.6 — identify architectural patterns. **Before §1.4**, which maps each sampled file to one of the layers this step names.
+6. §1.4 — learn test conventions via layered sampling, over the 🟩 projects only
+
+Order matters here, it is not tidiness: §1.4 buckets by `(layer, test type)` and its layer-common threshold is "≥2 samples within a layer". Run without §1.6's layers and every repo silently falls through to the no-layer branch (">50% of samples"), which discards patterns that are strong inside one layer and rare overall — a different `common-verification-patterns.md`, with no error to show for it.
 
 Proceed to Step 2 with the completed analysis.
 
@@ -94,9 +99,9 @@ Proceed to Step 2 with the completed analysis.
 
 ### 2.1 Present findings
 
-**Zero supported types — stop here.** If Step 1.7 classified no project 🟩 (a Gherkin-only repo, or no test project at all), do not render the write list and do not spawn anything: report that this repo has no test project the plugin can author for, list each skipped project with its reason, and exit cleanly without writing.
+**Zero supported types — stop here.** If Step 1.7 classified no project 🟩 (a Gherkin-only repo, or no test project at all), do not render the write list: report that this repo has no test project the plugin can author for, and list each skipped project with its reason. **Still run the unmanaged-files report below** before exiting — a repo an older version set up has leftovers, and this is the only run that would have shown them. Then exit without writing.
 
-Render the findings table with the columns: language, test framework, mocking library, build tool, and a per-test-project table showing path / type / supported flag / infrastructure summary. Then render the write list.
+Render the findings table with the columns: language, test framework, mocking library, build tool, and a per-test-project table showing path / type / supported flag / infrastructure summary. Add a **CLAUDE.md drift** section listing every claim §1.1/§1.2 found the codebase contradicting, or say there was none — Step 5's CLAUDE.md follow-up is conditioned on this and fires only if it appears here. Then render the write list.
 
 **Resolve each target path's state first — this is the step that makes the confirmation gate mean
 something.** For every path this run will write, check whether it already exists (Glob or a bounded
@@ -112,7 +117,7 @@ Files setup-test-context will write:
   OVERWRITE  .claude/conventions/tests/common-verification-patterns.md   <- current content is lost
 
 Not generated this run:
-  common-verification-patterns.md -- no qualifying cross-layer pattern detected
+  common-verification-patterns.md -- no qualifying pattern detected (layer-common or cross-layer)
   (omit this section when nothing was skipped)
 
 Not written -- read from the plugin at runtime:
@@ -144,15 +149,17 @@ This report covers **files that exist on disk**. A conditional file that was not
 not one of them — it has no file to report. Name that skip in the write list's "Not generated this run"
 section instead, so a mis-detection is still visible. The one case where
 `common-verification-patterns.md` *does* appear here is a repo where an earlier run generated it and
-this run's detection found no qualifying pattern: it is then on disk, outside the write set, and left
-alone like any other unmanaged file.
+this run's detection found no qualifying pattern. Do not treat that as routine: it is on disk, outside
+this run's write set, and left alone — but writer agents consult it whenever it exists, with no notion
+of freshness, so it will keep steering every future run. Say so explicitly and recommend deleting it,
+because this run's analysis is the evidence that its patterns no longer hold.
 
 Collect the list before reaching the confirmation.
 
 ### 2.2 Ask for final confirmation
 
 Ask:
-1. Are the test types and Supported flags correct?
+1. Are the test types and Supported flags correct? This is not a formality — the labels you confirm are written into `project-architecture.md`'s test-structure section, and a `hybrid × code-driven` project has **no** default label until you give it one. If the user corrects a label or a flag, apply the correction, re-render §2.1, and ask again; do not proceed on the set they just rejected.
 2. Review the `OVERWRITE` lines in §2.1's write list — there is no undo, so copy out anything you hand-tuned before answering — and the unmanaged files that will be left untouched.
 3. **Proceed?** (Yes / No)
 
@@ -169,12 +176,13 @@ Apply all changes based on the confirmed analysis.
 Read `references/generated-conventions.md` and write what it specifies:
 
 1. `.claude/conventions/tests/project-architecture.md` — always.
-2. `.claude/conventions/tests/common-verification-patterns.md` — only when Step 1.4's pattern detection yielded at least one qualifying pattern. Otherwise skip it and name it in the report; a skip is not a failure.
+2. `.claude/conventions/tests/common-verification-patterns.md` — only when §1.4's detection yielded at least one qualifying pattern, **as `generated-conventions.md` defines qualifying** (layer-common or cross-layer-common — not cross-layer alone). Decide this **before** rendering §2.1, so the write list the user approves is the set actually written. Otherwise skip it and name the skip in the write list; a skip is not a failure.
 
 **Write them yourself — no subagent.** The analysis these are generated from already sits in your
 context, so handing it to a subagent would copy it rather than save it, and two files offer no
-parallelism to win. Keep a write log as you go — one line per file — because every Step 4 check reads from it rather
-than re-reading the files, and Step 5 renders it.
+parallelism to win. Keep a write log as you go — one line per file actually written. It is the **list of paths** Step 4
+checks and Step 5 renders; it is not evidence that any of them exist or are correct, and Step 4 must
+still touch the filesystem to establish that.
 
 ---
 
@@ -188,11 +196,13 @@ After all writes:
    ```bash
    # <written-files…> = every path in this run's write log
    grep -n "{{" <written-files…>
-   grep -n "<!-- " <written-files…>
    ```
-   Both MUST return no output. Any match is a verification failure. This is the check that earns its
-   keep: a leaked `{{SRC_GLOB}}` reaches a writer as a literal token.
-4. **Path existence check** — extract concrete paths mentioned in generated output, verify with Glob. Missing paths are warnings (🟨), not failures.
+   It MUST return no output. A match is a verification failure, and this is the check that earns its
+   keep: a leaked `{{SRC_GLOB}}` reaches a writer as a literal token and there is nothing downstream
+   that would notice. (There is no HTML-comment sweep any more — that guarded template fill-guidance
+   leaking through a copy, and nothing is copied now; keeping it would only reject a legitimate comment
+   in a generated file.)
+4. **Path plausibility spot-check** — `project-architecture.md` is mostly directory trees, and a tree naming a directory that does not exist is the failure this catches. Take the source and test root paths from **your own §1.3 analysis** (not by re-reading the generated file — item 2's prohibition still stands) and confirm each with Glob. A miss is a warning (🟨), not a failure: it usually means the tree drifted from what you observed, which is worth reporting but not worth discarding the run over.
 5. **On failure**: **delete every file in this run's write log, then report loudly and stop** — name
    the file that failed, quote the failing check, and say the run wrote nothing. Deleting is not a
    rollback (the previous content was not kept and does not come back); it is removal of a known-bad
@@ -204,13 +214,13 @@ After all writes:
    was written, the skills still work sibling-driven, and re-running is the fix.
 6. **On success**: keep all written files. Do NOT auto-commit.
 
-Render a Verification Results table: one row per check above, each with its status icon and a one-line result.
+Render a Verification Results table: one row per check above, each with a status icon and a one-line result. Use 🟩 passed / 🟨 warning / 🟥 failed — those three, from the plugin's `resources/static/status-legend.md`, are the only ones this skill needs, so do not read the legend file for them.
 
 ---
 
 ## Step 4.5 — Gitignore the per-repo files (user-scope) + migrate already-tracked files
 
-Run this **only after Step 4 reports success** (item 6). If Step 4 failed, skip it — a repo whose generated file is known-wrong should not also acquire a `.gitignore` edit before the user has decided what to do.
+Run this **only after Step 4 reports success** (item 6). If Step 4 failed it deleted this run's output, so there is nothing to ignore and nothing to untrack — skip straight past Step 5 as well and end on the failure report.
 
 setup-test-context's per-repo files are **user-scope** — local, never committed — so a teammate who has not adopted the test-skills plugin never carries generated files in their tree, and there is no PR clutter or merge conflict. The skills run without these files at all — the rules they obey come from the plugin — so user-scope costs only a per-developer setup run, not correctness.
 
@@ -227,12 +237,12 @@ them. Removing an entry from someone's `.gitignore` can un-ignore files they sti
 what `.gitignore` says. If the report named some, tell the user they can delete both the leftovers and
 the stale ignore lines by hand.
 
-**4.5b — Untrack anything already committed (migration).** `.gitignore` does not affect files git already tracks. Run `git ls-files .claude/conventions/tests .claude/rules/tests .claude/shared/tests`. If it lists any files, **print this notice; do NOT run the command automatically** — then continue to Step 5 (this skill never auto-commits; untracking is a committable change the user owns and reviews):
+**4.5b — Untrack anything already committed (migration).** `.gitignore` does not affect files git already tracks. Run `git ls-files .claude/conventions/tests` — **this directory only**. Earlier versions also wrote `.claude/rules/tests` and `.claude/shared/tests`, but this version neither writes nor manages them: §2.1 reports them and leaves them alone precisely because it cannot tell its own retired output from something you wrote, and it would be incoherent to then hand you a command that removes them from every teammate's working copy on the next pull. If you want those untracked too, that is your call to make deliberately. If it lists any files, **print this notice; do NOT run the command automatically** — then continue to Step 5 (this skill never auto-commits; untracking is a committable change the user owns and reviews):
 ```
 These per-repo test files are already tracked by git and will keep showing in PRs until untracked:
   <list the files>
 To make them user-scope, run this and commit the removal as its own change:
-  git rm -r --cached .claude/conventions/tests .claude/rules/tests .claude/shared/tests
+  git rm -r --cached .claude/conventions/tests
 Heads-up: once that commit is pushed, teammates' working copies are deleted on pull — they re-create them by running setup-test-context themselves.
 ```
 If `git ls-files` returns nothing (fresh setup, or already untracked) → say nothing; there is nothing to migrate.
@@ -247,7 +257,10 @@ exist and invite the user to try skills against them.
 
 ### Repo profile recap
 
-**Files written** counts only what this run actually wrote: one or two conventions files.
+One short block, so the user can see what the run concluded without opening the generated files:
+language, test framework, mocking library, build tool, one line per test project (path, confirmed type,
+🟩/🟨), and **Files written** — which counts only what this run actually wrote, one or two conventions
+files. If §2.1 reported CLAUDE.md drift, repeat the one-line summary here so next step 4 has a referent.
 
 ### File index
 

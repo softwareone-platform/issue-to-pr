@@ -12,35 +12,21 @@ how to find out what this repo does, never what a repo's tests ought to look lik
 The frontmatter shown below is what each generated file must carry — a `description` and, where the file is scoped to particular paths, a `paths` list. Generated conventions carry no version field: the plugin keeps no per-run state, so there is nothing to compare a version against.
 
 `{{SRC_GLOB}}` and `{{TEST_GLOB}}` in the frontmatter below are the only placeholders left in this
-file — substitute the values Step 1.3 resolved (e.g. `src/**/*.cs`, `tests/**/*.cs`) as you write.
+file — substitute the values §1.3 resolved (e.g. `src/**/*.cs`, `tests/**/*.cs`) as you write. `paths:`
+is a YAML **list**: where §1.3 found several source or test roots, emit one entry per root rather than
+picking one and dropping the rest — the two slots shown below are the single-root case, not a limit.
 
-## No language baselines
+## No inferred defaults
 
-The plugin ships **no per-language baseline files**, and no placeholder is filled from one. What a
-repo's tests should look like — framework, mocking library, assertion style, naming, layout — comes
-from that repo's own tests, or is reported as unknown.
+Every value in a generated file comes from what §1 observed in **this** repo. The plugin ships no
+per-language baseline and no style template, so there is nothing to fall back on and nothing to copy:
+a style baseline is an assumption about someone else's codebase, and an example visible while you write
+competes with the siblings the analysis actually read.
 
-Why, precisely:
-
-- **A style baseline is an assumption about someone else's codebase.** The baselines this plugin used
-  to ship stated one organisation's preferences (assertion library, comment casing, an `Async`-suffix
-  rule, a package-name-to-folder prefix) as mandatory rules. Shipped to a repo that does not follow
-  them, they present a convention the code contradicts as established.
-- **Priming.** A style example visible while a subagent fills a template competes with the siblings it
-  is supposed to be reading.
-
-The line is between **style** and **mechanism**. Language and toolchain *mechanics* — how an access
-grant is declared, where a runner's collection config lives, how a link-install resolves to a path —
-are facts a sibling test can never reveal, because they live outside the test file. Those stay, written
-language-neutrally as *what to check*, in `rules/sut-analysis.md`. What must not ship is a prescription
-of how this repo's tests ought to look.
-
-Concretely: templates carry no language-specific style example **in a `{{PLACEHOLDER}}` fill or its
-HTML-comment guidance**. Illustrative syntax elsewhere in a rule's prose (naming a runner's skip
-attribute, or a filter flag) is fine — it teaches the rule, it does not fill a value.
-
-When observation yields nothing, the correct output is a **report**, not an inferred default — see
-`rules/test-writer-rules.md` → Fallback Chain.
+The line is **style versus mechanism**. Language and toolchain *mechanics* — how an access grant is
+declared, where a runner's collection config lives — are facts a sibling test cannot reveal, and they
+live in the plugin's rule books, not here. What must never be generated is a prescription of how this
+repo's tests ought to look.
 
 ---
 
@@ -61,7 +47,7 @@ paths: ["{{SRC_GLOB}}", "{{TEST_GLOB}}"]
 
 Content:
 - **Source structure** — directory tree from Step 1.3, showing typical feature organisation (e.g., Commands/, Handlers/, Services/ subdirectories)
-- **Test structure** — directory tree for each test project, with an example of how a feature is organised. Note mirroring style (mirror source vs scenario-based) and file organisation (flat vs subfolder-per-SUT).
+- **Test structure** — directory tree for each test project, with an example of how a feature is organised. Note mirroring style (mirror source vs scenario-based) and file organisation (flat vs subfolder-per-SUT). Label each project with the **test type the user confirmed in §2.1** (`unit`, `integration`, …), and mark a 🟨-skipped project as such rather than omitting it — a writer that finds an unlisted test project has no way to know it was skipped deliberately.
 - **Naming conventions** — source file naming patterns and test file naming patterns
 - **Feature components** — if the source uses a consistent per-feature structure, document the pattern
 - **Shared test project** — if Step 1.3 found one, give its path and which test projects reference it. Location only: a writer reads the helper it needs from the sibling that already calls it, so an inventory of utilities here would compete with that sibling and go stale behind it.
