@@ -220,7 +220,7 @@ All other fix rules are defined in `.claude/rules/tests/test-rules.md`.
 
 ### Step E4 — Build and test verification
 
-After applying all changes, follow the build and test verification procedure from `.claude/rules/tests/test-rules.md` and the per-type rules doc.
+After applying all changes, follow the build and test verification procedure from `.claude/rules/tests/test-rules.md`.
 
 ### Execute output contract
 

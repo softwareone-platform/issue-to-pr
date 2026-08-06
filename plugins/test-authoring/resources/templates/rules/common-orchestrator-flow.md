@@ -132,7 +132,7 @@ For each test file, report a status using the icons defined in `<plugin-root>/re
 
 ## Env_failure handling (integration-like orchestrators)
 
-Integration-like orchestrators must distinguish between **test logic failure** (deterministic, route to writer) and **environment failure** (container runtime, Docker unavailable, port conflict, image pull — non-deterministic, report to user without retrying). See per-type rules doc for the exact signals and commands.
+Integration-like orchestrators must distinguish between **test logic failure** (deterministic, route to writer) and **environment failure** (container runtime, Docker unavailable, port conflict, image pull — non-deterministic, report to user without retrying). `test-rules.md` requires the distinction be reported; the signals are catalogued in `.claude/rules/tests/common-writer-instructions.md` → "Env_failure handling".
 
 ## What stays in per-type orchestrators
 
@@ -140,4 +140,5 @@ Each per-type skill file still owns its flow-specific content:
 
 - Add-flow: pre-fetch step, delegate step, verify step, summary
 - Update-flow: audit step, present-summary step, prepare-rollback step, execute step, verify step, rollback-on-failure step (actions derive from audit status — there is no confirm step)
+
 Do not lift flow-specific content here — it breaks the "common = universally shared" contract.

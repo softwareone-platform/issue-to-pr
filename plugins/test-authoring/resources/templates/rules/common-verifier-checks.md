@@ -118,7 +118,7 @@ Do NOT attempt to fix any failures — only report.
 > acknowledgement. (3) **English payload** — keys, values, table content in
 > English; only a trailing free-text note may follow the session's language.
 
-Per-type verifiers return a structured summary with at minimum the following fields. Per-type verifiers MAY add extra fields (e.g. `guideline_violations`, `step_reuse_violations`, `assertion_mode_validation`) — those are declared in the per-type file.
+Per-type verifiers return a structured summary with at minimum the following fields. Per-type verifiers MAY add extra fields — those are declared in the per-type file.
 
 ```
 test_type: <one of the confirmed test types>
@@ -137,7 +137,7 @@ anti_gaming_violations:
 (or "none")
 
 quality_flags:
-- <TestName or ScenarioName>: <concern> — suggested: <improvement>
+- <TestName>: <concern> — suggested: <improvement>
 (or "none")
 
 spec_vs_impl_divergence:
@@ -147,7 +147,7 @@ spec_vs_impl_divergence:
 build_status: success | failed (<errors>)
 
 test_results:
-- <TestName or ScenarioName>: passed | failed (<reason>) | env_failure (<reason>)
+- <TestName>: passed | failed (<reason>) | env_failure (<reason>)
 
 issues:
 - <description> (or "none")

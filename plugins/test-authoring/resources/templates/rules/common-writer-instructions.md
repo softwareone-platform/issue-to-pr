@@ -70,7 +70,7 @@ Update writers: Phase 2 file modifications are governed by `.claude/rules/tests/
 
 After writing all tests, follow the **build and test verification** procedure from `.claude/rules/tests/test-rules.md` — it is the only rules file that pins build/test commands.
 
-Use the filter pattern for your test runner to run only the newly added tests. Per-type rules docs pin the exact filter syntax (e.g., `FullyQualifiedName~ClassName` for .NET + xUnit, `-Dtest=ClassName` for Maven + JUnit).
+Use the filter pattern for your test runner to run only the newly added tests (e.g., `FullyQualifiedName~ClassName` for .NET + xUnit, `-Dtest=ClassName` for Maven + JUnit). The repo's actual command comes from `test-rules.md` on the fast path, or from the `build_test_command` your prompt carries on the cacheless path.
 
 **Iteration rule** — do not run the whole project repeatedly during fix loops. Run a focused filter (target class / target feature / target module).
 

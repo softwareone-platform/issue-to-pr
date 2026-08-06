@@ -59,12 +59,10 @@ The orchestrator passes everything inline as structured text in the prompt.
 1. **Working directory** — repo root (absolute path).
 2. **Backup folder path** — already created in §3.1, e.g. `.claude/backup/setup-2026-04-28-103045/` (if applicable).
 3. **Subagent kind** — one of `shared-tier2`, `shared-tier3` (the legacy `per-type` kind is never dispatched under the Slim default).
-4. **Test type label + authoring model** (per-type only) — e.g. `unit`, `integration`;
-   `code-driven` or `config-driven`. The user-confirmed values from Step 2.1.
+4. **Test type label + authoring model** — legacy `per-type` field only (e.g. `unit`, `integration`; `code-driven` or `config-driven`, the user-confirmed values from Step 2.1). Never populated under the Slim default, which dispatches no per-type subagent. Item numbers below are stable — other documents cite them by number.
 5. **Per-file decision flags** — from Step 2.2: which targets to overwrite (pristine and user-modified alike — user-modified files are backed up by the orchestrator in §3.1 before subagents spawn), and which legacy targets the user chose to keep.
 6. **Analysis slice** — only the parts of Step 1 output relevant to this subagent. Examples by kind:
-   - per-type: language, frameworks, mocking library, src/test dirs and globs, conventions for THIS type (from §1.4 sampling), build/test commands for THIS type's projects (from §1.5), source mapping for this type, internal package paths (from §1.2.1).
-   - shared-tier2: language (drives fragment dispatch per `references/placeholders.md` § Language fragments), universal rule set inputs (verifier expectations, fix protocol settings), full build/test commands across all test projects (for `test-rules.md`).
+   - shared-tier2: language (drives fragment dispatch per `references/placeholders.md` § Language fragments), universal rule set inputs (verifier expectations, fix protocol settings), full build/test commands across all test projects (for `test-rules.md`), internal package paths from §1.2.1 (for `sut-analysis.md`'s `{{KNOWN_PACKAGES_TABLE}}`).
    - shared-tier3: project structure (§1.3), shared test project info if any, cross-layer verification patterns (§1.4 global), architectural patterns (§1.6).
 7. **Pre-resolved standard placeholders** — `{{LANGUAGE}}`, `{{PROJECT_DESCRIPTION}}`, `{{SRC_DIR}}`, `{{TEST_DIR}}`, `{{SRC_GLOB}}`, `{{TEST_GLOB}}`, `{{TEST_TYPE}}`, `{{TEST_TYPE_TITLE}}`, and `{{CONVENTIONS_SCHEMA_VERSION}}` (from `template-schema-versions.json` field `conventions`). The orchestrator has already computed these.
 8. **Files to write** — explicit list of absolute target paths under `.claude/{conventions,rules,shared}/tests/`.

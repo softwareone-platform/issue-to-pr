@@ -37,10 +37,9 @@ plugins/test-authoring/resources/templates/
 │   └── ... (7 more)
 └── shared/
     └── scope-resolution.md
-
-The `conventions` category has no templates — every conventions file is Tier 3 generated
-from analysis, and its `schema_version` comes from the same JSON.
 ```
+
+The `conventions` category has no templates — every conventions file is Tier 3 generated from analysis, and its `schema_version` comes from the same JSON.
 
 Each individual template file also has `schema_version` in its frontmatter:
 

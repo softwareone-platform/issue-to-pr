@@ -745,7 +745,7 @@ function renderContention(c) {
   if (c && c.count >= 2) {
     el.classList.add("show");
     document.getElementById("contention-text").innerHTML =
-      "<b>" + c.count + " runs</b> are positioned at a test step. These steps run integration / "
+      "<b>" + c.count + " runs</b> are positioned at a test step. These steps run "
       + "integration tests against the shared Podman, SQL, and Azurite, so running them together can "
       + "conflict, race, or starve each other &mdash; stagger them rather than letting both test at once.";
     document.getElementById("contention-runs").innerHTML = (c.runs || []).map(function (r) {

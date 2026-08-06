@@ -64,9 +64,7 @@ Located relative to this skill's base directory:
 
 ## Output overview
 
-setup-test-context produces files only in three per-repo namespaces. Counts scale with supported test types:
-
-For a typical repo with **unit + integration**:
+setup-test-context produces files only in three per-repo namespaces. Under the Slim default the set does not vary by test type — only the conditional `common-*` conventions change it:
 - 1 shared (`scope-resolution.md`)
 - 8 rules (`test-rules`, `test-writer-rules`, `fix-protocol`, `sut-analysis`, `common-orchestrator-flow`, `common-writer-instructions`, `common-update-instructions`, `common-verifier-checks`)
 - 1 conventions (`project-architecture`) + optional `common-test-utilities` / `common-verification-patterns` — code-driven per-type `{type}-test-conventions.md` are **NOT** written under the Slim default; writers derive those conventions from the nearest sibling at runtime
@@ -102,6 +100,8 @@ Proceed to Step 2 with the completed analysis.
 ## Step 2 — Confirm Analysis with User
 
 ### 2.1 Present findings
+
+**Zero supported types — stop here.** If Step 1.7 classified no project 🟩 (a Gherkin-only repo, or no test project at all), do not render the write list and do not spawn anything: report that this repo has no test project the plugin can author for, list each skipped project with its reason, and exit cleanly without writing.
 
 Render the findings table with the columns: language, test framework, mocking library, build tool, and a per-test-project table showing path / type / supported flag / infrastructure summary. Files to be created / overwritten lists reflect ONLY the per-repo files setup-test-context manages:
 
@@ -161,7 +161,7 @@ A manifest-listed path that is NOT among this run's write targets is a leftover 
 
 Two exclusions are NOT stale and stay carried forward (§3.5):
 - files of a category the user chose to skip via Step 0 option (b) — deleting them would contradict that choice;
-- code-driven `{type}-test-conventions.md` kept by the Slim default carve-out.
+- `unit-test-conventions.md` / `integration-test-conventions.md` kept by the Slim default carve-out (it covers those two names only — a `{type}-test-conventions.md` for a type this plugin no longer supports is stale, not carved out).
 
 Conditional files (`common-test-utilities.md`, `common-verification-patterns.md`) are deliberately NOT excluded: when their generation condition is unmet this run they are not write targets, so they follow stale semantics — the managed set reflects THIS run's analysis, and the backup + confirmation listing is the guard against a mis-detection.
 
@@ -198,6 +198,7 @@ Read `references/subagent-contract.md` first. Note that for setup-test-context, 
 
 | Repo shape | Subagents spawned (Slim default) |
 |---|---|
+| 0 supported types | none — Step 2.1 already exited |
 | 1 supported type (unit only) | `shared-tier2`, `shared-tier3` (2) |
 | 2 supported types (unit + integration) | `shared-tier2`, `shared-tier3` (2) |
 | + extra test types | no additional subagent (per-type conventions no longer generated) |
@@ -215,10 +216,10 @@ Pass everything inline. The prompt MUST include:
 1. Working directory (repo root, absolute).
 2. Backup folder path (already created in §3.1, if applicable).
 3. Subagent kind (`shared-tier2` / `shared-tier3`; the legacy `per-type` kind is never dispatched under the Slim default).
-4. Test type label (per-type only).
+4. Test type label — legacy `per-type` field only, so never populated under the Slim default.
 5. Per-file decision flags from Step 2.2 (which targets to overwrite — pristine and user-modified alike, the latter already backed up per §3.1 — and which legacy targets the user chose to keep).
 6. The relevant slice of Step 1 analysis as structured text.
-7. Pre-resolved standard placeholder values (`{{LANGUAGE}}`, `{{SRC_DIR}}`, `{{TEST_DIR}}`, etc.), **including `{{CONVENTIONS_SCHEMA_VERSION}}`** read from `<plugin-root>/resources/templates/template-schema-versions.json` field `conventions`. This placeholder is used by Tier 3 conventions recipes (see `references/tier3-schemas.md`) to fill their frontmatter `schema_version`; the same JSON value is also written into the manifest `files[].schema_version` for matching files in §3.5 — single source of truth.
+7. Pre-resolved standard placeholder values (`{{LANGUAGE}}`, `{{SRC_DIR}}`, `{{TEST_DIR}}`, etc. — `{{TEST_TYPE}}` / `{{TEST_TYPE_TITLE}}` are legacy per-type placeholders with no surviving consumer), **including `{{CONVENTIONS_SCHEMA_VERSION}}`** read from `<plugin-root>/resources/templates/template-schema-versions.json` field `conventions`. This placeholder is used by Tier 3 conventions recipes (see `references/tier3-schemas.md`) to fill their frontmatter `schema_version`; the same JSON value is also written into the manifest `files[].schema_version` for matching files in §3.5 — single source of truth.
 8. Source template paths (e.g. `<plugin-root>/resources/templates/rules/test-rules.md`).
 9. Destination paths (e.g. `.claude/rules/tests/test-rules.md`).
 10. Pointers to `references/placeholders.md` (fill rules + Language fragments § dispatch documentation) and `references/tier3-schemas.md` (Tier 3 generation schemas), plus **pre-resolved absolute paths of language fragment files** per `references/subagent-contract.md` item 10 (covers the derivation rule, filesystem probe, per-subagent ownership, and the missing-fragment sentinel — single source of truth, do not duplicate the dispatch spec here).
@@ -235,7 +236,7 @@ After README, build and write `.claude/shared/tests/.setup-manifest.json` per th
 
 1. Build `files[]` from two sources:
    - **Written this run** — the aggregated subagent `written:` payloads (§3.2–3.3) plus the orchestrator's own writes (§3.4 README).
-   - **Carried forward verbatim** — the previous manifest's entries (path, sha256, category, schema_version, test_type unchanged) for paths intentionally not written this run: every file of a category the user chose to skip via Step 0 option (b), **and existing code-driven `{type}-test-conventions.md` that the Slim default no longer generates** (present on disk from an older full setup, intentionally not regenerated — carry their entries verbatim so they stay tracked for uninstall + drift). Dropping these entries would silently orphan the files from uninstall tracking and drift detection. Stale managed files deleted this run (§2.1) are the one deliberate removal: their entries are dropped from the manifest — non-silent, because each was backed up and listed in the §2.2 confirmation.
+   - **Carried forward verbatim** — the previous manifest's entries (path, sha256, category, schema_version, test_type unchanged) for paths intentionally not written this run: every file of a category the user chose to skip via Step 0 option (b), **and an existing `unit-test-conventions.md` / `integration-test-conventions.md` that the Slim default no longer generates** (present on disk from an older full setup, intentionally not regenerated — carry their entries verbatim so they stay tracked for uninstall + drift). Dropping these entries would silently orphan the files from uninstall tracking and drift detection. Stale managed files deleted this run (§2.1) are the one deliberate removal: their entries are dropped from the manifest — non-silent, because each was backed up and listed in the §2.2 confirmation.
 2. For each path written this run, record the SHA-256 of the written content (lowercase hex, line endings normalised CRLF→LF before hashing per `references/manifest.md` § SHA-256 calculation — taken from the subagent payload, or computed directly for orchestrator-written files), `category` (`conventions` / `rules` / `shared`), `schema_version` (from `<plugin-root>/resources/templates/template-schema-versions.json` field `<category>` — for the four Tier 3 dynamic conventions files this is the **same** value already substituted into the file's frontmatter via `{{CONVENTIONS_SCHEMA_VERSION}}` in §3.3, so manifest and frontmatter MUST agree), and `test_type` (`null` for universal files, otherwise the type label). Carried-forward entries keep their previous values untouched — their sha256 records the run that last wrote them.
 3. Set top-level `schema_versions.{category}` from the same `template-schema-versions.json` fields — EXCEPT categories the user chose to skip via Step 0 option (b): retain the previous manifest value for those, so the unresolved drift is re-detected on the next run instead of being permanently masked.
 4. Set `plugin_version` from `<plugin-root>/.claude-plugin/plugin.json` (write `unknown` if unreadable).

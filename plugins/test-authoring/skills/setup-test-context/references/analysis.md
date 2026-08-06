@@ -193,6 +193,8 @@ Determine support status per project by the **combined** infrastructure × autho
 
 Config-driven projects are 🟨 skip because their execution model does not map to the per-type writer / verifier pattern — the unit of authoring is a scenario in a non-code file, not a test method mirroring a source class. **Classify by entry point, not by fixtures**: a Gherkin project usually carries integration-like infrastructure (containers, `WebApplicationFactory`), so reading its fixtures alone would wrongly admit it as an integration target.
 
+**No 🟩 project at all** — zero supported types is a reachable outcome (a repo whose only test project is Gherkin-driven, or one with no test project at all). Step 2.1 enforces the exit; record which projects were skipped and why so it can report them.
+
 ### Full classification record
 
 For each test project, record:

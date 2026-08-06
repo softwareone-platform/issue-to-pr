@@ -10,7 +10,7 @@ Unlike the runtime test skills (add/update/scan), this skill spawns **no subagen
 
 ## When to use
 
-- **One-time cross-layer map** — cache the repo's cross-layer / global test map (project architecture, cross-layer verification patterns, shared-utility + fixture catalogs) that a single sibling cannot reconstruct. The add/update/scan skills run without setup (cacheless, sibling-driven) and derive code-driven per-type conventions from siblings either way; setup is not a prerequisite and no longer caches per-type conventions.
+- **One-time cross-layer map** — cache the repo's cross-layer / global test map (project architecture, cross-layer verification patterns, the shared-utility catalog) that a single sibling cannot reconstruct. The add/update/scan skills run without setup (cacheless, sibling-driven) and derive per-type conventions from siblings either way; setup is not a prerequisite and no longer caches per-type conventions.
 - **Re-baseline after architectural change** — added a new test project, switched test frameworks, or restructured source directories.
 - **Re-sync after plugin upgrade** — new plugin version may have updated template content; re-running picks up the new templates (subject to schema-drift confirmation).
 - **NOT for routine test generation** — for day-to-day work use `/test-authoring:add-unit-test`, `/test-authoring:update-unit-test`, `/test-authoring:scan-test-gaps`, etc. directly (they run with or without setup).
@@ -180,7 +180,7 @@ Each test project is classified along two dimensions — infrastructure (unit-li
 
 ### No test-agent delegation during setup
 
-Step 3 file generation fans out to internal parallel subagents (per-type / shared-tier2 / shared-tier3 — see [`subagent-contract.md`](../../skills/setup-test-context/references/subagent-contract.md)), but setup never delegates to the plugin's test writer, update, or verifier agents. Consequently no circuit breaker, no fix loop, no `fix_invocation` routing. Verification is mechanical (file existence, placeholder grep, manifest hash check) rather than an independent agent review.
+Step 3 file generation fans out to internal parallel subagents (shared-tier2 / shared-tier3 — see [`subagent-contract.md`](../../skills/setup-test-context/references/subagent-contract.md)), but setup never delegates to the plugin's test writer, update, or verifier agents. Consequently no circuit breaker, no fix loop, no `fix_invocation` routing. Verification is mechanical (file existence, placeholder grep, manifest hash check) rather than an independent agent review.
 
 ### Manifest
 
@@ -215,7 +215,7 @@ All diagrams use GitHub fenced code blocks tagged `mermaid` (not Azure DevOps `:
 
 ## Generated output
 
-Setup-test-context writes ~10–15 files per consumer repo (counts scale with supported test types; the **Slim default** writes fewer than before — code-driven per-type `{type}-test-conventions.md` are no longer written). For a typical repo with **unit + integration**:
+Setup-test-context writes 12–14 files per consumer repo. Under the **Slim default** the set does not vary by test type — per-type `{type}-test-conventions.md` are no longer written, and only the conditional `common-*` conventions move the count:
 
 | Category | Files | Source |
 |---|---|---|

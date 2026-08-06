@@ -112,7 +112,7 @@ Detailed docs for the high-complexity update + verify-update agents in [`docs/ag
 
 ## Per-repo rules (strict, prescriptive)
 
-Filled from `resources/templates/rules/` at setup time and written to `.claude/rules/tests/` (the fast path); on the **cacheless path** the same files are read directly from the plugin's `resources/templates/rules/`. Universal (cross-type) and type-specific.
+Filled from `resources/templates/rules/` at setup time and written to `.claude/rules/tests/` (the fast path); on the **cacheless path** the same files are read directly from the plugin's `resources/templates/rules/`. All of them are universal — there is no type-specific rules file.
 
 **Context discipline (lazy loading)**: on both paths the orchestrator never bulk-reads this rule set upfront — each skill's Step -1 only *resolves* where the references live, and its "Orchestrator reading list" reads each orchestrator-facing document at the step that first uses it. The writer/verifier rule books (`common-writer-instructions.md`, `common-verifier-checks.md`, `test-writer-rules.md`, …) are read by the subagents in their own isolated contexts and are never preloaded into the main context.
 
