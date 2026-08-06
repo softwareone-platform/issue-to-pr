@@ -8,11 +8,13 @@ paths: ["{{TEST_GLOB}}"]
 
 These rules apply to ALL test agents (writers, updaters, verifiers) when working with test files.
 
-## Mandatory Project-wide Rules
+## Project-wide Conventions
 
-{{PROJECT_WIDE_RULES}}
-<!-- Bootstrap (shared-tier2 subagent) fills this with a bullet list extracted from Step 1.4 analysis — conventions actually observed in this codebase's sibling tests, nothing else.
-There is no language baseline to start from: a rule the codebase does not exhibit does not belong here. If Step 1.4 observed nothing, leave the list empty rather than filling it from what the language usually does. -->
+This file does not carry a list of them, and no such list is shipped or generated. Framework, mocking
+library, assertion style, naming, and layout are read from the **nearest sibling test** at the moment
+you write — that is the declared source of truth (`test-writer-rules.md` → Context Priority), and a
+list here would only compete with it while going stale. When no sibling exists, report the gap; do
+not fill it from what the language usually does.
 
 ## Fix Rules (CRITICAL)
 

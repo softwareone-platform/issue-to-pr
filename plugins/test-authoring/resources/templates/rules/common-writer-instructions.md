@@ -54,7 +54,7 @@ Style is **not fixed globally** — adopt whatever the sibling tests use. See `.
 
 Follow:
 
-- `.claude/rules/tests/test-rules.md` (common project-wide rules — test framework / mocking library / assertion library versions, language-specific syntax conventions, naming, fix rules)
+- `.claude/rules/tests/test-rules.md` (fix rules, build/test verification, and this repo's build and test commands — **not** a conventions list: framework, mocking library, assertion style and naming come from the sibling)
 - `.claude/rules/tests/test-writer-rules.md` (what-to-test, what-not-to-do, context priority)
 
 There is **no type-specific rules file**: unit and integration build/test specifics live in `test-rules.md` plus the per-type agent definition — do not probe for `unit-test-rules.md` / `integration-test-rules.md`, they are never generated.
@@ -65,6 +65,19 @@ There is **no type-specific rules file**: unit and integration build/test specif
 - If no test file exists, **create a new file** in the correct mirrored directory (or feature directory for integration-like).
 
 Update writers: Phase 2 file modifications are governed by `.claude/rules/tests/common-update-instructions.md` (Steps E2/E3) — this section does not apply to them.
+
+## Stopping when there is nothing to learn from
+
+Two situations end your run early, with your structured output returned immediately and no tests
+written. Neither is a failure; both are protocol steps the orchestrator handles.
+
+- **No convention source** — neither a sibling test nor a convention file, per
+  `.claude/rules/tests/test-writer-rules.md` → Fallback Chain. Name the directories you searched in `issues:`.
+- **Missing framework source** — per `.claude/rules/tests/sut-analysis.md` → Runtime resolution flow.
+  Name the package and the path you tried in `issues:`.
+
+In both cases report the scope you could not cover. Do not partially write, do not guess, and do not
+run the build — there is nothing to build.
 
 ## Build and test verification
 

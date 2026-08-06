@@ -211,7 +211,7 @@ Agent(subagent_type="test-authoring:add-unit-test-agent"):
     build_test_command: <session-detected build/test invocation>
 ```
 
-If the audit reported `no_existing_tests: true` (no siblings found), omit the sibling lines and state instead: `No sibling tests found — derive conventions from .claude/conventions/tests/unit-test-conventions.md` (cacheless: that doc is absent too — say so and let the writer report the gap; do not substitute a language baseline). Never invent a sibling path to satisfy the template.
+If the audit reported `no_existing_tests: true` (no siblings found), omit the sibling lines and state instead: `No sibling tests found — derive conventions from .claude/conventions/tests/unit-test-conventions.md` — but under the Slim default that file is not generated on **either** path, so expect it to be absent, say so, and let the writer report the gap rather than substituting a baseline. Never invent a sibling path to satisfy the template.
 
 Skip this step if the action record has no add actions.
 

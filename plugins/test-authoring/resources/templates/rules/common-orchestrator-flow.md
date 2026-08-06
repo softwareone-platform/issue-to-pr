@@ -85,6 +85,24 @@ When a writer output contains such an entry, do NOT proceed to the build check o
 
 This stop is a protocol step, not a failure — it does not count toward any fix circuit breaker.
 
+## Writer stop on no convention source
+
+A writer that finds neither a sibling test nor a convention file
+(`.claude/rules/tests/test-writer-rules.md` → Fallback Chain) also returns early:
+no tests written, and an `issues:` entry naming the directories it searched.
+This is the expected outcome for a brand-new test project, not a failure — the plugin
+deliberately does not author the first test of a project from a language default.
+
+When a writer output contains such an entry, do NOT proceed to the build check or verifier
+for that writer's scope, and do NOT count it toward any fix circuit breaker. Instead:
+
+1. Report it to the user plainly: which scope has no conventions to learn from, and what was searched.
+2. Offer the two ways forward — **Option A**: point the skill at an existing test elsewhere in the
+   repo to use as the pattern, and re-invoke; **Option B**: write the first test by hand, after which
+   every later run has a sibling to follow.
+3. **Fresh re-spawn** only if the user takes Option A; there is no resume of the stopped instance.
+4. Mark the affected scope 🟥 unresolved in the summary if the user takes neither.
+
 ## Multi-agent build check
 
 If **multiple writer agents** were spawned, run a final build after all complete to catch cross-file issues. Reference `.claude/rules/tests/test-rules.md` for the exact command. Skip when a single agent was spawned — the agent verifies its own build.

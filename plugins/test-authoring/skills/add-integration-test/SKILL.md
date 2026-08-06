@@ -61,7 +61,7 @@ Per `.claude/rules/tests/common-orchestrator-flow.md` → "Pre-fetch context (ad
 
 1. For each source file, find the corresponding test directory within the target test project using `.claude/conventions/tests/integration-test-conventions.md` and `.claude/conventions/tests/project-architecture.md`.
 2. If sibling test files exist in the mapped directory, read them and extract the convention spec. Include the authorization mapping (where applicable) so the writer uses the correct account-type identity helpers. If none exist there, widen once — the nearest test files in the same target test project — and label them in the writer prompt as `nearest sibling (not exact mirror)` so the writer weighs them below an exact-mirror sibling.
-3. If no siblings are found at all, omit the sibling fields from the Step 3 template and state instead: `No sibling tests found — derive conventions from .claude/conventions/tests/integration-test-conventions.md` (cacheless: that doc is absent too — say so and let the writer report the gap; do not substitute a language baseline). Never invent a sibling path to satisfy the template.
+3. If no siblings are found at all, omit the sibling fields from the Step 3 template and state instead: `No sibling tests found — derive conventions from .claude/conventions/tests/integration-test-conventions.md` — but under the Slim default that file is not generated on **either** path, so expect it to be absent, say so, and let the writer report the gap rather than substituting a baseline. Never invent a sibling path to satisfy the template.
 4. Pass this context to the writer.
 
 ## Step 3 — Delegate to Agent

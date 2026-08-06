@@ -62,7 +62,7 @@ The orchestrator passes everything inline as structured text in the prompt.
 4. **Test type label + authoring model** — legacy `per-type` field only (e.g. `unit`, `integration`; `code-driven` or `config-driven`, the user-confirmed values from Step 2.1). Never populated under the Slim default, which dispatches no per-type subagent. Item numbers below are stable — other documents cite them by number.
 5. **Per-file decision flags** — from Step 2.2: which targets to overwrite (pristine and user-modified alike — user-modified files are backed up by the orchestrator in §3.1 before subagents spawn), and which legacy targets the user chose to keep.
 6. **Analysis slice** — only the parts of Step 1 output relevant to this subagent. Examples by kind:
-   - shared-tier2: language, universal rule set inputs (verifier expectations, fix protocol settings), full build/test commands across all test projects (for `test-rules.md`), and the project-wide conventions observed in §1.4 (for `test-rules.md`'s `{{PROJECT_WIDE_RULES}}`).
+   - shared-tier2: language, universal rule set inputs (verifier expectations, fix protocol settings), full build/test commands across all test projects (for `test-rules.md`), and the internal packages detected in §1.2.1 with their install models and verified paths (for `sut-analysis.md`'s `{{KNOWN_PACKAGES_TABLE}}`).
    - shared-tier3: project structure (§1.3), shared test project info if any, cross-layer verification patterns (§1.4 global), architectural patterns (§1.6).
 7. **Pre-resolved standard placeholders** — `{{LANGUAGE}}`, `{{PROJECT_DESCRIPTION}}`, `{{SRC_DIR}}`, `{{TEST_DIR}}`, `{{SRC_GLOB}}`, `{{TEST_GLOB}}`, `{{TEST_TYPE}}`, `{{TEST_TYPE_TITLE}}`, and `{{CONVENTIONS_SCHEMA_VERSION}}` (from `template-schema-versions.json` field `conventions`). The orchestrator has already computed these.
 8. **Files to write** — explicit list of absolute target paths under `.claude/{conventions,rules,shared}/tests/`.
@@ -70,6 +70,7 @@ The orchestrator passes everything inline as structured text in the prompt.
 10. **References to consult** — paths to:
     - `references/placeholders.md` (plugin-side fill rules)
     - `references/tier3-schemas.md` (Tier 3 generation schemas)
+
     Subagents read these for fill rules and generation schemas; do not duplicate the schemas in the prompt.
 
 ### Boundary condition (note, do not design around)

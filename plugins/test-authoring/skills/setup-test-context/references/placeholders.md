@@ -22,18 +22,28 @@ Read this file during Step 3.2 (subagent dispatch) and Step 3.3 (subagent prompt
 
 ## No language baselines
 
-The plugin ships **no** language-specific baseline content. Every language-varying value in a
-template — project-wide rules, visibility checks, naming conventions, build and filter syntax —
-is filled from what Step 1 actually observed in this repo, or not filled at all.
+The plugin ships **no per-language baseline files**, and no placeholder is filled from one. What a
+repo's tests should look like — framework, mocking library, assertion style, naming, layout — comes
+from that repo's own tests, or is reported as unknown.
 
-Two reasons this is a rule rather than a gap:
+Why, precisely:
 
-- **A baseline is an assumption about someone else's codebase.** The baselines this plugin used to
-  ship were generalised from a handful of repos; applied to a repo whose layout differs, they
-  present a convention the code does not follow as if it were established.
-- **Subagent priming.** Any language example visible in a template becomes an in-context prior. A
-  subagent handed both an example and the real siblings drifts toward the example. Keeping templates
-  language-neutral leaves observation as the only signal.
+- **A style baseline is an assumption about someone else's codebase.** The baselines this plugin used
+  to ship stated one organisation's preferences (assertion library, comment casing, an `Async`-suffix
+  rule, a package-name-to-folder prefix) as mandatory rules. Shipped to a repo that does not follow
+  them, they present a convention the code contradicts as established.
+- **Priming.** A style example visible while a subagent fills a template competes with the siblings it
+  is supposed to be reading.
+
+The line is between **style** and **mechanism**. Language and toolchain *mechanics* — how an access
+grant is declared, where a runner's collection config lives, how a link-install resolves to a path —
+are facts a sibling test can never reveal, because they live outside the test file. Those stay, written
+language-neutrally as *what to check*, in `rules/sut-analysis.md`. What must not ship is a prescription
+of how this repo's tests ought to look.
+
+Concretely: templates carry no language-specific style example **in a `{{PLACEHOLDER}}` fill or its
+HTML-comment guidance**. Illustrative syntax elsewhere in a rule's prose (naming a runner's skip
+attribute, or a filter flag) is fine — it teaches the rule, it does not fill a value.
 
 When observation yields nothing, the correct output is a **report**, not an inferred default — see
 `rules/test-writer-rules.md` → Fallback Chain.
@@ -47,10 +57,10 @@ Templates are **per-type** (not `{{TEST_TYPE}}`-parameterised). Bootstrap copies
 | Template | Destination | Special placeholders |
 |---|---|---|
 | `templates/shared/scope-resolution.md` | `.claude/shared/tests/scope-resolution.md` | (standard only) |
-| `templates/rules/test-rules.md` | `.claude/rules/tests/test-rules.md` | `{{PROJECT_WIDE_RULES}}` — bullet list of conventions observed in Step 1.4 (empty if none were observed); `{{BUILD_AND_TEST_COMMANDS}}` — one section per test project from Step 1.5 |
+| `templates/rules/test-rules.md` | `.claude/rules/tests/test-rules.md` | `{{BUILD_AND_TEST_COMMANDS}}` — one section per test project from Step 1.5 |
 | `templates/rules/test-writer-rules.md` | `.claude/rules/tests/test-writer-rules.md` | (standard only) |
 | `templates/rules/fix-protocol.md` | `.claude/rules/tests/fix-protocol.md` | (standard only) |
-| `templates/rules/sut-analysis.md` | `.claude/rules/tests/sut-analysis.md` | (standard only) |
+| `templates/rules/sut-analysis.md` | `.claude/rules/tests/sut-analysis.md` | `{{KNOWN_PACKAGES_TABLE}}` — packages Step 1.2.1 detected, with the install model that located each and its verified local path; empty form if none |
 | `templates/rules/common-orchestrator-flow.md` | `.claude/rules/tests/common-orchestrator-flow.md` | (standard only) |
 | `templates/rules/common-writer-instructions.md` | `.claude/rules/tests/common-writer-instructions.md` | (standard only) |
 | `templates/rules/common-update-instructions.md` | `.claude/rules/tests/common-update-instructions.md` | (standard only) |

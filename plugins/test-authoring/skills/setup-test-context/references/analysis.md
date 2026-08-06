@@ -42,7 +42,7 @@ Some repos map internal package names to sibling checkout folders by a stable pr
 
 Missing paths do not affect bootstrap. When an agent later needs to read from a missing path, the runtime resolution flow in `sut-analysis.md` handles the situation (stops and asks the user).
 
-These results inform the writer's runtime resolution flow in `sut-analysis.md`; they are not written into a table there.
+These results are written into `sut-analysis.md`'s `{{KNOWN_PACKAGES_TABLE}}` (install model + resolved path + Status), which is where the writer's runtime resolution flow looks first.
 
 If no internal packages detected, still generate `sut-analysis.md` with the universal "never decompile" rule.
 

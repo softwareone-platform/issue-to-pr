@@ -42,7 +42,7 @@ Check against the sibling convention checklist in the applicable `.claude/conven
 
 If the writer's reported spec does not match the actual sibling, use **what you observe in the sibling** as the source of truth — not what the writer claimed.
 
-If the writer reported `No sibling tests found` (the orchestrator's no-sibling fallback), there are no paths to spot-check — verify the new tests directly against the convention doc instead, which was the writer's mandated fallback source.
+If the writer reported `No sibling tests found`, there is no oracle to spot-check against — and under the current policy the writer should have **reported the gap and written nothing** rather than inventing conventions. So the check inverts: confirm the writer did stop. Tests written anyway, with no sibling and no convention doc, are a violation to report, not output to grade.
 
 ### U2. Convention compliance check (report only)
 
@@ -56,7 +56,7 @@ Universal checks that apply across all test types:
 - Wrong naming pattern vs siblings
 - Missing or extra AAA-style comments inconsistent with sibling style
 - Wrong SUT construction approach
-- Project-wide rule violations (formatting, naming, language-idiom) as defined in `.claude/rules/tests/test-rules.md`
+- Convention violations (formatting, naming, language-idiom) measured against the **sibling** the writer worked from — `test-rules.md` carries fix and build rules, not a conventions list
 
 For each violation, record:
 

@@ -65,7 +65,7 @@ If the target directory has no existing test files, **widen the search** before 
 3. Same layer in a different feature (e.g., another handler's tests)
 4. Any test file in the same test project
 
-Only if all of the above yield nothing: use the convention file's documented patterns as the sole reference **when that file exists**. When it does not — the normal case for code-driven types — report to the orchestrator that neither a sibling nor a convention source was found, and do not invent conventions.
+Only if all of the above yield nothing: use the convention file's documented patterns as the sole reference **when that file exists**. When it does not — the normal case under the Slim default — **stop and report**: return your structured output now with no tests written, naming in `issues:` that neither a sibling nor a convention source was found and which directories you searched. Do not invent conventions, and do not write a test against conventions you inferred from the language alone. The orchestrator handles this stop (`common-orchestrator-flow.md` → "Writer stop on no convention source").
 
 ## Common Utilities Check
 
