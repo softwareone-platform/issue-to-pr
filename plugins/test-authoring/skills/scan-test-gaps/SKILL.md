@@ -39,7 +39,10 @@ Immediately after Step 1 resolves the scope, print it to chat for transparency:
 ```
 Scanning: <resolved scope>
 Mode: <Mode A (git diff) | Mode B (explicit argument)>
+Test types inferred: <e.g. unit, integration> — say if this is wrong
 ```
+
+The inferred-types line is not decoration: the count drives the single-type vs multi-type shape of the whole report, nothing else confirms it, and this echo is the only place you can correct it.
 
 scan-test-gaps does NOT block here — its existing Step 6 ("Ask User What to Implement") is the user's explicit-consent gate before any test writing.
 
@@ -50,7 +53,7 @@ You are a test coverage analyst for {{PROJECT_DESCRIPTION}}. Your job is to find
 
 > **Placeholder resolution (plugin-bundled file)**: tokens like `{{PROJECT_DESCRIPTION}}`, `{{TEST_TYPES_LIST}}`, `{{LANGUAGE_EXCLUSIONS}}`, `{{COVERAGE_EXCLUSION_HANDLING}}`, `{{HIGH_PRIORITY_CRITERIA}}`, `{{TEST_TYPES_COUNT_BREAKDOWN}}` are NOT pre-filled — this file ships with the plugin, not generated per-repo. Resolve them at runtime: project description and language from `.claude/conventions/tests/project-architecture.md`, supported test types inferred from the filesystem per the note below, exclusions and priority criteria derived from the detected language and repo conventions. Never render a `{{...}}` token literally in user-facing output.
 >
-> **Inferring the test types (always) and the cacheless case:** the plugin records no confirmed type list between runs, so **infer the supported test types from the filesystem every time** — unit-like (mirrors source, mocks deps) and/or integration-like (HTTP/DB/container fixtures). **A test project containing `.feature` / Gherkin files (or Gherkin-binding step classes) is not a supported target — exclude it from the inferred types even though it uses containers/fixtures** (do NOT count it as integration-like). Use the inferred count to drive the SINGLE_TYPE_ONLY vs MULTI_TYPE_ONLY behaviour below, and **echo the inferred types in the Step 1.5 scope echo** so the user can correct them. Exclusions and priority criteria come from the detected language + nearest siblings.
+> **Inferring the test types (always), and the cacheless case:** resolve `{{PROJECT_DESCRIPTION}}` and language from `project-architecture.md` when it exists, and from per-invocation detection (project manifest + file extensions) when it does not — never render the token literally. The plugin records no confirmed type list between runs, so **infer the supported test types from the filesystem every time** — unit-like (mirrors source, mocks deps) and/or integration-like (HTTP/DB/container fixtures). **A test project containing `.feature` / Gherkin files (or Gherkin-binding step classes) is not a supported target — exclude it from the inferred types even though it uses containers/fixtures** (do NOT count it as integration-like). Use the inferred count to drive the SINGLE_TYPE_ONLY vs MULTI_TYPE_ONLY behaviour below, and **echo the inferred types in the Step 1.5 scope echo** so the user can correct them. Exclusions and priority criteria come from the detected language + nearest siblings.
 
 > Every `.claude/{conventions,rules,shared}/tests/…` read below follows **Step -1's resolution** — and happens lazily, at the step that uses it, never as an upfront batch; a body reference to one of these files at a step IS that step's read instruction: Read the file before acting on it, never from memory of its name. On the cacheless path, pass `plugin_resources_path` and `build_test_command` (per target test project for integration) into **every** subagent you delegate to — add / update writers and their verifiers — they cannot resolve these themselves. The `<plugin-root>/resources/static/status-legend.md` reference (Step 8) resolves to `<PLUGIN_TEMPLATES>/../static/status-legend.md` (Step -1); if `PLUGIN_TEMPLATES` is unresolved, use plain text status labels.
 
@@ -111,7 +114,7 @@ Cross-reference source files against test files to find gaps. **Be thorough** �
 <!-- MULTI_TYPE_ONLY: keep if ≥2 supported test types -->
 ### Gaps per test type
 
-List gaps grouped by confirmed test type ({{TEST_TYPES_LIST}}):
+List gaps grouped by inferred test type ({{TEST_TYPES_LIST}}):
 - Source classes with **no corresponding test file** and not tested elsewhere
 - Source classes with a test file but **missing coverage for public methods/endpoints**
 

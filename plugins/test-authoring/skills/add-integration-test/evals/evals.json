@@ -4,7 +4,7 @@
     {
       "id": 0,
       "prompt": "add an integration test for POST /invoices endpoint",
-      "expected_output": "Skill add-integration-test triggers; runs Step -1 schema check, delegates to test-authoring writer agent, always spawns the verifier, summarises result.",
+      "expected_output": "Skill add-integration-test triggers; runs Step -1 resolution, delegates to test-authoring writer agent, always spawns the verifier, summarises result.",
       "assertions": [
         {
           "text": "skill_triggered: add-integration-test is selected"
@@ -17,7 +17,7 @@
     {
       "id": 1,
       "prompt": "create integration tests for the new ConsumerHandler",
-      "expected_output": "Skill add-integration-test triggers; runs Step -1 schema check, delegates to test-authoring writer agent, always spawns the verifier, summarises result.",
+      "expected_output": "Skill add-integration-test triggers; runs Step -1 resolution, delegates to test-authoring writer agent, always spawns the verifier, summarises result.",
       "assertions": [
         {
           "text": "skill_triggered: add-integration-test is selected"

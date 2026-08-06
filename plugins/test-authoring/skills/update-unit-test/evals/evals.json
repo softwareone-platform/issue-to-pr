@@ -4,7 +4,7 @@
     {
       "id": 0,
       "prompt": "update unit tests for BillingService now that CreateInvoice signature changed",
-      "expected_output": "Skill update-unit-test triggers; runs Step -1 schema check, presents the audit summary, executes audit-derived actions (no confirmation gate), summarises result.",
+      "expected_output": "Skill update-unit-test triggers; runs Step -1 resolution, presents the audit summary, executes audit-derived actions (no confirmation gate), summarises result.",
       "assertions": [
         {
           "text": "skill_triggered: update-unit-test is selected"
@@ -17,7 +17,7 @@
     {
       "id": 1,
       "prompt": "the unit tests for OrderProcessor are stale, refresh them",
-      "expected_output": "Skill update-unit-test triggers; runs Step -1 schema check, presents the audit summary, executes audit-derived actions (no confirmation gate), summarises result.",
+      "expected_output": "Skill update-unit-test triggers; runs Step -1 resolution, presents the audit summary, executes audit-derived actions (no confirmation gate), summarises result.",
       "assertions": [
         {
           "text": "skill_triggered: update-unit-test is selected"

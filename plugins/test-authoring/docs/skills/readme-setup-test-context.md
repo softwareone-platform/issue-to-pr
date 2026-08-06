@@ -4,7 +4,7 @@ The `setup-test-context` skill is the **optional** profiler that caches per-repo
 
 It is re-runnable, and re-running **is** the refresh: managed files are generated artifacts, not user documents. The skill keeps **no state between runs** — no manifest, no recorded hashes, no per-file version. It knows only the fixed set of paths the current version writes: an existing file at one of those paths is backed up into the run's backup folder and rewritten, and anything else under the managed directories is reported and left untouched. All proposed changes are presented as a single atomic confirmation gate — the user accepts or rejects everything.
 
-Unlike the runtime test skills (add/update/scan), this skill spawns **no subagents** during its own execution — everything runs linearly (Schema check → Analyse → Present → Backup → Generate → Verify) within the orchestrator process. Consequently there is **no circuit breaker** or fix-loop machinery here.
+Unlike the runtime test skills (add/update/scan), this skill spawns **no subagents** during its own execution — everything runs linearly (Analyse → Present → Backup → Generate → Verify) within the orchestrator process. Consequently there is **no circuit breaker** or fix-loop machinery here.
 
 ---
 
@@ -24,7 +24,8 @@ Unlike the runtime test skills (add/update/scan), this skill spawns **no subagen
 ```
 
 No arguments. The skill always analyses the entire repository. To remove what it wrote, delete
-`.claude/{conventions,rules,shared}/tests/` — it writes nothing outside those three directories.
+`.claude/{conventions,rules,shared}/tests/`, plus any kept `.claude/backup/setup-*/` folder and the four
+lines it added to the repo's `.gitignore`.
 
 ---
 
@@ -33,8 +34,8 @@ No arguments. The skill always analyses the entire repository. To remove what it
 | Phase | Action |
 |-------|--------|
 | 1. Analyse | Read CLAUDE.md hints, detect language/frameworks, map project structure, learn test conventions, identify build/test commands and architectural patterns, classify test projects |
-| 2. Present | Show analysis summary, test-project table, files to create/overwrite, drift report, git working-tree state; ask for atomic confirmation |
-| 3. Backup | Create timestamped `.claude/backup/setup-{timestamp}/` (skipped on fresh install); deleted on success unless it holds user-modified overwrites, stale deletions, or user-requested backups (then kept + path reported) |
+| 2. Present | Show analysis summary, test-project table, files to create/overwrite, unmanaged files that will be left alone, git working-tree state; ask for atomic confirmation |
+| 3. Backup | Create timestamped `.claude/backup/setup-{timestamp}/` (skipped when every target is fresh); **kept** on success whenever anything was overwritten, with its path reported — deleted only when the run wrote nothing but new files |
 | 4. Generate | Fill plugin templates (`resources/templates/{rules,shared}/`) with placeholders from analysis; generate Tier 3 cross-layer conventions (`project-architecture.md`, `common-*`) directly from analysis. **Slim default: per-type `{type}-test-conventions.md` are NOT generated** (sibling-derived at runtime) |
 | 5. Verify | Confirm all written files exist; grep for unresolved placeholders and leaked HTML comments; cross-check agent-referenced paths; rollback on failure |
 
@@ -58,7 +59,7 @@ flowchart TB
         direction LR
         B1[Analysis summary and test-project table]
         B2[Files to create / update]
-        B3[Drift / git state]
+        B3[Unmanaged files / git state]
         B4[Atomic confirmation gate]
         B1 --> B2 --> B3 --> B4
     end
@@ -127,11 +128,14 @@ current repo state, with the previous copy in the backup folder. Nothing signals
 due — the analysis-derived cross-layer map (`project-architecture.md` / `common-*`) goes stale as the
 repo evolves, and only you know that has happened.
 
-**Legacy per-type conventions (upgraded repos):** a repo set up before the Slim default may still have
-`unit-test-conventions.md` / `integration-test-conventions.md` on disk. They are not regenerated and
-not deleted — they fall under the report-and-leave-alone rule above. Harmless at runtime: siblings are
-the authoritative source for per-type conventions, so a stale per-type doc is overridden rather than
-obeyed. Delete them by hand if you want them gone.
+**Leftovers in an upgraded repo:** a repo set up by an older plugin version may still have files this
+version no longer writes — `unit-test-conventions.md` / `integration-test-conventions.md` from before the
+Slim default, `test-component-rules.md` / `component-test-conventions.md` / `fixture-capabilities.md`
+from before component support was removed, and a `.setup-manifest.json` from before the manifest was
+removed (a dotfile, so list it explicitly — a plain directory listing will hide it). None are regenerated and none are
+deleted — they all fall under the report-and-leave-alone rule above. Harmless at runtime: nothing reads
+the manifest any more, and siblings are the authoritative source for per-type conventions, so a stale
+per-type doc is overridden rather than obeyed. Delete them by hand if you want them gone.
 
 ### Backup strategy
 
@@ -167,7 +171,7 @@ All diagrams use GitHub fenced code blocks tagged `mermaid` (not Azure DevOps `:
 
 ## Generated output
 
-Setup-test-context writes 12–14 files per consumer repo. Under the **Slim default** the set does not vary by test type — per-type `{type}-test-conventions.md` are no longer written, and only the conditional `common-*` conventions move the count:
+Setup-test-context writes 11–13 files per consumer repo. Under the **Slim default** the set does not vary by test type — per-type `{type}-test-conventions.md` are no longer written, and only the conditional `common-*` conventions move the count:
 
 | Category | Files | Source |
 |---|---|---|

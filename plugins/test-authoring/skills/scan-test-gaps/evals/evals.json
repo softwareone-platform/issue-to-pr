@@ -4,7 +4,7 @@
     {
       "id": 0,
       "prompt": "scan for test gaps in the billing module",
-      "expected_output": "Skill scan-test-gaps triggers; runs Step -1 schema check, shows confirmation gate (or natural gate for scan), delegates to test-authoring agent, summarises result.",
+      "expected_output": "Skill scan-test-gaps triggers; runs Step -1 resolution, shows confirmation gate (or natural gate for scan), delegates to test-authoring agent, summarises result.",
       "assertions": [
         {
           "text": "skill_triggered: scan-test-gaps is selected"
@@ -17,7 +17,7 @@
     {
       "id": 1,
       "prompt": "which classes lack tests?",
-      "expected_output": "Skill scan-test-gaps triggers; runs Step -1 schema check, shows confirmation gate (or natural gate for scan), delegates to test-authoring agent, summarises result.",
+      "expected_output": "Skill scan-test-gaps triggers; runs Step -1 resolution, shows confirmation gate (or natural gate for scan), delegates to test-authoring agent, summarises result.",
       "assertions": [
         {
           "text": "skill_triggered: scan-test-gaps is selected"
@@ -30,7 +30,7 @@
     {
       "id": 2,
       "prompt": "find untested code in the recent changes",
-      "expected_output": "Skill scan-test-gaps triggers; runs Step -1 schema check, shows confirmation gate (or natural gate for scan), delegates to test-authoring agent, summarises result.",
+      "expected_output": "Skill scan-test-gaps triggers; runs Step -1 resolution, shows confirmation gate (or natural gate for scan), delegates to test-authoring agent, summarises result.",
       "assertions": [
         {
           "text": "skill_triggered: scan-test-gaps is selected"
@@ -43,7 +43,7 @@
     {
       "id": 3,
       "prompt": "check coverage holes for the new handlers",
-      "expected_output": "Skill scan-test-gaps triggers; runs Step -1 schema check, shows confirmation gate (or natural gate for scan), delegates to test-authoring agent, summarises result.",
+      "expected_output": "Skill scan-test-gaps triggers; runs Step -1 resolution, shows confirmation gate (or natural gate for scan), delegates to test-authoring agent, summarises result.",
       "assertions": [
         {
           "text": "skill_triggered: scan-test-gaps is selected"

@@ -61,7 +61,8 @@ When `/test-authoring:setup-test-context` runs in a consumer repo, it produces f
 │   ├── common-update-instructions.md
 │   └── common-verifier-checks.md
 └── shared/tests/
-    └── scope-resolution.md             # filled from plugin template
+    ├── scope-resolution.md             # filled from plugin template
+    └── README.md                       # what was generated, by which plugin version, when
 ```
 
 **Why `rules/` vs `conventions/`**: writer agents treat them differently. **Rules are non-negotiable**; **conventions are descriptive patterns** that observed sibling tests can override.

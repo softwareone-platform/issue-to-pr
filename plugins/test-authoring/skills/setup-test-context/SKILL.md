@@ -124,7 +124,9 @@ confirmation in §2.2 covers the whole set instead.
 ### Unmanaged files at managed paths (report only)
 
 List any file under `.claude/{conventions,rules,shared}/tests/` that is **not** among this run's write
-targets, and say plainly that it is not written by this version and will be left untouched. Do not
+targets, and say plainly that it is not written by this version and will be left untouched. **Include
+dotfiles** — a repo set up by an older version still has `.setup-manifest.json` there, and a plain
+listing hides it. Do not
 delete it and do not offer to — without recorded state, a leftover from a retired template and a file
 you wrote by hand are indistinguishable, and deleting the wrong one is unrecoverable.
 
@@ -151,9 +153,20 @@ Apply all changes based on confirmed analysis. Treat as a single atomic operatio
 
 ### 3.1 Backup strategy — timestamped folder
 
+**Reading the real clock.** Wherever a timestamp is needed — the backup folder name (§3.1) and the
+README's "generated at" line (§3.4) — obtain it by **executing a shell command**, never by writing one
+from the model: Claude has no real-time clock and a model-written value comes out as a stub such as a
+date with a `00:00:00Z` time. Two stubbed runs collide on the same backup folder name and the second
+overwrites the first — which now destroys the only copy of what the first run replaced.
+
+- bash / zsh: `date -u +"%Y-%m-%dT%H:%M:%SZ"`
+- PowerShell: `(Get-Date).ToUniversalTime().ToString("yyyy-MM-ddTHH:mm:ssZ")`
+
+Capture the output and use it verbatim.
+
 If any target file is being **overwritten** (§2.1), create `.claude/backup/setup-{timestamp}/` mirroring the target structure. This folder is the ONLY backup mechanism — no sibling `.bak` files are ever created at managed paths. Backup every file that will be overwritten before any write begins. On verification failure (Step 4), restore from backup.
 
-On success, **keep the folder** whenever anything was overwritten and report its path in Step 5 — the skill cannot tell which of those files you had edited, so the backup is your only route back. Delete it only when the run wrote nothing but new files.
+On success, **keep the folder** whenever anything was overwritten and report its path in Step 5 (§ Recommended next steps) — the skill cannot tell which of those files you had edited, so the backup is your only route back. Delete it only when the run wrote nothing but new files.
 
 When every target is fresh, an in-memory new-files list drives rollback (`rm` each on failure).
 
@@ -184,7 +197,7 @@ Pass everything inline. The prompt MUST include:
 2. Backup folder path (already created in §3.1, if applicable).
 3. Subagent kind (`shared-tier2` / `shared-tier3`; the legacy `per-type` kind is never dispatched under the Slim default).
 4. Test type label — legacy `per-type` field only, so never populated under the Slim default.
-5. Per-file decision flags from Step 2.2 (which targets to overwrite — pristine and user-modified alike, the latter already backed up per §3.1 — and which legacy targets the user chose to keep).
+5. The write set for this run — which target paths are fresh and which already exist (every existing one is backed up by the orchestrator in §3.1 before subagents spawn, then overwritten).
 6. The relevant slice of Step 1 analysis as structured text.
 7. Pre-resolved standard placeholder values (`{{LANGUAGE}}`, `{{SRC_DIR}}`, `{{TEST_DIR}}`, etc. — `{{TEST_TYPE}}` / `{{TEST_TYPE_TITLE}}` are legacy per-type placeholders with no surviving consumer).
 8. Source template paths (e.g. `<plugin-root>/resources/templates/rules/test-rules.md`).
@@ -195,7 +208,7 @@ After every write, the subagent **adds an entry** to its return payload with the
 
 ### 3.4 Aggregate subagent output and write README
 
-After all subagents return, render an aggregation table (same shape as the older bootstrap's §3.4 table). Then write `.claude/shared/tests/README.md` documenting the new layout (see `<plugin-root>/resources/templates/` for the template if needed; for now, write a minimal README with: list of files generated, plugin version, when generated, link to plugin docs).
+After all subagents return, render an aggregation table (same shape as the older bootstrap's §3.4 table). Then write `.claude/shared/tests/README.md` documenting the new layout (see `<plugin-root>/resources/templates/` for the template if needed; for now, write a minimal README with: the list of files generated; the plugin version, read from `<plugin-root>/.claude-plugin/plugin.json` (write `unknown` if unreadable); the generation timestamp, obtained per §3.1's **Reading the real clock**; and a link to the plugin docs). That version line is the only on-disk record of which plugin version produced these files — nothing reads it automatically, but it is what a human checks when the files look wrong.
 
 ---
 
@@ -204,8 +217,8 @@ After all subagents return, render an aggregation table (same shape as the older
 After all writes:
 
 1. Confirm every file exists.
-2. **Frontmatter check (bounded read — never re-read whole files into the main context)**: for each written file with frontmatter (conventions and rules carry a `description` and `paths`), read only the opening frontmatter block — a bounded read of the first ~20 lines (Read with a line limit, or `sed -n '1,20p'`), treating a missing closing `---` within that bound as invalid frontmatter → verification failure. Whole-file content checks belong to item 3's mechanical sweep; re-reading every generated file would pull the entire rule set into the main context — the exact bloat the per-type skills' lazy loading removed. (Unresolved `{{PLACEHOLDER}}` tokens and leaked HTML comments are item 3's greps — do not re-check them by reading file bodies.)
-3. **Mechanical grep sweep** — run against the files written THIS run, never the whole directory: kept-legacy and orphan files are outside this run's contract, and their content (e.g. quoted `{{ }}` template syntax) must not fail verification.
+2. **Frontmatter check (bounded read — never re-read whole files into the main context)**: for each written file with frontmatter (every generated conventions and rules file carries one), read only the opening frontmatter block — a bounded read of the first ~20 lines (Read with a line limit, or `sed -n '1,20p'`). Assert the block closes with `---` inside that bound **and** carries a non-empty `description`; either failing is a verification failure → rollback. Whole-file content checks belong to item 3's mechanical sweep; re-reading every generated file would pull the entire rule set into the main context — the exact bloat the per-type skills' lazy loading removed. (Unresolved `{{PLACEHOLDER}}` tokens and leaked HTML comments are item 3's greps — do not re-check them by reading file bodies.)
+3. **Mechanical grep sweep** — run against the files written THIS run, never the whole directory: unmanaged files (§2.1) are outside this run's contract, and their content (e.g. quoted `{{ }}` template syntax) must not fail verification.
    ```bash
    # <written-files…> = every path in this run's write log
    grep -n "{{" <written-files…>
@@ -230,15 +243,16 @@ Render the same Verification Results table the older bootstrap uses (Step 4.x).
 
 ## Step 4.5 — Gitignore the per-repo files (user-scope) + migrate already-tracked files
 
-Run this **only after Step 4 reports success** (item 8). If Step 4 rolled back, skip this step entirely — keeping the `.gitignore` change on the success path means a rollback never strands a `.gitignore` edit, so the whole run stays atomic from the user's perspective.
+Run this **only after Step 4 reports success** (item 7). If Step 4 rolled back, skip this step entirely — keeping the `.gitignore` change on the success path means a rollback never strands a `.gitignore` edit, so the whole run stays atomic from the user's perspective.
 
 setup-test-context's per-repo files are **user-scope** — local, never committed — so a teammate who has not adopted the test-skills plugin never carries generated files in their tree, and there is no PR clutter or merge conflict. The skills run cacheless without these files, so user-scope costs only a per-developer setup run, not correctness.
 
-**4.5a — Add the ignore lines.** Ensure `.gitignore` (at repo root) contains all three lines, each added only if not already present (newline-safety: if `.gitignore` exists but does not end with a newline, append one first so a new line never concatenates onto the previous; create the file with just these lines + newline if it does not exist):
+**4.5a — Add the ignore lines.** Ensure `.gitignore` (at repo root) contains all four lines, each added only if not already present (newline-safety: if `.gitignore` exists but does not end with a newline, append one first so a new line never concatenates onto the previous; create the file with just these lines + newline if it does not exist):
 ```
 .claude/conventions/tests/
 .claude/rules/tests/
 .claude/shared/tests/
+.claude/backup/
 ```
 
 **4.5b — Untrack anything already committed (migration).** `.gitignore` does not affect files git already tracks. Run `git ls-files .claude/conventions/tests .claude/rules/tests .claude/shared/tests`. If it lists any files, **print this notice; do NOT run the command automatically** — then continue to Step 5 (this skill never auto-commits; untracking is a committable change the user owns and reviews):
@@ -294,6 +308,7 @@ Plugin-bundled (NOT written here — supplied by test-authoring plugin):
 2. Try `/test-authoring:scan-test-gaps` to test gap scanning on a small area.
 3. Try `/test-authoring:add-unit-test ComponentName` on a small change to verify the add workflow.
 4. (If CLAUDE.md drift was reported) Update CLAUDE.md to reflect the current codebase — setup-test-context did not modify CLAUDE.md.
-5. To remove this scaffolding later, delete `.claude/{conventions,rules,shared}/tests/` — the skill writes nothing outside those three directories.
+5. If a backup folder was kept (§3.1), report its path here and say what it holds — it is the only copy of whatever this run overwrote.
+6. To remove this scaffolding later, delete `.claude/{conventions,rules,shared}/tests/`. Two things live outside those directories: any kept `.claude/backup/setup-*/` folder, and the four lines this skill added to `.gitignore` (§4.5a).
 
 ---

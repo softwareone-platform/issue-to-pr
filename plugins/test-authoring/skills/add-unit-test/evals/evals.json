@@ -4,7 +4,7 @@
     {
       "id": 0,
       "prompt": "add unit tests for BillingService.CreateInvoice",
-      "expected_output": "Skill add-unit-test triggers; runs Step -1 schema check, delegates to test-authoring writer agent, always spawns the verifier, summarises result.",
+      "expected_output": "Skill add-unit-test triggers; runs Step -1 resolution, delegates to test-authoring writer agent, always spawns the verifier, summarises result.",
       "assertions": [
         {
           "text": "skill_triggered: add-unit-test is selected"
@@ -17,7 +17,7 @@
     {
       "id": 1,
       "prompt": "write a unit test for the new payment validator",
-      "expected_output": "Skill add-unit-test triggers; runs Step -1 schema check, delegates to test-authoring writer agent, always spawns the verifier, summarises result.",
+      "expected_output": "Skill add-unit-test triggers; runs Step -1 resolution, delegates to test-authoring writer agent, always spawns the verifier, summarises result.",
       "assertions": [
         {
           "text": "skill_triggered: add-unit-test is selected"

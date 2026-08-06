@@ -16,8 +16,8 @@ Read this file during Step 3.2 (subagent dispatch) and Step 3.3 (subagent prompt
 | `{{TEST_DIR}}` | `tests/`, `__tests__/` | Step 1.3 |
 | `{{SRC_GLOB}}` | `src/**/*.cs`, `src/**/*.ts` | Step 1.3 + Step 1.2 |
 | `{{TEST_GLOB}}` | `tests/**/*.cs`, `__tests__/**/*.ts` | Step 1.3 + Step 1.2 |
-| `{{TEST_TYPE}}` | `unit`, `integration` | per-type, Step 1.7 |
-| `{{TEST_TYPE_TITLE}}` | `Unit`, `Integration` | Title-case of `{{TEST_TYPE}}` |
+| `{{TEST_TYPE}}` | `unit`, `integration` | legacy — no surviving consumer in any template |
+| `{{TEST_TYPE_TITLE}}` | `Unit`, `Integration` | legacy — no surviving consumer in any template |
 
 ## No language baselines
 

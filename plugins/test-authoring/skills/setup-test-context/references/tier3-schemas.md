@@ -1,6 +1,6 @@
-# Step 3.5 — Tier 3 File Generation Schemas
+# Tier 3 File Generation Schemas
 
-Read this file during Step 3.5. It contains the generation recipes for all analysis-derived files. These files are too repo-specific for templates — generate them directly using the analysis from Step 1. All Tier 3 files live under `.claude/conventions/tests/`.
+Read this file during Step 3.3 — it is dispatched to the subagents as a reference, per item 10 of the prompt contract. It contains the generation recipes for all analysis-derived files. These files are too repo-specific for templates — generate them directly using the analysis from Step 1. All Tier 3 files live under `.claude/conventions/tests/`.
 
 The frontmatter shown below is what each generated file must carry — a `description` and, where the file is scoped to particular paths, a `paths` list. Generated conventions carry no version field: the plugin keeps no per-run state, so there is nothing to compare a version against.
 
@@ -29,7 +29,7 @@ Content:
 
 ## `{type}-test-conventions.md` — one per confirmed test type
 
-> **Slim default: NOT generated.** This schema is retained for backward-compat (existing files keep validating) and for a manual full regeneration, but the Slim default does not produce `{type}-test-conventions.md` for any test type — writers derive these conventions from the nearest sibling at runtime.
+> **Slim default: NOT generated.** This schema is retained for a manual full regeneration, but the Slim default does not produce `{type}-test-conventions.md` for any test type — writers derive these conventions from the nearest sibling at runtime.
 
 Frontmatter:
 ```yaml

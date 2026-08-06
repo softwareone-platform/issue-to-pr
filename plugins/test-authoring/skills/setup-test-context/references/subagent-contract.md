@@ -60,7 +60,7 @@ The orchestrator passes everything inline as structured text in the prompt.
 2. **Backup folder path** — already created in §3.1, e.g. `.claude/backup/setup-2026-04-28-103045/` (if applicable).
 3. **Subagent kind** — one of `shared-tier2`, `shared-tier3` (the legacy `per-type` kind is never dispatched under the Slim default).
 4. **Test type label + authoring model** — legacy `per-type` field only (e.g. `unit`, `integration`; `code-driven` or `config-driven`, the user-confirmed values from Step 2.1). Never populated under the Slim default, which dispatches no per-type subagent. Item numbers below are stable — other documents cite them by number.
-5. **Per-file decision flags** — from Step 2.2: which targets to overwrite (pristine and user-modified alike — user-modified files are backed up by the orchestrator in §3.1 before subagents spawn), and which legacy targets the user chose to keep.
+5. **The write set for this run** — which target paths are fresh and which already exist. Every existing one is backed up by the orchestrator in §3.1 before subagents spawn, then overwritten; there is no keep option and no per-file classification.
 6. **Analysis slice** — only the parts of Step 1 output relevant to this subagent. Examples by kind:
    - shared-tier2: language, universal rule set inputs (verifier expectations, fix protocol settings), full build/test commands across all test projects (for `test-rules.md`), and the internal packages detected in §1.2.1 with their install models and verified paths (for `sut-analysis.md`'s `{{KNOWN_PACKAGES_TABLE}}`).
    - shared-tier3: project structure (§1.3), shared test project info if any, cross-layer verification patterns (§1.4 global), architectural patterns (§1.6).
@@ -82,21 +82,21 @@ Inline handoff scales fine for typical repos — per-type analysis slice is a fe
 The subagent returns a structured response.
 Format MUST be parseable by the orchestrator without re-reading file content —
 in particular, the orchestrator's §3.4 report and the Step 4 write log come directly from these payloads,
-so every `written` entry carries the hash and category inline.
+so every `written` entry carries its path and category inline.
 
 ```
 written:
   - path: <absolute file path>
     category: <conventions | rules | shared>
 skipped:
-  - <absolute file path> — <reason, e.g. "no shared test project detected", "legacy keep, per Step 2 decision">
+  - <absolute file path> — <reason, e.g. "no shared test project detected", "a conditional file whose condition was unmet">
 errors:
   - <absolute file path> — <single-line error message>
 ```
 
 Rules:
-- `written` lists every file actually written, each entry with `path`, `sha256`, and `category` — all three mandatory. Empty list ⇒ subagent did nothing (must also be reflected in `errors` or `skipped`).
-- `skipped` is for files the subagent did not generate: conditional files whose condition was unmet (per `tier3-schemas.md`), and legacy targets the user chose to keep in the decision flags. Skips are not failures.
+- `written` lists every file actually written, each entry with `path` and `category` — both mandatory. Empty list ⇒ subagent did nothing (must also be reflected in `errors` or `skipped`).
+- `skipped` is for files the subagent did not generate: conditional files whose condition was unmet (per `tier3-schemas.md`). Skips are not failures.
 - `errors` is empty on success. Any non-empty `errors` list signals failure for this subagent.
 - One terse entry per file. The orchestrator aggregates and renders the user-facing table; do not emit prose summaries, narrative text, or repeated content.
 

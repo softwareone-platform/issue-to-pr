@@ -4,7 +4,7 @@
     {
       "id": 0,
       "prompt": "update integration tests for /orders endpoint after the schema change",
-      "expected_output": "Skill update-integration-test triggers; runs Step -1 schema check, presents the audit summary, executes audit-derived actions (no confirmation gate), summarises result.",
+      "expected_output": "Skill update-integration-test triggers; runs Step -1 resolution, presents the audit summary, executes audit-derived actions (no confirmation gate), summarises result.",
       "assertions": [
         {
           "text": "skill_triggered: update-integration-test is selected"
@@ -17,7 +17,7 @@
     {
       "id": 1,
       "prompt": "refresh the InvoiceConsumer integration tests",
-      "expected_output": "Skill update-integration-test triggers; runs Step -1 schema check, presents the audit summary, executes audit-derived actions (no confirmation gate), summarises result.",
+      "expected_output": "Skill update-integration-test triggers; runs Step -1 resolution, presents the audit summary, executes audit-derived actions (no confirmation gate), summarises result.",
       "assertions": [
         {
           "text": "skill_triggered: update-integration-test is selected"
