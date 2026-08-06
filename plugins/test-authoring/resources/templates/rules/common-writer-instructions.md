@@ -37,7 +37,7 @@ Per-type writers may add focused identification items (integration identifies en
 
 ## Locate and learn from sibling tests (CRITICAL)
 
-Follow the procedure in `.claude/conventions/tests/{type}-test-conventions.md` **when that file exists**; nothing generates it, so the normal case is to read the same dimensions off the nearest sibling:
+Read these dimensions off the nearest sibling test — it is the only source:
 
 - Use the **source → test path mapping** (or test project mapping for integration-like) to find corresponding test files.
 - Apply the **sibling convention checklist** and **learn-from-sibling procedure** to adopt the exact style.
@@ -48,7 +48,7 @@ When context from different sources conflicts, follow the **context priority** a
 
 ## Style rules (inherit from sibling)
 
-Style is **not fixed globally** — adopt whatever the sibling tests use. The dimensions worth observing are: test framework and attributes, mocking library and approach, assertion library and style, fixture/setup pattern, test and file naming, AAA comment usage, and how the SUT is constructed. (`.claude/conventions/tests/{type}-test-conventions.md` lists the same set as a checklist on the rare repo that has a hand-written one; nothing generates it.)
+Style is **not fixed globally** — adopt whatever the sibling tests use. The dimensions worth observing are: test framework and attributes, mocking library and approach, assertion library and style, fixture/setup pattern, test and file naming, AAA comment usage, and how the SUT is constructed.
 
 Follow:
 
@@ -73,9 +73,10 @@ written. None of them is a failure; all three are protocol steps the orchestrato
   `test-writer-rules.md` → Fallback Chain. Name the directories you searched in `issues:`.
 - **Missing framework source** — per `sut-analysis.md` → Runtime resolution flow.
   Name the package and the path you tried in `issues:`.
-- **Missing plugin context** — your prompt carried no `plugin_resources_path`, so the rule books you are
-  required to obey are unreachable and you cannot resolve the path yourself. This one **is** a caller
-  bug rather than a repo state: say so in `issues:`.
+- **Missing plugin context** — your prompt carried neither `plugin_resources_path` nor a `fallback_rules`
+  block, so the rules you are required to obey are unreachable and you cannot resolve the path yourself.
+  This one **is** a caller bug rather than a repo state: say so in `issues:`. (A prompt carrying
+  `fallback_rules` is *not* this case — work from the inline core and flag it in `issues:` instead.)
 
 In all three: report the scope you could not cover, write **no** files at all (not even a partial one),
 and set `build_status: not_run (<reason>)` — there is nothing to build. Name the stop in your output as

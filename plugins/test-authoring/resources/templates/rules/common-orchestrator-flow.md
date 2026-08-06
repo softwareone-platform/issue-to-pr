@@ -37,13 +37,13 @@ Follow the procedure in `../shared/scope-resolution.md`.
 
 Before spawning writer agents, pre-fetch sibling context to reduce agent exploration time:
 
-1. For each source file, find the corresponding test directory using the directory structure in `.claude/conventions/tests/project-architecture.md`, plus the path mapping in `.claude/conventions/tests/{type}-test-conventions.md` **when that file exists** — nothing generates it, so a repo has one only where someone wrote it by hand; otherwise derive the mapping from the nearest sibling.
-2. If sibling test files exist, read them and extract the **convention spec** (fields per `.claude/conventions/tests/{type}-test-conventions.md` when present, otherwise from the sibling itself).
+1. For each source file, find the corresponding test directory: from the sibling tests that mirror it, and from the directory structure in `.claude/conventions/tests/project-architecture.md` when a prior setup cached it.
+2. If sibling test files exist, read them and extract the **convention spec** — the field set is the dimension list in `common-writer-instructions.md` → "Style rules (inherit from sibling)", and the values come from the sibling itself.
 3. Pass this context to the writer so it does NOT need to discover conventions itself.
 
 ## Writer delegation
 
-> **Plugin handoff (every spawn, always).** The orchestrator passes `plugin_resources_path` (the absolute path of the plugin's `resources/templates` directory, resolved in Step -1 — the directory that *contains* `rules/` and `shared/`, not the `resources/` directory above it) and `build_test_command` (session-detected; `--filter` adjusted per test class) into **every** subagent prompt — writer, verifier, and the audit / execute phases of update flows. Neither is optional and neither is conditional: a subagent cannot resolve the plugin path itself, and the rule books it must obey live only there. It reads rules/shared from the passed path per its own Path-resolution preamble, and treats convention docs as optional (sibling-first).
+> **Plugin handoff (every spawn, always).** The orchestrator passes `plugin_resources_path` (the absolute path of the plugin's `resources/templates` directory, resolved in Step -1 — the directory that *contains* `rules/` and `shared/`, not the `resources/` directory above it) and `build_test_command` (session-detected; `--filter` adjusted per test class) into **every** subagent prompt — writer, verifier, and the audit / execute phases of update flows. Neither is optional: a subagent cannot resolve the plugin path itself, and the rule books it must obey live only there. The single exception is Step -1's **degraded mode** — when the plugin path could not be resolved at all, pass a `fallback_rules` block carrying the non-negotiable core inline, in place of `plugin_resources_path`, and say so in your visible output. It reads rules/shared from the passed path per its own Path-resolution preamble, and treats convention docs as optional (sibling-first).
 
 Use the **Agent tool** to spawn the matching per-type writer:
 
@@ -88,7 +88,9 @@ This stop is a protocol step, not a failure — it does not count toward any fix
 ## Subagent stop on missing plugin context
 
 Any subagent — writer, verifier, or an update flow's audit / execute phase — returns
-`stop_reason: missing_plugin_context` when you did not pass `plugin_resources_path` in that spawn.
+`stop_reason: missing_plugin_context` when you passed **neither** `plugin_resources_path` **nor**
+`fallback_rules` in that spawn. A degraded-mode spawn carrying `fallback_rules` does not stop; it
+proceeds on the inline core and flags the reduced guardrails in its `issues:`.
 It is **your** bug, not the repo's, and re-spawning the same prompt reproduces it exactly — so do not
 treat it as a malformed-output case (the Structured-output enforcement rule above does not apply: the
 payload is well-formed, it just reports a stop) and do not count it toward any circuit breaker. Fix the

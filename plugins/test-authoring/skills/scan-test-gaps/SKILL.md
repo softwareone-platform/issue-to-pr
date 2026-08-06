@@ -13,7 +13,33 @@ This skill runs **with or without** a prior `setup-test-context`.
 
 !`echo "${CLAUDE_SKILL_DIR}/../../resources/templates"`
 
-Call the result `PLUGIN_TEMPLATES`. If that line did not expand to a real absolute path (it still shows a literal `${CLAUDE_SKILL_DIR}`), run `echo "$CLAUDE_SKILL_DIR/../../resources/templates"` with the Bash tool; if `$CLAUDE_SKILL_DIR` is empty too, **stop and ask the user for the `test-authoring` plugin install path**. Do not carry on with it unresolved: every rule this skill obeys lives under it, so continuing would drop the rule books silently instead of failing. The Read tool normalises the `../..` segments.
+Call the result `PLUGIN_TEMPLATES`. If that line did not expand to a real absolute path (it still shows a literal `${CLAUDE_SKILL_DIR}`), run `echo "$CLAUDE_SKILL_DIR/../../resources/templates"` with the Bash tool; if `$CLAUDE_SKILL_DIR` is empty too, ask the user for the `test-authoring` plugin install path. The Read tool normalises the `../..` segments.
+
+**If it still cannot be resolved, degrade — loudly — rather than stopping.** The sibling-learning path does not depend on the plugin, so tests can still be written; what is lost is the rule books, and that loss must be visible rather than silent. Print this **as prose in your reply**, not merely as reasoning, so it lands in the transcript and the dashboard:
+
+```
+⚠ Rule books unreachable — running in DEGRADED mode.
+  Could not resolve the test-authoring plugin path, so the shared rule books are not
+  loaded: fix rules, the verifier's check sequence, the fix protocol, SUT analysis.
+  Tests will still be written from the nearest sibling, but the anti-gaming guardrails
+  and the full independent-verifier sequence are NOT in force. Review the output
+  yourself, and re-run once the plugin path resolves.
+```
+
+Then carry on, and pass every subagent a `fallback_rules` block **in place of** `plugin_resources_path`, carrying the non-negotiable core inline:
+
+```
+fallback_rules: |
+  - **NEVER** weaken an assertion to make a test pass
+  - **NEVER** delete a test case that fails — fix the root cause or report it as failed
+  - **NEVER** add skip/ignore attributes or comment out a test to bypass a failure
+  - **NEVER** change the SUT (source code) to make tests pass
+  - If a test fails after **2 fix attempts**, report it as `failed` — do not keep weakening it
+  - The nearest sibling test is the only convention source. Where none exists, report the gap
+    and write nothing — never infer conventions from what the language usually does.
+```
+
+Degraded mode is for an **environment** failure only. It is not licence to omit `plugin_resources_path` when you did resolve it: a subagent that receives neither field stops, and that stop is a caller bug.
 
 Two kinds of file, resolved differently:
 
@@ -54,7 +80,7 @@ You are a test coverage analyst for {{PROJECT_DESCRIPTION}}. Your job is to find
 >
 > **Inferring the test types (always):** resolve `{{PROJECT_DESCRIPTION}}` and language from `project-architecture.md` when a prior setup cached it, and from per-invocation detection (project manifest + file extensions) when it did not — never render the token literally. The plugin records no confirmed type list between runs, so **infer the supported test types from the filesystem every time** — unit-like (mirrors source, mocks deps) and/or integration-like (HTTP/DB/container fixtures). **A test project containing `.feature` / Gherkin files (or Gherkin-binding step classes) is not a supported target — exclude it from the inferred types even though it uses containers/fixtures** (do NOT count it as integration-like). Use the inferred count to drive the SINGLE_TYPE_ONLY vs MULTI_TYPE_ONLY behaviour below, and **echo the inferred types in the Step 1.5 scope echo** so the user can correct them. Exclusions and priority criteria come from the detected language + nearest siblings.
 
-> Every `<PLUGIN_TEMPLATES>/…` and `.claude/conventions/tests/…` read below follows **Step -1's resolution** — and happens lazily, at the step that uses it, never as an upfront batch; a body reference to one of these files at a step IS that step's read instruction: Read the file before acting on it, never from memory of its name. Pass `plugin_resources_path` and `build_test_command` (per target test project for integration) into **every** subagent you delegate to — add / update writers and their verifiers — they cannot resolve these themselves. The `<plugin-root>/resources/static/status-legend.md` reference (Step 8) resolves to `<PLUGIN_TEMPLATES>/../static/status-legend.md` (Step -1); `PLUGIN_TEMPLATES` is always resolved by then — Step -1 stops rather than continuing without it.
+> Every `<PLUGIN_TEMPLATES>/…` and `.claude/conventions/tests/…` read below follows **Step -1's resolution** — and happens lazily, at the step that uses it, never as an upfront batch; a body reference to one of these files at a step IS that step's read instruction: Read the file before acting on it, never from memory of its name. Pass `plugin_resources_path` and `build_test_command` (per target test project for integration) into **every** subagent you delegate to — add / update writers and their verifiers — they cannot resolve these themselves. The `<plugin-root>/resources/static/status-legend.md` reference (Step 8) resolves to `<PLUGIN_TEMPLATES>/../static/status-legend.md` (Step -1); If `PLUGIN_TEMPLATES` was never resolved (Step -1's degraded mode), use plain text status labels.
 
 ## Scope: unit and integration tests only
 

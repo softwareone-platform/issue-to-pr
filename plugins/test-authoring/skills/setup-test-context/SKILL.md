@@ -63,7 +63,7 @@ One or two files, in one directory, and the set does not vary by test type:
 - `.claude/conventions/tests/project-architecture.md` — always
 - `.claude/conventions/tests/common-verification-patterns.md` — only when §1.4 found at least one **qualifying** pattern (layer-common **or** cross-layer-common; `generated-conventions.md` is the single definition)
 
-Per-type `{type}-test-conventions.md` are **not** written: writers derive those from the nearest sibling at runtime.
+Per-type `{type}-test-conventions.md` are **not** written, and no longer read either: writers derive those from the nearest sibling at runtime. A file the plugin never writes but every writer would trust on sight is an injection surface — anyone able to write to the repo could steer test generation through it, and it would not show in a PR because the path is gitignored.
 
 setup-test-context does NOT write any of: rule books, agents, commands, skills, status legend — all plugin-bundled and read from there. It writes no README either: every other output exists because a *skill* reads it, and a provenance note nothing reads is not worth a file.
 
@@ -123,8 +123,7 @@ Not generated this run:
 Not written -- read from the plugin at runtime:
   the 9 rule books (.claude/rules/tests/* and scope-resolution.md in earlier versions),
   the status legend, every agent and skill.
-  Per-type {type}-test-conventions.md are not written either -- writers derive those
-  from the nearest sibling at runtime.
+  Per-type {type}-test-conventions.md are neither written nor read -- sibling-derived.
 ```
 
 State each `OVERWRITE` path on its own line. If there are none, say so — "all targets are new, nothing
@@ -270,7 +269,7 @@ Generated files (per-repo, managed by setup-test-context):
 Conventions (.claude/conventions/tests/):
   - project-architecture.md
   - common-verification-patterns.md (if applicable)
-  (per-type {type}-test-conventions.md not written -- sibling-derived at runtime)
+  (per-type {type}-test-conventions.md neither written nor read -- sibling-derived)
 
 Plugin-bundled (NOT written here -- read from the test-authoring plugin at runtime):
   - 9 rule books (resources/templates/{rules,shared}/)

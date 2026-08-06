@@ -51,7 +51,7 @@ When `/test-authoring:setup-test-context` runs in a consumer repo it writes one 
     └── common-verification-patterns.md # only if a cross-layer pattern was detected
 ```
 
-Per-type `{type}-test-conventions.md` are **not** written — writers read the nearest sibling instead, which is always more current than a cache.
+Per-type `{type}-test-conventions.md` are **not** written, and the plugin no longer reads them either. Writers use the nearest sibling, which is always more current than a cache — and a file nothing generates but every writer would trust is an injection surface, invisible in review because the path is gitignored.
 
 **Why `conventions/` holds the only per-repo *content***: writer agents treat rules and conventions differently. **Rules are non-negotiable** and identical in every repo, so they ship with the plugin. **Conventions are descriptive patterns** that observed sibling tests can override, and they are the only thing analysis can discover that shipping cannot supply.
 

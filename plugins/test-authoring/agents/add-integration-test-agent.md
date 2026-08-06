@@ -9,9 +9,12 @@ description: >
 
 ## Path resolution (governs every file reference below)
 
-Your spawning prompt carries `plugin_resources_path` and `build_test_command`. You cannot resolve `${CLAUDE_SKILL_DIR}` yourself, so rely solely on the absolute `plugin_resources_path` passed in — and if it did not reach you, **stop**: return your structured output now with nothing done, `stop_reason: missing_plugin_context`, and an `issues:` entry saying the spawning prompt omitted `plugin_resources_path`. Name that exact token — it is how the orchestrator routes this, and the rule book describing it is itself unreachable without the path. Never guess a plugin path and never proceed without the rule books. Two kinds of path appear below:
+Your spawning prompt carries `build_test_command`, and either `plugin_resources_path` or a `fallback_rules` block. You cannot resolve `${CLAUDE_SKILL_DIR}` yourself, so rely solely on the absolute `plugin_resources_path` passed in — and never guess one. Two cases if it is missing:
 
-- **Rule books.** Every `<plugin_resources_path>/rules/…` and `<plugin_resources_path>/shared/…` path below is literal — read it from there, substituting the absolute value you were passed. They ship with the plugin and no copy of them exists in the repo, so there is nothing under `.claude/rules/` to look for. Inside a rule book, a **bare filename** means a sibling rule book in that same `rules/` directory, and a `../shared/<f>` path is relative to it — both resolve under `<plugin_resources_path>/`. A bare filename that names a **conventions** file (anything `*-test-conventions.md`) is not a rule book: it means `.claude/conventions/tests/<f>` in the repo, per the next bullet. The status legend is at `<plugin_resources_path>/../static/status-legend.md`.
+- **A `fallback_rules` block came instead** — the caller could not resolve the plugin path and said so in its own output. Work from those inline rules: they are the non-negotiable core, the nearest sibling is your only convention source, and you must state in `issues:` that you ran without the full rule books so the human knows the guardrails were reduced.
+- **Neither field came** — that is a caller bug, not an environment failure. **Stop**: return your structured output now with nothing done, `stop_reason: missing_plugin_context`, and an `issues:` entry saying the spawning prompt carried neither `plugin_resources_path` nor `fallback_rules`. Name that exact token — it is how the orchestrator routes this, and the rule book describing it is itself unreachable. Two kinds of path appear below:
+
+- **Rule books.** Every `<plugin_resources_path>/rules/…` and `<plugin_resources_path>/shared/…` path below is literal — read it from there, substituting the absolute value you were passed. They ship with the plugin and no copy of them exists in the repo, so there is nothing under `.claude/rules/` to look for. Inside a rule book, a **bare filename** means a sibling rule book in that same `rules/` directory, and a `../shared/<f>` path is relative to it — both resolve under `<plugin_resources_path>/`. The status legend is at `<plugin_resources_path>/../static/status-legend.md`.
 - **Conventions — optional.** Your top-priority source is the nearest sibling test (per context priority in `test-writer-rules.md`); the target test project, authorization mapping, fixture setup, and state-isolation strategy that the conventions doc would document are all inferred from siblings instead. When neither a convention doc nor a sibling exists, follow `test-writer-rules.md` → Fallback Chain: widen the search first, and only if that yields nothing, stop and report the gap in `issues:` with no tests written. Never synthesise conventions from the language alone.
 - **Build and test.** For build/test, use `build_test_command` as the base invocation — adjust its `--filter` to the actual test class you write.
 
@@ -30,7 +33,7 @@ In addition to the universal inputs listed in `<plugin_resources_path>/rules/com
 
 ## Step — Determine the Correct Test Project
 
-If the caller specifies a test project, use it. Otherwise, determine it from the source file using the **test project mapping** in `.claude/conventions/tests/integration-test-conventions.md` (when that doc is absent — infer the target project from the nearest sibling endpoint/handler test, per "Path resolution") — and record `caller did not provide target test project` in `issues:`: every caller is contracted to pass it, so a missing value is a caller contract gap that must stay visible, not be silently absorbed.
+If the caller specifies a test project, use it. Otherwise infer it from the nearest sibling endpoint/handler test that mirrors the source area — and record `caller did not provide target test project` in `issues:`: every caller is contracted to pass it, so a missing value is a caller contract gap that must stay visible, not be silently absorbed.
 
 If an integration-style source change maps to multiple test projects (e.g., both an API project and a worker project), the orchestrator is expected to have split the source list. Treat each invocation as targeting a single test project.
 
@@ -41,7 +44,7 @@ In addition to the universal `<plugin_resources_path>/rules/sut-analysis.md`, id
 - Command / query handlers and their dependencies
 - Background operations and their lifecycle
 - Event consumers and the events they handle
-- Authorization requirements (policies, claims, account types) — cross-reference `.claude/conventions/tests/integration-test-conventions.md` "Authorization → forbidden account types" table when present
+- Authorization requirements (policies, claims, account types) — read the sibling integration tests for the identity / account-type helpers they use, and the source's own authorization attributes for what each policy admits
 
 ## Type-specific writing notes
 

@@ -52,7 +52,7 @@ Writer agents may receive context from three sources. When they disagree, follow
 
 1. **Sibling tests** (highest) — what you observe in the actual nearest sibling file is the source of truth.
 2. **Orchestrator pre-fetched context** — provided as an acceleration hint. If it conflicts with what you see in the sibling, **follow the sibling**.
-3. **Convention file** (`.claude/conventions/tests/<type>-test-conventions.md` — e.g., `unit-test-conventions.md`, `integration-test-conventions.md`) — documents the most common patterns in the repo. Use as fallback only when no sibling exists. **Normally absent**: nothing generates this file. A repo has one only where someone deliberately wrote it to pin a convention the siblings do not show.
+3. **Nothing.** There is no third source. No per-type convention file is generated, and none is read — a file the plugin never writes but every writer would trust is an injection surface, so the read was removed rather than left conditional. When 1 and 2 both yield nothing, stop and report (see Fallback Chain below).
 
 ## Fallback Chain (when no sibling exists in the immediate directory)
 

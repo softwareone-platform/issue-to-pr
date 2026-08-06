@@ -13,7 +13,33 @@ This skill runs **with or without** a prior `setup-test-context`.
 
 !`echo "${CLAUDE_SKILL_DIR}/../../resources/templates"`
 
-Call the result `PLUGIN_TEMPLATES`. If that line did not expand to a real absolute path (it still shows a literal `${CLAUDE_SKILL_DIR}`), run `echo "$CLAUDE_SKILL_DIR/../../resources/templates"` with the Bash tool; if `$CLAUDE_SKILL_DIR` is empty too, **stop and ask the user for the `test-authoring` plugin install path**. Do not carry on with it unresolved: every rule this skill obeys lives under it, so continuing would drop the rule books silently instead of failing. The Read tool normalises the `../..` segments.
+Call the result `PLUGIN_TEMPLATES`. If that line did not expand to a real absolute path (it still shows a literal `${CLAUDE_SKILL_DIR}`), run `echo "$CLAUDE_SKILL_DIR/../../resources/templates"` with the Bash tool; if `$CLAUDE_SKILL_DIR` is empty too, ask the user for the `test-authoring` plugin install path. The Read tool normalises the `../..` segments.
+
+**If it still cannot be resolved, degrade — loudly — rather than stopping.** The sibling-learning path does not depend on the plugin, so tests can still be written; what is lost is the rule books, and that loss must be visible rather than silent. Print this **as prose in your reply**, not merely as reasoning, so it lands in the transcript and the dashboard:
+
+```
+⚠ Rule books unreachable — running in DEGRADED mode.
+  Could not resolve the test-authoring plugin path, so the shared rule books are not
+  loaded: fix rules, the verifier's check sequence, the fix protocol, SUT analysis.
+  Tests will still be written from the nearest sibling, but the anti-gaming guardrails
+  and the full independent-verifier sequence are NOT in force. Review the output
+  yourself, and re-run once the plugin path resolves.
+```
+
+Then carry on, and pass every subagent a `fallback_rules` block **in place of** `plugin_resources_path`, carrying the non-negotiable core inline:
+
+```
+fallback_rules: |
+  - **NEVER** weaken an assertion to make a test pass
+  - **NEVER** delete a test case that fails — fix the root cause or report it as failed
+  - **NEVER** add skip/ignore attributes or comment out a test to bypass a failure
+  - **NEVER** change the SUT (source code) to make tests pass
+  - If a test fails after **2 fix attempts**, report it as `failed` — do not keep weakening it
+  - The nearest sibling test is the only convention source. Where none exists, report the gap
+    and write nothing — never infer conventions from what the language usually does.
+```
+
+Degraded mode is for an **environment** failure only. It is not licence to omit `plugin_resources_path` when you did resolve it: a subagent that receives neither field stops, and that stop is a caller bug.
 
 Two kinds of file, resolved differently:
 
@@ -27,7 +53,7 @@ If `.claude/conventions/tests/project-architecture.md` is absent, say so once: `
 **Orchestrator reading list (context discipline).** Load into the main context only what this orchestrator itself needs, when it needs it:
 
 - **Now**: `<PLUGIN_TEMPLATES>/rules/common-orchestrator-flow.md`.
-- **At the step that uses it**: Step 1 → `<PLUGIN_TEMPLATES>/shared/scope-resolution.md`. Step 1.5 → `.claude/conventions/tests/integration-test-conventions.md` (test project mapping, when a prior setup cached it; otherwise infer from siblings). Step 3 (an audit issue cites the Source-change advisory) or Step 5a (the full `phase: execute` structure beyond the inlined block) → `<PLUGIN_TEMPLATES>/rules/common-update-instructions.md`, and only its orchestrator-facing sections ("Phase 2 invocation contract", the advisory) — the Phase 1 audit and Phase 2 execute procedure bodies are the update-writer's own rule book. Final multi-agent build → `<PLUGIN_TEMPLATES>/rules/test-rules.md` (use the session-detected per-project `build_test_command`). First verifier finding or attributable build failure → `<PLUGIN_TEMPLATES>/rules/fix-protocol.md`. A writer stopping on missing framework source → `<PLUGIN_TEMPLATES>/rules/sut-analysis.md` → "Runtime resolution flow". A writer stopping on no convention source → `<PLUGIN_TEMPLATES>/rules/common-orchestrator-flow.md` → "Writer stop on no convention source".
+- **At the step that uses it**: Step 1 → `<PLUGIN_TEMPLATES>/shared/scope-resolution.md`. Step 3 (an audit issue cites the Source-change advisory) or Step 5a (the full `phase: execute` structure beyond the inlined block) → `<PLUGIN_TEMPLATES>/rules/common-update-instructions.md`, and only its orchestrator-facing sections ("Phase 2 invocation contract", the advisory) — the Phase 1 audit and Phase 2 execute procedure bodies are the update-writer's own rule book. Final multi-agent build → `<PLUGIN_TEMPLATES>/rules/test-rules.md` (use the session-detected per-project `build_test_command`). First verifier finding or attributable build failure → `<PLUGIN_TEMPLATES>/rules/fix-protocol.md`. A writer stopping on missing framework source → `<PLUGIN_TEMPLATES>/rules/sut-analysis.md` → "Runtime resolution flow". A writer stopping on no convention source → `<PLUGIN_TEMPLATES>/rules/common-orchestrator-flow.md` → "Writer stop on no convention source".
 - **Never**: `common-writer-instructions.md`, `common-verifier-checks.md`, `test-writer-rules.md`. They are subagent rule books — the writers/verifiers read them in their own isolated contexts; preloading them here only bloats the main context.
 
 
@@ -35,7 +61,7 @@ If `.claude/conventions/tests/project-architecture.md` is absent, say so once: `
 
 You are the orchestrator for integration test maintenance. Your job is to **audit existing tests**, **present findings**, and then **delegate changes** derived from the audit status to subagents (no confirmation gate — git is the rollback). Follow the universal flow in `<PLUGIN_TEMPLATES>/rules/common-orchestrator-flow.md`; this file only documents integration-specific pieces.
 
-> Every `<PLUGIN_TEMPLATES>/…` and `.claude/conventions/tests/…` read below follows **Step -1's resolution** — and happens lazily, at the step that uses it, never as an upfront batch; a body reference to one of these files at a step IS that step's read instruction: Read the file before acting on it, never from memory of its name. Pass `plugin_resources_path` and `build_test_command` (the latter instantiated **per target test project**) into **every** subagent spawn — audit, execute, add, and both verifiers — they cannot resolve these themselves. All `<plugin-root>/resources/static/status-legend.md` references below resolve to `<PLUGIN_TEMPLATES>/../static/status-legend.md` (Step -1), which is always resolved by then — Step -1 stops rather than continuing without it.
+> Every `<PLUGIN_TEMPLATES>/…` and `.claude/conventions/tests/…` read below follows **Step -1's resolution** — and happens lazily, at the step that uses it, never as an upfront batch; a body reference to one of these files at a step IS that step's read instruction: Read the file before acting on it, never from memory of its name. Pass `plugin_resources_path` and `build_test_command` (the latter instantiated **per target test project**) into **every** subagent spawn — audit, execute, add, and both verifiers — they cannot resolve these themselves. All `<plugin-root>/resources/static/status-legend.md` references below resolve to `<PLUGIN_TEMPLATES>/../static/status-legend.md` (Step -1), or plain text status labels when Step -1 could not resolve it.
 
 > **CRITICAL — Deletion safety**: deletions and rewrites are driven by the **audit status** (not a user gate) and applied automatically. A test may be deleted only when the audit classified it `wrong` or `duplicated` — never when `valid` or `outdated-major` (an outdated-major test still carries intent worth preserving: it is rewritten, never deleted). Every action is recorded in an **action record** and passed to `test-authoring:verify-update-integration-test-agent`, which independently re-checks each deletion against `git show HEAD:<file>`. Git is the safety net: a tracked test file can be restored with `git restore`.
 
@@ -48,7 +74,7 @@ Follow the procedure in `<PLUGIN_TEMPLATES>/shared/scope-resolution.md`.
 
 ## Step 1.5 — Determine Test Project Mapping
 
-Before auditing, determine which test project each source file maps to. Use the **test project mapping** in `.claude/conventions/tests/integration-test-conventions.md`. **When that doc is absent** (no prior setup, or it cached no per-type conventions): infer the target test project(s) from siblings — locate the integration test project(s) whose tests mirror the source area; if several exist and none clearly mirrors the source, ask the user rather than guess. If a single source file maps to multiple test projects (e.g., both API and worker), audit each (source, project) pair separately — one Phase 1 agent per pair, so neither project's stale tests are missed.
+Before auditing, determine which test project each source file maps to. **Infer it from siblings** — nothing generates a per-repo test-project mapping, so this is the only route: infer the target test project(s) from siblings — locate the integration test project(s) whose tests mirror the source area; if several exist and none clearly mirrors the source, ask the user rather than guess. If a single source file maps to multiple test projects (e.g., both API and worker), audit each (source, project) pair separately — one Phase 1 agent per pair, so neither project's stale tests are missed.
 
 ## Step 2 — Audit via Agent
 
@@ -212,7 +238,7 @@ Agent(subagent_type="test-authoring:add-integration-test-agent"):
     build_test_command: <build/test command for THIS pair's Target test project>
 ```
 
-If the audit reported `no_existing_tests: true` (no siblings found), omit the sibling lines and state instead: `No sibling tests found and no convention source — apply test-writer-rules.md → Fallback Chain`. Nothing generates `{type}-test-conventions.md`, so do not point the writer at it. Never invent a sibling path to satisfy the template.
+If the audit reported `no_existing_tests: true` (no siblings found), omit the sibling lines and state instead: `No sibling tests found and no convention source — apply test-writer-rules.md → Fallback Chain`. Never invent a sibling path to satisfy the template.
 
 Skip if the action record has no add actions.
 

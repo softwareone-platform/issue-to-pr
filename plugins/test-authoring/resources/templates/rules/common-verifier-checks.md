@@ -37,7 +37,7 @@ Per-type verifiers run these five checks (U1, U2, U2b, U3, U4) in order before a
 
 The writer reports which conventions it adopted. You MUST NOT blindly trust this — **read 1-2 sibling test files** from the provided paths to independently verify the claim.
 
-Check against the sibling convention checklist in the applicable `.claude/conventions/tests/{test-type}-test-conventions.md` **when that file exists** — nothing generates it, so the normal case is to take the checklist's dimensions from the sibling the writer worked from.
+Check against the sibling the writer worked from — it is the only convention source, and the dimensions to check are the list in `common-writer-instructions.md` → "Style rules (inherit from sibling)".
 
 If the writer's reported spec does not match the actual sibling, use **what you observe in the sibling** as the source of truth — not what the writer claimed.
 
@@ -113,8 +113,10 @@ Do NOT attempt to fix any failures — only report.
 > definition you cannot read this file in the situation it describes. This section exists so the
 > behaviour is documented in one place and so a normal-run verifier knows to omit the field.
 
-If your spawning prompt carried no `plugin_resources_path`, the rule books you review against are
-unreachable and you cannot resolve the path yourself. Do **not** review anyway from memory of these
+If your spawning prompt carried neither `plugin_resources_path` nor a `fallback_rules` block, the rules
+you review against are unreachable and you cannot resolve the path yourself. (With `fallback_rules`,
+review against the inline core and the sibling, and say in your output that the full check sequence was
+not available.) Do **not** review anyway from memory of these
 rules, and do not treat it as a review failure by the writer: return your structured output now with
 `stop_reason: missing_plugin_context` **alone** — no verdict, no findings — plus a note saying the spawn
 omitted the field. A verdict emitted without the rule books would be attributed to the writer and can

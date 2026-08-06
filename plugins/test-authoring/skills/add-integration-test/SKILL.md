@@ -13,7 +13,33 @@ This skill runs **with or without** a prior `setup-test-context`.
 
 !`echo "${CLAUDE_SKILL_DIR}/../../resources/templates"`
 
-Call the result `PLUGIN_TEMPLATES`. If that line did not expand to a real absolute path (it still shows a literal `${CLAUDE_SKILL_DIR}`), run `echo "$CLAUDE_SKILL_DIR/../../resources/templates"` with the Bash tool; if `$CLAUDE_SKILL_DIR` is empty too, **stop and ask the user for the `test-authoring` plugin install path**. Do not carry on with it unresolved: every rule this skill obeys lives under it, so continuing would drop the rule books silently instead of failing. The Read tool normalises the `../..` segments.
+Call the result `PLUGIN_TEMPLATES`. If that line did not expand to a real absolute path (it still shows a literal `${CLAUDE_SKILL_DIR}`), run `echo "$CLAUDE_SKILL_DIR/../../resources/templates"` with the Bash tool; if `$CLAUDE_SKILL_DIR` is empty too, ask the user for the `test-authoring` plugin install path. The Read tool normalises the `../..` segments.
+
+**If it still cannot be resolved, degrade — loudly — rather than stopping.** The sibling-learning path does not depend on the plugin, so tests can still be written; what is lost is the rule books, and that loss must be visible rather than silent. Print this **as prose in your reply**, not merely as reasoning, so it lands in the transcript and the dashboard:
+
+```
+⚠ Rule books unreachable — running in DEGRADED mode.
+  Could not resolve the test-authoring plugin path, so the shared rule books are not
+  loaded: fix rules, the verifier's check sequence, the fix protocol, SUT analysis.
+  Tests will still be written from the nearest sibling, but the anti-gaming guardrails
+  and the full independent-verifier sequence are NOT in force. Review the output
+  yourself, and re-run once the plugin path resolves.
+```
+
+Then carry on, and pass every subagent a `fallback_rules` block **in place of** `plugin_resources_path`, carrying the non-negotiable core inline:
+
+```
+fallback_rules: |
+  - **NEVER** weaken an assertion to make a test pass
+  - **NEVER** delete a test case that fails — fix the root cause or report it as failed
+  - **NEVER** add skip/ignore attributes or comment out a test to bypass a failure
+  - **NEVER** change the SUT (source code) to make tests pass
+  - If a test fails after **2 fix attempts**, report it as `failed` — do not keep weakening it
+  - The nearest sibling test is the only convention source. Where none exists, report the gap
+    and write nothing — never infer conventions from what the language usually does.
+```
+
+Degraded mode is for an **environment** failure only. It is not licence to omit `plugin_resources_path` when you did resolve it: a subagent that receives neither field stops, and that stop is a caller bug.
 
 Two kinds of file, resolved differently:
 
@@ -27,7 +53,7 @@ If `.claude/conventions/tests/project-architecture.md` is absent, say so once: `
 **Orchestrator reading list (context discipline).** Load into the main context only what this orchestrator itself needs, when it needs it:
 
 - **Now**: `<PLUGIN_TEMPLATES>/rules/common-orchestrator-flow.md`.
-- **At the step that uses it**: Step 1 → `<PLUGIN_TEMPLATES>/shared/scope-resolution.md`. Step 1.5 → `.claude/conventions/tests/integration-test-conventions.md` (test project mapping, when a prior setup cached it; otherwise infer from siblings). Step 2 → `.claude/conventions/tests/project-architecture.md` (reuse the conventions doc from Step 1.5). Step 4, only when it runs → `<PLUGIN_TEMPLATES>/rules/test-rules.md` (use the session-detected per-project `build_test_command`). First verifier finding or attributable build failure → `<PLUGIN_TEMPLATES>/rules/fix-protocol.md`. A writer stopping on missing framework source → `<PLUGIN_TEMPLATES>/rules/sut-analysis.md` → "Runtime resolution flow". A writer stopping on no convention source → `<PLUGIN_TEMPLATES>/rules/common-orchestrator-flow.md` → "Writer stop on no convention source".
+- **At the step that uses it**: Step 1 → `<PLUGIN_TEMPLATES>/shared/scope-resolution.md`. Step 2 → `.claude/conventions/tests/project-architecture.md` (optional — sibling-first). Step 4, only when it runs → `<PLUGIN_TEMPLATES>/rules/test-rules.md` (use the session-detected per-project `build_test_command`). First verifier finding or attributable build failure → `<PLUGIN_TEMPLATES>/rules/fix-protocol.md`. A writer stopping on missing framework source → `<PLUGIN_TEMPLATES>/rules/sut-analysis.md` → "Runtime resolution flow". A writer stopping on no convention source → `<PLUGIN_TEMPLATES>/rules/common-orchestrator-flow.md` → "Writer stop on no convention source".
 - **Never**: `common-writer-instructions.md`, `common-verifier-checks.md`, `test-writer-rules.md`, and the other flow's rule book (`common-update-instructions.md`). They are subagent rule books — the writers/verifiers read them in their own isolated contexts; preloading them here only bloats the main context.
 
 
@@ -56,7 +82,7 @@ Per `<PLUGIN_TEMPLATES>/rules/common-orchestrator-flow.md` → "Pre-fetch contex
 
 1. For each source file, find the corresponding test directory within the target test project — from the sibling tests that mirror it, and from `.claude/conventions/tests/project-architecture.md` when a prior setup cached it.
 2. If sibling test files exist in the mapped directory, read them and extract the convention spec. Include the authorization mapping (where applicable) so the writer uses the correct account-type identity helpers. If none exist there, widen once — the nearest test files in the same target test project — and label them in the writer prompt as `nearest sibling (not exact mirror)` so the writer weighs them below an exact-mirror sibling.
-3. If no siblings are found at all, omit the sibling fields from the Step 3 template and state instead: `No sibling tests found and no convention source — apply test-writer-rules.md → Fallback Chain`. Nothing generates `{type}-test-conventions.md`, so do not point the writer at it. Never invent a sibling path to satisfy the template.
+3. If no siblings are found at all, omit the sibling fields from the Step 3 template and state instead: `No sibling tests found and no convention source — apply test-writer-rules.md → Fallback Chain`. Never invent a sibling path to satisfy the template.
 4. Pass this context to the writer.
 
 ## Step 3 — Delegate to Agent
@@ -130,7 +156,7 @@ The orchestrator MUST NOT invoke `Write` / `Edit` / `MultiEdit` directly. All ed
 
 ## Step 7 — Summary
 
-Per `<PLUGIN_TEMPLATES>/rules/common-orchestrator-flow.md` → "Summary reporting". Note any env_failures distinctly — they are infrastructure issues, not test-quality issues. Status per file uses the icons in the plugin's `resources/static/status-legend.md` (= `<PLUGIN_TEMPLATES>/../static/status-legend.md`, resolved in Step -1; plugin-internal controlled vocabulary). `PLUGIN_TEMPLATES` is always resolved by this point — Step -1 stops rather than continuing without it.
+Per `<PLUGIN_TEMPLATES>/rules/common-orchestrator-flow.md` → "Summary reporting". Note any env_failures distinctly — they are infrastructure issues, not test-quality issues. Status per file uses the icons in the plugin's `resources/static/status-legend.md` (= `<PLUGIN_TEMPLATES>/../static/status-legend.md`, resolved in Step -1; plugin-internal controlled vocabulary). If Step -1 could not resolve `PLUGIN_TEMPLATES` (degraded mode), use plain text status labels.
 
 
 
