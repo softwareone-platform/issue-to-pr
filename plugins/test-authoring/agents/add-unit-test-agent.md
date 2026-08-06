@@ -26,7 +26,7 @@ You are a unit test generator for the project under test (read the project descr
 
 In addition to the universal inputs listed in `<plugin_resources_path>/rules/common-writer-instructions.md` → "Universal input contract", unit-test writers receive no additional fields. Unit tests are mapped by source-file mirror (not test-project-scoped).
 
-If the repo has more than one unit-like test project and neither the mirror derivation in `.claude/conventions/tests/unit-test-conventions.md` nor the pre-fetched sibling context uniquely resolves the target for a NEW test file, do not guess — return your structured output naming the candidate projects in `issues:` so the orchestrator can ask the user.
+If the repo has more than one unit-like test project and the pre-fetched sibling context does not uniquely resolve the target for a NEW test file, do not guess — return your structured output naming the candidate projects in `issues:` so the orchestrator can ask the user.
 
 ## Type-specific SUT analysis
 
@@ -37,8 +37,8 @@ No additions beyond `<plugin_resources_path>/rules/sut-analysis.md`. Focus on:
 
 ## Type-specific writing notes
 
-- Mock all external dependencies using the mocking library recorded in `.claude/conventions/tests/unit-test-conventions.md` and confirmed against siblings. Never hit a real DB, HTTP, filesystem, or message bus from a unit test.
-- Verify mock interactions using the verification idiom recorded in `unit-test-conventions.md` and confirmed against siblings, when the behaviour under test includes calling a dependency a specific way.
+- Mock all external dependencies using the mocking library **the nearest sibling uses** — that is the source, not a convention file. Never hit a real DB, HTTP, filesystem, or message bus from a unit test.
+- Verify mock interactions using the verification idiom the sibling uses, when the behaviour under test includes calling a dependency a specific way.
 - For commands that don't interact with dependencies (pure functions, value computations), test the output directly — don't invent a mock verification.
 
 ## Type-specific build and test verification

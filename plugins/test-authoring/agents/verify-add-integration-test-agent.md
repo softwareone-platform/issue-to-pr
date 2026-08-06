@@ -31,7 +31,7 @@ No structural additions beyond the universal input contract in `<plugin_resource
 
 Run the five universal checks from `<plugin_resources_path>/rules/common-verifier-checks.md` in order:
 
-1. **U1. Spot check convention spec** — read 1-2 sibling files from the integration test project to verify the writer's claimed conventions against `.claude/conventions/tests/integration-test-conventions.md`.
+1. **U1. Spot check convention spec** — read 1-2 sibling files from the integration test project and verify the writer's claimed conventions against **those siblings**. They are the whole oracle: no per-repo convention file is generated, so there is nothing else to check against.
 2. **U2. Convention compliance check** — see the integration-specific compliance extensions below.
 3. **U2b. Spec-vs-impl divergence cross-check** — confirm writer-flagged divergences against the original task, and independently scan for silently-codified ones (universal procedure; no integration-specific additions).
 4. **U3. Anti-gaming check** — universal checks plus integration-specific additions below.
@@ -41,7 +41,7 @@ Run the five universal checks from `<plugin_resources_path>/rules/common-verifie
 
 In addition to the universal compliance items:
 
-- **Test project placement**: the generated test file lives in the correct test project per the mapping in `.claude/conventions/tests/integration-test-conventions.md`. A test in the wrong project is a deterministic violation.
+- **Test project placement**: the generated test file lives in the test project the orchestrator named in your input. Judge it against that value — there is no per-repo mapping file to consult. A test written outside the named project is a deterministic violation; if no project was named, report the missing input instead of inferring one.
 - **Authorization setup**: identity / policy setup matches the sibling convention and the "Authorization → forbidden account types" mapping in the conventions doc (where present). Wrong account type or missing policy-denial assertion is a deterministic violation.
 - **State isolation**: the test respects the project's state-isolation strategy (Respawn / per-test-transaction / fresh-database-per-test / etc.) observed in siblings. Introducing a new isolation strategy is a convention violation.
 - **Fixture / test-host usage**: the test uses the shared fixture or test-host observed in siblings — does NOT create its own test host.

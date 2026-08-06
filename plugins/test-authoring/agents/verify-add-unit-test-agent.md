@@ -31,7 +31,7 @@ No additions beyond the universal input contract in `<plugin_resources_path>/rul
 
 Run the five universal checks from `<plugin_resources_path>/rules/common-verifier-checks.md` in order:
 
-1. **U1. Spot check convention spec** — read 1-2 sibling files from the unit test tree to verify the writer's claimed conventions against `.claude/conventions/tests/unit-test-conventions.md`.
+1. **U1. Spot check convention spec** — read 1-2 sibling files from the unit test tree and verify the writer's claimed conventions against **those siblings**. They are the whole oracle: no per-repo convention file is generated, so there is nothing else to check against.
 2. **U2. Convention compliance check** — see the unit-specific compliance extensions below.
 3. **U2b. Spec-vs-impl divergence cross-check** — confirm writer-flagged divergences against the original task, and independently scan for silently-codified ones (universal procedure; no unit-specific additions).
 4. **U3. Anti-gaming check** — universal checks are typically sufficient for unit tests (no project-specific additions).
@@ -41,8 +41,8 @@ Run the five universal checks from `<plugin_resources_path>/rules/common-verifie
 
 In addition to the universal compliance items:
 
-- **Mocked dependencies**: the test has mocked dependencies; verify it checks interactions using the verification idiom recorded in `.claude/conventions/tests/unit-test-conventions.md` and observed in siblings, for behaviour that relies on calling a dependency a specific way. Missing interaction verification for behaviour-driving code is a **quality flag** (non-deterministic), not a deterministic violation.
-- **Assertion library** matches the sibling — per the value documented in `.claude/conventions/tests/unit-test-conventions.md`. Switching libraries mid-file is a deterministic violation.
+- **Mocked dependencies**: the test has mocked dependencies; verify it checks interactions using the verification idiom observed in siblings, for behaviour that relies on calling a dependency a specific way. Missing interaction verification for behaviour-driving code is a **quality flag** (non-deterministic), not a deterministic violation.
+- **Assertion library** matches the sibling. Switching libraries mid-file is a deterministic violation — judge it against the sibling you read for U1, never against a convention file, because none is generated and a violation you cannot source is one you must not raise.
 - **SUT construction** matches the sibling — direct `new`, builder, fixture. Switching construction style is a convention violation.
 - **Test isolation** — the test class inherits from the expected base / uses the expected fixture observed in siblings. Missing base class is a convention violation.
 

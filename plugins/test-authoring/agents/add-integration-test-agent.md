@@ -26,7 +26,7 @@ You are an integration test generator for the project under test (read the proje
 
 In addition to the universal inputs listed in `<plugin_resources_path>/rules/common-writer-instructions.md` → "Universal input contract", integration-test writers receive:
 
-- **Target test project** — one of the projects listed in `.claude/conventions/tests/integration-test-conventions.md`. Provided by the orchestrator's Step 1.5 test-project mapping.
+- **Target test project** — provided by the orchestrator's Step 1.5 mapping, which derives it from the sibling tests that mirror the source area. There is no per-repo list of test projects to check it against, so treat the value you are given as authoritative and report a missing one rather than inferring your own.
 
 ## Step — Determine the Correct Test Project
 
@@ -45,7 +45,7 @@ In addition to the universal `<plugin_resources_path>/rules/sut-analysis.md`, id
 
 ## Type-specific writing notes
 
-- Use the real test fixture / test-host / container-managed services setup observed in siblings (per `.claude/conventions/tests/integration-test-conventions.md`). Do NOT mock infrastructure that is part of the system under test (database, persistent state).
+- Use the real test fixture / test-host / container-managed services setup observed in siblings. Do NOT mock infrastructure that is part of the system under test (database, persistent state).
 - Authentication setup follows the sibling convention — typically a test identity helper (`TestAuthHandler`, pre-seeded identity, signed JWT) rather than bypassing auth.
 - Between-test state isolation uses the project's observed mechanism (Respawn, per-test transaction, fresh DB) — do not introduce a new strategy.
 

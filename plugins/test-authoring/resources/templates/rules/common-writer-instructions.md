@@ -127,7 +127,7 @@ files_analysed:
 
 sibling_tests_referenced:
 - <path>
-  <one line per observed dimension — the set listed under "Sibling learning" above>
+  <one line per observed dimension — the set listed under "Style rules (inherit from sibling)" above>
 
 files_created:
 - <path>

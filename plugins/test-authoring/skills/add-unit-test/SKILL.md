@@ -48,7 +48,7 @@ Follow the procedure in `<PLUGIN_TEMPLATES>/shared/scope-resolution.md`.
 
 Per `<PLUGIN_TEMPLATES>/rules/common-orchestrator-flow.md` → "Pre-fetch context (add-flow only)":
 
-1. For each source file, find the corresponding test directory using `.claude/conventions/tests/unit-test-conventions.md` and `.claude/conventions/tests/project-architecture.md`.
+1. For each source file, find the corresponding test directory — from the sibling tests that mirror it, and from `.claude/conventions/tests/project-architecture.md` when a prior setup cached it.
 2. If sibling test files exist in the mapped directory, read them and extract the convention spec. If none exist there, widen once — the nearest test files in the same test project (parent directory or adjacent feature folder) — and label them in the writer prompt as `nearest sibling (not exact mirror)` so the writer weighs them below an exact-mirror sibling.
 3. If no siblings are found at all, omit the sibling fields from the Step 3 template and state instead: `No sibling tests found and no convention source — apply test-writer-rules.md → Fallback Chain`. Nothing generates `{type}-test-conventions.md`, so do not point the writer at it. Never invent a sibling path to satisfy the template.
 4. Pass this context to the writer.

@@ -81,7 +81,7 @@ Follow `sut-analysis.md` and the pointers in `common-writer-instructions.md` →
 
 ### Step A2 — Locate and read existing tests
 
-Follow the **learn from sibling tests** procedure in `common-writer-instructions.md` → "Sibling learning" — the same dimensions apply here. (`.claude/conventions/tests/{type}-test-conventions.md` restates them as a checklist on the rare repo that has a hand-written one; nothing generates it.)
+Follow the **learn from sibling tests** procedure in `common-writer-instructions.md` → "Locate and learn from sibling tests (CRITICAL)", whose dimension list is under "Style rules (inherit from sibling)" — the same dimensions apply here. (`.claude/conventions/tests/{type}-test-conventions.md` restates them as a checklist on the rare repo that has a hand-written one; nothing generates it.)
 
 For each source file:
 
@@ -143,7 +143,7 @@ source_file: <path>
 test_file: <path> (or "none")
 
 sibling_conventions:
-  (one line per observed dimension, per common-writer-instructions.md → "Sibling learning")
+  (one line per observed dimension, per common-writer-instructions.md → "Style rules (inherit from sibling)")
 
 test_audit:
 - method: <TestMethodName>

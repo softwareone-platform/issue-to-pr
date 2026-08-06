@@ -40,7 +40,7 @@ No additions beyond `<plugin_resources_path>/rules/sut-analysis.md`. Focus on th
 ## Type-specific execute notes
 
 - When rewriting an outdated-major test, re-use the same mocking library and fixture pattern observed in siblings. Do NOT flip mocking libraries mid-file.
-- Mock-interaction verifications (using the idiom recorded in `.claude/conventions/tests/unit-test-conventions.md` and observed in siblings) should be re-matched to the new method signature exactly.
+- Mock-interaction verifications (using the idiom observed in siblings) should be re-matched to the new method signature exactly.
 
 ## Type-specific build and test verification
 

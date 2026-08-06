@@ -22,12 +22,12 @@ Two kinds of file, resolved differently:
 
 If `.claude/conventions/tests/project-architecture.md` is absent, say so once: `"No cached repo profile — deriving from siblings. Run /test-authoring:setup-test-context once to cache the repo cross-layer test map."` Then carry on — it blocks nothing.
 
-**Detect once, reuse this session**: the language, and the *executable* build/test invocation **form** (test-project path + filter syntax). `test-rules.md` carries no command list — the detected form is the only source: it drives this skill's own quick build (Step 3) and is passed to every delegated agent as `build_test_command`. For integration spanning several test projects, instantiate the form per target test project (Step 7); subagents adjust its `--filter`.
+**Detect once, reuse this session**: the language, and the *executable* build/test invocation **form** (test-project path + filter syntax). `test-rules.md` carries no command list — the detected form is the only source: it drives this skill's own quick build (Step 4, "Stale test detection") and is passed to every delegated agent as `build_test_command`. For integration spanning several test projects, instantiate the form per target test project (Step 7); subagents adjust its `--filter`.
 
 **Orchestrator reading list (context discipline).** Load into the main context only what this orchestrator itself needs, when it needs it:
 
 - **Now**: `<PLUGIN_TEMPLATES>/rules/common-orchestrator-flow.md`, then `.claude/conventions/tests/project-architecture.md` — the "Placeholder resolution" note below needs it before Step 1 (absent: per-invocation detection per that note, no read).
-- **At the step that uses it**: Step 1 → `<PLUGIN_TEMPLATES>/shared/scope-resolution.md`. Steps 2–3 reuse `project-architecture.md` (already loaded). The "Stale test detection" quick build → `<PLUGIN_TEMPLATES>/rules/test-rules.md` (use the session-detected `build_test_command`). Delegation and update segments, on demand → `.claude/conventions/tests/integration-test-conventions.md` (target test project mapping), `<PLUGIN_TEMPLATES>/rules/common-update-instructions.md` (orchestrator-facing sections only), `<PLUGIN_TEMPLATES>/rules/fix-protocol.md` (first verifier finding or attributable build failure).
+- **At the step that uses it**: Step 1 → `<PLUGIN_TEMPLATES>/shared/scope-resolution.md`. Steps 2–3 reuse `project-architecture.md` (already loaded). The "Stale test detection" quick build → `<PLUGIN_TEMPLATES>/rules/test-rules.md` (use the session-detected `build_test_command`). Delegation and update segments, on demand → `<PLUGIN_TEMPLATES>/rules/common-update-instructions.md` (orchestrator-facing sections only), `<PLUGIN_TEMPLATES>/rules/fix-protocol.md` (first verifier finding or attributable build failure).
 - **Never**: `common-writer-instructions.md`, `common-verifier-checks.md`, `test-writer-rules.md`. They are subagent rule books — the writers/verifiers read them in their own isolated contexts; preloading them here only bloats the main context.
 
 
@@ -252,7 +252,7 @@ Before spawning the first writer of a batch, record the **pre-writer source snap
 - For **add** gaps → spawn one `test-authoring:add-<type>-test-agent` per source class (per type, e.g., `test-authoring:add-unit-test-agent`, `test-authoring:add-integration-test-agent`)
 - For **Update** gaps → spawn one `test-authoring:update-<type>-test-agent` per source class (per type)
 
-For integration-like types, include the target test project in the agent prompt. If the test project mapping in `.claude/conventions/tests/integration-test-conventions.md` resolves a source to MULTIPLE test projects (e.g. API + worker), split into one (source, project) pair per writer — same rule as `add-integration-test` Step 1.5; passing only one project silently drops the other's coverage.
+For integration-like types, include the target test project in the agent prompt. If the sibling tests show a source mirrored into MULTIPLE integration test projects (e.g. API + worker), split into one (source, project) pair per writer — same rule as `add-integration-test` Step 1.5; passing only one project silently drops the other's coverage.
 
 ### Passing context to agents
 

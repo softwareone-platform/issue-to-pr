@@ -46,9 +46,7 @@ Follow the procedure in `<PLUGIN_TEMPLATES>/shared/scope-resolution.md`.
 
 ## Step 1.5 — Determine Test Project Mapping
 
-Before spawning agents, determine which test project each source file maps to. Use the **test project mapping** in `.claude/conventions/tests/integration-test-conventions.md`.
-
-**When that doc is absent** (no prior setup, or it cached no per-type conventions): infer the target test project from siblings — locate the existing integration test project whose tests mirror the source area (an endpoint/handler test for a nearby source file). If several integration test projects exist and none clearly mirrors the source, do not guess — state the candidates and ask the user.
+Before spawning agents, determine which test project each source file maps to. **Infer it from siblings** — nothing generates a per-repo test-project mapping, so this is the only route: — locate the existing integration test project whose tests mirror the source area (an endpoint/handler test for a nearby source file). If several integration test projects exist and none clearly mirrors the source, do not guess — state the candidates and ask the user.
 
 If a single source change covers multiple projects (e.g., both API and worker), split the source list and spawn one agent per (source, project) pair.
 
@@ -56,7 +54,7 @@ If a single source change covers multiple projects (e.g., both API and worker), 
 
 Per `<PLUGIN_TEMPLATES>/rules/common-orchestrator-flow.md` → "Pre-fetch context (add-flow only)":
 
-1. For each source file, find the corresponding test directory within the target test project using `.claude/conventions/tests/integration-test-conventions.md` and `.claude/conventions/tests/project-architecture.md`.
+1. For each source file, find the corresponding test directory within the target test project — from the sibling tests that mirror it, and from `.claude/conventions/tests/project-architecture.md` when a prior setup cached it.
 2. If sibling test files exist in the mapped directory, read them and extract the convention spec. Include the authorization mapping (where applicable) so the writer uses the correct account-type identity helpers. If none exist there, widen once — the nearest test files in the same target test project — and label them in the writer prompt as `nearest sibling (not exact mirror)` so the writer weighs them below an exact-mirror sibling.
 3. If no siblings are found at all, omit the sibling fields from the Step 3 template and state instead: `No sibling tests found and no convention source — apply test-writer-rules.md → Fallback Chain`. Nothing generates `{type}-test-conventions.md`, so do not point the writer at it. Never invent a sibling path to satisfy the template.
 4. Pass this context to the writer.

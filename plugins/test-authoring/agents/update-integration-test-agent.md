@@ -27,7 +27,7 @@ You are an integration test maintenance agent for the project under test (read t
 
 In addition to the universal audit inputs in `<plugin_resources_path>/rules/common-update-instructions.md` → "Phase 1 — Audit", integration-test update writers receive:
 
-- **Target test project** — one of the projects listed in `.claude/conventions/tests/integration-test-conventions.md`. Provided by the orchestrator.
+- **Target test project** — provided by the orchestrator, derived from the sibling tests that mirror the source area. There is no per-repo list to validate it against, so treat it as authoritative and report a missing one rather than inferring your own.
 
 ## Step — Determine Test Project
 
