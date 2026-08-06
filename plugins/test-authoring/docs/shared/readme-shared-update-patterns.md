@@ -236,7 +236,7 @@ After 2 fix attempts on the same test, the agent must report it as `failed` and 
 
 ### Verifier-side checks
 
-Implemented by the per-type `verify-update-<type>-test-agent` pair ([unit](../../agents/test-authoring:verify-update-unit-test-agent.md) / [integration](../../agents/test-authoring:verify-update-integration-test-agent.md)), which are strictly read-only and independent of the writer:
+Implemented by the per-type `verify-update-<type>-test-agent` pair ([unit](../../agents/verify-update-unit-test-agent.md) / [integration](../../agents/verify-update-integration-test-agent.md)), which are strictly read-only and independent of the writer:
 
 | Check | What it verifies |
 |-------|-----------------|

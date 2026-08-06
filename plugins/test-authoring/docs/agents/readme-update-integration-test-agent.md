@@ -1,6 +1,6 @@
 # test-authoring:update-integration-test-agent
 
-The `test-authoring:update-integration-test-agent` is a subagent that audits and updates existing **integration tests** for specific source files. It is spawned by the [`/test-authoring:update-integration-test`](../commands/readme-update-integration-test.md) orchestrator and operates in a two-phase lifecycle, with each phase being a separate fresh-spawn invocation: Phase 1 performs a read-only audit, returns structured results, then terminates. The orchestrator presents the audit to the user as an audit trail, derives each item's action from its **audit status** (no confirmation gate), and **fresh-spawns** a Phase 2 instance with `phase: execute` in the prompt — the audit record is carried forward as data, not as live agent state. Phase 2 applies only the planned changes.
+The `test-authoring:update-integration-test-agent` is a subagent that audits and updates existing **integration tests** for specific source files. It is spawned by the [`/test-authoring:update-integration-test`](../skills/readme-update-integration-test.md) orchestrator and operates in a two-phase lifecycle, with each phase being a separate fresh-spawn invocation: Phase 1 performs a read-only audit, returns structured results, then terminates. The orchestrator presents the audit to the user as an audit trail, derives each item's action from its **audit status** (no confirmation gate), and **fresh-spawns** a Phase 2 instance with `phase: execute` in the prompt — the audit record is carried forward as data, not as live agent state. Phase 2 applies only the planned changes.
 
 Unlike its unit-test sibling, this agent works at endpoint-level granularity: tests are keyed by endpoint route plus HTTP method (e.g., `GET v1/billing/journals/{id}`) rather than C# method name. Integration tests are often split across **multiple files** per source class (`Basic.cs`, `Create.cs`, `{Action}.cs`), so the agent must locate and audit all of them. It also detects auth policy drift by reading `[Authorize]` attributes on the controller.
 
@@ -63,7 +63,7 @@ Key differences from the unit-test agent output:
 - **`auth_policy_findings`** section reports drift between the controller's `[Authorize]` attribute and what the tests assert.
 - **`env_failures`** tracked separately (Testcontainers, Docker).
 
-See the [agent source](../../agents/test-authoring:update-integration-test-agent.md) for the full output schema.
+See the [agent source](../../agents/update-integration-test-agent.md) for the full output schema.
 
 ### Phase 2 Input
 
@@ -77,7 +77,7 @@ The agent processes only `action: update` and `action: delete` entries. Items wi
 
 ### Phase 2 Output
 
-Structured block containing: `changes_applied` (per-method with file, endpoint, action, and result), `deleted_tests_record` (exact signatures for verifier cross-check), `build_status`, `test_results`, `fix_rounds`, and `issues`. Each entry includes the **file path** since changes may span multiple test files. See the [agent source](../../agents/test-authoring:update-integration-test-agent.md) for the full output schema.
+Structured block containing: `changes_applied` (per-method with file, endpoint, action, and result), `deleted_tests_record` (exact signatures for verifier cross-check), `build_status`, `test_results`, `fix_rounds`, and `issues`. Each entry includes the **file path** since changes may span multiple test files. See the [agent source](../../agents/update-integration-test-agent.md) for the full output schema.
 
 ---
 
@@ -210,7 +210,7 @@ The agent records these in the `sibling_conventions` block of the audit output s
 
 ### Paired with test-authoring:verify-update-integration-test-agent
 
-After Phase 2 completes, the orchestrator spawns a [`test-authoring:verify-update-integration-test-agent`](readme-verify-update-integration-test-agent.md) (see the shared pattern doc) to independently verify that:
+After Phase 2 completes, the orchestrator spawns a [`test-authoring:verify-update-integration-test-agent`](readme-verify-update-test-agent.md) (see the shared pattern doc) to independently verify that:
 
 - Every deletion is justified by an `action: delete` entry whose `audit_status` is `wrong` or `duplicated` (outdated-major is rewritten, never deleted).
 - No valid test was deleted or modified.

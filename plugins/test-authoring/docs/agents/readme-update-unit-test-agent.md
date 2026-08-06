@@ -1,6 +1,6 @@
 # test-authoring:update-unit-test-agent
 
-The `test-authoring:update-unit-test-agent` is a subagent that audits and updates existing **unit tests** for specific source files. It is spawned by the [`/test-authoring:update-unit-test`](../commands/readme-update-unit-test.md) orchestrator and operates in a two-phase lifecycle, with each phase being a separate fresh-spawn invocation: Phase 1 performs a read-only audit, returns structured results, then terminates. The orchestrator presents the audit to the user as an audit trail, derives each item's action from its **audit status** (no confirmation gate), and **fresh-spawns** a Phase 2 instance with `phase: execute` in the prompt — the audit record is carried forward as data, not as live agent state. Phase 2 applies only the planned changes. Anti-gaming rules are enforced throughout to prevent silent deletion, assertion weakening, or source modification. See [readme-shared-update-patterns.md](../shared/readme-shared-update-patterns.md) for the cross-cutting mechanics shared with the integration-test update agent.
+The `test-authoring:update-unit-test-agent` is a subagent that audits and updates existing **unit tests** for specific source files. It is spawned by the [`/test-authoring:update-unit-test`](../skills/readme-update-unit-test.md) orchestrator and operates in a two-phase lifecycle, with each phase being a separate fresh-spawn invocation: Phase 1 performs a read-only audit, returns structured results, then terminates. The orchestrator presents the audit to the user as an audit trail, derives each item's action from its **audit status** (no confirmation gate), and **fresh-spawns** a Phase 2 instance with `phase: execute` in the prompt — the audit record is carried forward as data, not as live agent state. Phase 2 applies only the planned changes. Anti-gaming rules are enforced throughout to prevent silent deletion, assertion weakening, or source modification. See [readme-shared-update-patterns.md](../shared/readme-shared-update-patterns.md) for the cross-cutting mechanics shared with the integration-test update agent.
 
 ---
 
@@ -233,7 +233,7 @@ The agent records these in the `sibling_conventions` block of the audit output s
 
 ### Paired with test-authoring:verify-update-unit-test-agent
 
-After Phase 2 completes, the orchestrator spawns a [`test-authoring:verify-update-unit-test-agent`](readme-verify-update-unit-test-agent.md) (see the shared pattern doc) to independently verify that:
+After Phase 2 completes, the orchestrator spawns a [`test-authoring:verify-update-unit-test-agent`](readme-verify-update-test-agent.md) (see the shared pattern doc) to independently verify that:
 
 - Every deletion is justified by an `action: delete` entry whose `audit_status` is `wrong` or `duplicated` (outdated-major is rewritten, never deleted).
 - No valid test was deleted or modified.
