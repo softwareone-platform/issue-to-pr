@@ -23,7 +23,7 @@ This section rides through `a-harden-plan` hardening and the `a-gate-approve` ap
 Also include two more sections:
 
 - **Out of Scope** — the related work this change deliberately does not do. `review-code-risk` reads `plan.md` as its intent oracle in Phase B, so a named out-of-scope list gives it (and the human at `a-gate-approve`) an explicit boundary to judge scope creep against.
-- **Testing approach** — the intended test **type** (unit / integration / component), and — only if an existing seam already exercises the behaviour — that seam; otherwise say the surface is new and `b-write-tests` picks the seam at implementation. Do not pin a seam that does not yet exist. Keep it consistent with Verification / Acceptance; on any conflict the **oracle wins** (the summary/body rule again).
+- **Testing approach** — the intended test **type** (unit / integration), and — only if an existing seam already exercises the behaviour — that seam; otherwise say the surface is new and `b-write-tests` picks the seam at implementation. Do not pin a seam that does not yet exist. Keep it consistent with Verification / Acceptance; on any conflict the **oracle wins** (the summary/body rule again).
 
 ## `a-harden-plan` — harden the plan
 

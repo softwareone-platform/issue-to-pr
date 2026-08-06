@@ -1,6 +1,6 @@
 # Language Dispatch Fragments
 
-This directory holds language-specific baseline content used by the `setup-test-context` skill when filling placeholders in rule templates (`{{PROJECT_WIDE_RULES}}`, `{{VISIBILITY_NOTE}}`, `{{KNOWN_PACKAGES_TABLE}}`, component build commands, etc.).
+This directory holds language-specific baseline content used by the `setup-test-context` skill when filling placeholders in rule templates (`{{PROJECT_WIDE_RULES}}`, `{{VISIBILITY_NOTE}}`, `{{KNOWN_PACKAGES_TABLE}}`).
 
 The dispatch mechanism — derivation rule (e.g., `C#` → `csharp`), filesystem probe, per-subagent fragment ownership, sentinel handling — is documented in:
 

@@ -1,5 +1,5 @@
 {
   "name": "test-authoring",
-  "description": "Test authoring plugin: scan-test-gaps, add/update {unit,integration,component} tests, setup-test-context",
+  "description": "Test authoring plugin: scan-test-gaps, add/update {unit,integration} tests, setup-test-context",
   "version": "0.16.0"
 }

@@ -6,7 +6,7 @@ paths: [".claude/rules/tests/common-orchestrator-flow.md"]
 
 # Common Orchestrator Flow
 
-> **Consumers** — the `add-unit-test` / `add-integration-test` / `add-component-test` and `update-unit-test` / `update-integration-test` / `update-component-test` skills, plus `scan-test-gaps` (which delegates to the same writers). Each per-type skill references this file and adds its flow-specific steps (pre-fetch, delegation, audit, execute, etc.) inline.
+> **Consumers** — the `add-unit-test` / `add-integration-test` and `update-unit-test` / `update-integration-test` skills, plus `scan-test-gaps` (which delegates to the same writers). Each per-type skill references this file and adds its flow-specific steps (pre-fetch, delegation, audit, execute, etc.) inline.
 >
 > Keep this file minimal — if a pattern is not truly universal across all orchestrators, it belongs in the per-type file.
 
@@ -35,8 +35,6 @@ Follow the procedure in `.claude/shared/tests/scope-resolution.md`.
 - **Mode A** (no argument): Use git diff. Each per-type skill may add a `MODE_A_FOCUS` note describing what source changes are relevant for that test type (e.g., unit focuses on new public methods, integration on modified endpoints and consumers).
 - **Mode B** (argument provided): Resolve by directory, component, class, method/endpoint, or file name.
 
-Component-track skills (`add-component-test`) use **Mode B only** — see the `add-component-test` skill for the reasoning (source-to-feature mapping is fuzzy for Gherkin scenarios).
-
 ## Pre-fetch context (add-flow only)
 
 Before spawning writer agents, pre-fetch sibling context to reduce agent exploration time:
@@ -53,16 +51,12 @@ Use the **Agent tool** to spawn the matching per-type writer:
 
 - `add-unit-test` → spawns `test-authoring:add-unit-test-agent`
 - `add-integration-test` → spawns `test-authoring:add-integration-test-agent`
-- `add-component-test` → spawns `test-authoring:add-component-test-agent`
 - `update-unit-test` → spawns `test-authoring:update-unit-test-agent`
 - `update-integration-test` → spawns `test-authoring:update-integration-test-agent`
-- `update-component-test` → spawns `test-authoring:update-component-test-agent`
 
 **Add-flow concurrency**: spawn **one agent per source class**, all in parallel. Methods / endpoints of the same class stay in a single agent.
 
-**Component concurrency**: one agent per scenario, sequentially (container startup is slow, concurrency is not useful).
-
-**Update-flow**: one agent per source class for the audit phase (parallel; component update audits per **feature file** instead — see `update-component-test`); the execute phase is a **separate fresh-spawn** with a `phase: execute` block (see `.claude/rules/tests/common-update-instructions.md`) — not a continuation of the audit-phase agent.
+**Update-flow**: one agent per source class for the audit phase (parallel); the execute phase is a **separate fresh-spawn** with a `phase: execute` block (see `.claude/rules/tests/common-update-instructions.md`) — not a continuation of the audit-phase agent.
 
 **Fix rounds**: when a verifier flags issues, the orchestrator spawns a **fresh writer** with a `fix_invocation` block per `.claude/rules/tests/fix-protocol.md`. Every fix round is a new `Agent` invocation, not a continuation of any previous writer instance.
 
@@ -102,7 +96,7 @@ If the final build fails, treat each error as a deterministic finding: attribute
 After all writers complete (and build succeeds), spawn **one** per-type verifier:
 
 - Add-flow → `test-authoring:verify-add-<type>-test-agent` (e.g., `test-authoring:verify-add-unit-test-agent`)
-- Update-flow → `test-authoring:verify-update-<type>-test-agent` (plus a parallel `test-authoring:verify-add-<type>-test-agent` if any add actions were executed in Step 5b; component update spawns one verify-add agent per add-agent invocation — see `update-component-test`)
+- Update-flow → `test-authoring:verify-update-<type>-test-agent` (plus a parallel `test-authoring:verify-add-<type>-test-agent` if any add actions were executed in Step 5b)
 
 Pass all writer outputs to the verifier in a single prompt, **plus the original task / spec description** (required for the U2b divergence cross-check) **and the pre-writer source snapshot** (recorded at writer-delegation time; the baseline for the U3 SUT-modification check) — neither is part of any writer's output. **Always spawn the verifier**, even if only a single writer ran — quality control must not be bypassed.
 
@@ -136,9 +130,9 @@ Collect results from writers and verifiers and present a brief summary:
 
 For each test file, report a status using the icons defined in `<plugin-root>/resources/static/status-legend.md` (plugin-internal controlled vocabulary — never written per-repo).
 
-## Env_failure handling (integration-like and component orchestrators)
+## Env_failure handling (integration-like orchestrators)
 
-Integration-like and component orchestrators must distinguish between **test logic failure** (deterministic, route to writer) and **environment failure** (container runtime, Docker unavailable, port conflict, image pull — non-deterministic, report to user without retrying). See per-type rules doc for the exact signals and commands.
+Integration-like orchestrators must distinguish between **test logic failure** (deterministic, route to writer) and **environment failure** (container runtime, Docker unavailable, port conflict, image pull — non-deterministic, report to user without retrying). See per-type rules doc for the exact signals and commands.
 
 ## What stays in per-type orchestrators
 
@@ -146,6 +140,4 @@ Each per-type skill file still owns its flow-specific content:
 
 - Add-flow: pre-fetch step, delegate step, verify step, summary
 - Update-flow: audit step, present-summary step, prepare-rollback step, execute step, verify step, rollback-on-failure step (actions derive from audit status — there is no confirm step)
-- Component orchestrator: adds a pre-flight fixture-capability check (Step 2.5) and forces Mode B only
-
 Do not lift flow-specific content here — it breaks the "common = universally shared" contract.

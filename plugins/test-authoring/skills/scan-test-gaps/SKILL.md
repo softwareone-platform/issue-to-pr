@@ -31,7 +31,7 @@ Resolve `common-orchestrator-flow.md` the same way: fast path reads `.claude/rul
 
 - **Now**: `common-orchestrator-flow.md` (previous paragraph), then `.claude/conventions/tests/project-architecture.md` + `.claude/shared/tests/.setup-manifest.json` — the "Placeholder resolution" note below needs both before Step 1 (cacheless: per-invocation detection per that note, no read).
 - **At the step that uses it**: Step 1 → `.claude/shared/tests/scope-resolution.md`. Steps 2–3 reuse `project-architecture.md` (already loaded). The "Stale test detection" quick build → `.claude/rules/tests/test-rules.md` (cacheless: skip the read — use the session-detected `build_test_command`). Delegation and update segments, on demand → `.claude/conventions/tests/integration-test-conventions.md` (target test project mapping), `.claude/rules/tests/common-update-instructions.md` (orchestrator-facing sections only), `.claude/rules/tests/fix-protocol.md` (first verifier finding or attributable build failure).
-- **Never**: `common-writer-instructions.md`, `common-verifier-checks.md`, `test-writer-rules.md`, `test-component-rules.md`. They are subagent rule books — the writers/verifiers read them in their own isolated contexts; preloading them here only bloats the main context.
+- **Never**: `common-writer-instructions.md`, `common-verifier-checks.md`, `test-writer-rules.md`. They are subagent rule books — the writers/verifiers read them in their own isolated contexts; preloading them here only bloats the main context.
 
 
 ## Step 1.5 — Inferred scope echo (informational, no block)
@@ -52,7 +52,7 @@ You are a test coverage analyst for {{PROJECT_DESCRIPTION}}. Your job is to find
 
 > **Placeholder resolution (plugin-bundled file)**: tokens like `{{PROJECT_DESCRIPTION}}`, `{{TEST_TYPES_LIST}}`, `{{LANGUAGE_EXCLUSIONS}}`, `{{COVERAGE_EXCLUSION_HANDLING}}`, `{{HIGH_PRIORITY_CRITERIA}}`, `{{TEST_TYPES_COUNT_BREAKDOWN}}` are NOT pre-filled — this file ships with the plugin, not generated per-repo. Resolve them at runtime: project description and language from `.claude/conventions/tests/project-architecture.md`, confirmed test types from `.claude/shared/tests/.setup-manifest.json` (`test_types`), exclusions and priority criteria derived from the detected language and repo conventions. Never render a `{{...}}` token literally in user-facing output.
 >
-> **Cacheless (project-architecture.md + manifest absent):** resolve `{{PROJECT_DESCRIPTION}}` and language from per-invocation detection (project manifest + file extensions), not the absent convention doc. **Infer the supported test types from the filesystem** instead of `.setup-manifest.json` `test_types` — unit-like (mirrors source, mocks deps) and/or integration-like (HTTP/DB/container fixtures). **A test project containing `.feature` / Gherkin files (or Gherkin-binding step classes) is component — exclude it from the inferred types even though it uses containers/fixtures** (component stays out of scope; do NOT count it as integration-like). Use the inferred count to drive the SINGLE_TYPE_ONLY vs MULTI_TYPE_ONLY behaviour below, and **echo the inferred types in the Step 1.5 scope echo** so the user can correct them. Exclusions and priority criteria come from the detected language + nearest siblings.
+> **Cacheless (project-architecture.md + manifest absent):** resolve `{{PROJECT_DESCRIPTION}}` and language from per-invocation detection (project manifest + file extensions), not the absent convention doc. **Infer the supported test types from the filesystem** instead of `.setup-manifest.json` `test_types` — unit-like (mirrors source, mocks deps) and/or integration-like (HTTP/DB/container fixtures). **A test project containing `.feature` / Gherkin files (or Gherkin-binding step classes) is not a supported target — exclude it from the inferred types even though it uses containers/fixtures** (do NOT count it as integration-like). Use the inferred count to drive the SINGLE_TYPE_ONLY vs MULTI_TYPE_ONLY behaviour below, and **echo the inferred types in the Step 1.5 scope echo** so the user can correct them. Exclusions and priority criteria come from the detected language + nearest siblings.
 
 > Every `.claude/{conventions,rules,shared}/tests/…` read below follows **Step -1's resolution** — and happens lazily, at the step that uses it, never as an upfront batch; a body reference to one of these files at a step IS that step's read instruction: Read the file before acting on it, never from memory of its name. On the cacheless path, pass `plugin_resources_path` and `build_test_command` (per target test project for integration) into **every** subagent you delegate to — add / update writers and their verifiers — they cannot resolve these themselves. The `<plugin-root>/resources/static/status-legend.md` reference (Step 8) resolves to `<PLUGIN_TEMPLATES>/../static/status-legend.md` (Step -1); if `PLUGIN_TEMPLATES` is unresolved, use plain text status labels.
 
@@ -62,7 +62,7 @@ This skill analyses **unit and integration test gaps only**. Both are code-drive
 
 **Not analysed:**
 
-- **Component tests** (`.feature` / Gherkin scenarios). Component tests map by feature area, not by source class, and an N:M mapping between source classes and scenarios cannot be resolved reliably from code alone. Scan does not read `.feature` files, does not count component scenarios as cross-coverage, and does not list component as a gap type. If the user asks for new component scenarios, direct them to `/test-authoring:add-component-test <Area>: <Scenario title>`.
+- **Gherkin scenario tests** (`.feature` files and their step classes). They map by feature area, not by source class, and an N:M mapping between source classes and scenarios cannot be resolved reliably from code alone. Scan does not read `.feature` files, does not count scenarios as cross-coverage, and does not list them as a gap type. **This plugin does not author Gherkin scenarios at all** — if the user asks for one, say so plainly rather than routing them to another skill.
 - **Config-driven or otherwise non-code test projects** — out of scope by construction (bootstrap only wires this skill against code-driven unit/integration projects).
 
 ## Step 1 — Identify Scope
@@ -104,7 +104,7 @@ For each test file, identify which source class(es) it covers by:
 - Reading the file to see which SUT is constructed or which endpoint is called
 - Cross-referencing imports / using statements and class references
 
-**Do not scan `.feature` files or component step classes.** Component tests are out of scope — see the "Scope" notice at the top.
+**Do not scan `.feature` files or Gherkin step classes.** They are out of scope — see the "Scope" notice at the top.
 
 ## Step 4 — Identify Gaps
 
@@ -117,7 +117,7 @@ List gaps grouped by confirmed test type ({{TEST_TYPES_LIST}}):
 - Source classes with **no corresponding test file** and not tested elsewhere
 - Source classes with a test file but **missing coverage for public methods/endpoints**
 
-> **Runtime rule:** when resolving `{{TEST_TYPES_LIST}}`, exclude `component` even if the repo has a component test project. Component gaps are intentionally not produced by this skill — see the "Scope" notice at the top.
+> **Runtime rule:** when resolving `{{TEST_TYPES_LIST}}`, exclude any Gherkin scenario project even if the repo has one. Its gaps are intentionally not produced by this skill — see the "Scope" notice at the top.
 <!-- END MULTI_TYPE_ONLY -->
 
 <!-- SINGLE_TYPE_ONLY: keep if exactly 1 supported test type -->
@@ -140,7 +140,7 @@ Do not deeply audit every test method — that is `update-*-test-agent`'s job. O
 <!-- MULTI_TYPE_ONLY: keep if ≥2 supported test types -->
 ### Cross-coverage exclusion
 
-Before listing a method as a gap, check whether it is already exercised by **unit or integration tests** (directly or indirectly). Component tests are not considered here — see the "Scope" notice at the top. A method counts as covered if:
+Before listing a method as a gap, check whether it is already exercised by **unit or integration tests** (directly or indirectly). Gherkin scenarios are not considered here — see the "Scope" notice at the top. A method counts as covered if:
 
 - It has a **direct test**
 - It is **directly exercised by a higher-level test** (e.g., integration endpoint test triggers the handler)
@@ -249,8 +249,8 @@ Based on the user's selection, group the items by type and spawn subagents.
 
 Before spawning the first writer of a batch, record the **pre-writer source snapshot** per `.claude/rules/tests/common-orchestrator-flow.md` → "Pre-writer source snapshot" — the verifiers need it as the baseline for their SUT-modification check.
 
-- For **add** gaps → spawn one `test-authoring:add-<type>-test-agent` per source class (per type, e.g., `test-authoring:add-unit-test-agent`, `test-authoring:add-integration-test-agent`). **Do not spawn `test-authoring:add-component-test-agent`** — component is out of scope; if the user asks for a component scenario, direct them to `/test-authoring:add-component-test <Area>: <Scenario title>` and stop.
-- For **Update** gaps → spawn one `test-authoring:update-<type>-test-agent` per source class (per type; component update not supported here either)
+- For **add** gaps → spawn one `test-authoring:add-<type>-test-agent` per source class (per type, e.g., `test-authoring:add-unit-test-agent`, `test-authoring:add-integration-test-agent`)
+- For **Update** gaps → spawn one `test-authoring:update-<type>-test-agent` per source class (per type)
 
 For integration-like types, include the target test project in the agent prompt. If the test project mapping in `.claude/conventions/tests/integration-test-conventions.md` resolves a source to MULTIPLE test projects (e.g. API + worker), split into one (source, project) pair per writer — same rule as `add-integration-test` Step 1.5; passing only one project silently drops the other's coverage.
 
@@ -280,7 +280,7 @@ For Type = `Update` items, the Phase 1 agent performs the audit only and termina
 
 After all writer/update agents in the batch complete, spawn verifiers **per test type and workflow**:
 
-- For items routed to add writers → spawn one `test-authoring:verify-add-<type>-test-agent` per type (e.g., `test-authoring:verify-add-unit-test-agent`, `test-authoring:verify-add-integration-test-agent`), passing the inputs per `.claude/rules/tests/common-orchestrator-flow.md` → "Verifier spawn": all writer outputs (including `files_modified`), the original task, and the pre-writer source snapshot. `test-authoring:verify-add-component-test-agent` is not spawned from this skill — component verification belongs to `/test-authoring:add-component-test`.
+- For items routed to add writers → spawn one `test-authoring:verify-add-<type>-test-agent` per type (e.g., `test-authoring:verify-add-unit-test-agent`, `test-authoring:verify-add-integration-test-agent`), passing the inputs per `.claude/rules/tests/common-orchestrator-flow.md` → "Verifier spawn": all writer outputs (including `files_modified`), the original task, and the pre-writer source snapshot.
 - For items routed to update writers (if Phase 2 was executed) → spawn one `test-authoring:verify-update-<type>-test-agent` per type, passing the **full input set from the `update-<type>-test` skill's Step 6a**: pre-change state, action record, execution results, the `git show HEAD:<file>` baseline, test type, test project, raw Phase 1 audit outputs, and consent-proceeded files.
 
 Spawn multiple verifiers in parallel if the batch spans multiple test types / workflows.

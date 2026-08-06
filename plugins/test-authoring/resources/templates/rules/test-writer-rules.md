@@ -54,7 +54,7 @@ Writer agents may receive context from three sources. When they disagree, follow
 
 1. **Sibling tests** (highest) — what you observe in the actual nearest sibling file is the source of truth.
 2. **Orchestrator pre-fetched context** — provided as an acceleration hint. If it conflicts with what you see in the sibling, **follow the sibling**.
-3. **Convention file** (`.claude/conventions/tests/<type>-test-conventions.md` — e.g., `unit-test-conventions.md`, `integration-test-conventions.md`, `component-test-conventions.md`) — documents the most common patterns in the repo. Use as fallback only when no sibling exists. **Normally absent for code-driven types** (`unit`, `integration`): the Slim default does not generate those, so expect this source only for config-driven types or after a manual full regeneration.
+3. **Convention file** (`.claude/conventions/tests/<type>-test-conventions.md` — e.g., `unit-test-conventions.md`, `integration-test-conventions.md`) — documents the most common patterns in the repo. Use as fallback only when no sibling exists. **Normally absent**: the Slim default does not generate these, so expect this source only after a manual full regeneration.
 
 ## Fallback Chain (when no sibling exists in the immediate directory)
 

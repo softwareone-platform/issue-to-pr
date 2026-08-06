@@ -6,9 +6,9 @@ paths: [".claude/rules/tests/common-verifier-checks.md"]
 
 # Common Verifier Checks
 
-> **Consumers** — `test-authoring:verify-add-unit-test-agent`, `test-authoring:verify-add-integration-test-agent`, `test-authoring:verify-add-component-test-agent`. The `verify-update-*-test-agent` variants are **partial consumers**: they follow their own input contract, check sequence, output schema, and routing (defined in their agent files), and consume only the role boundary and the U4 build/run expectations here.
+> **Consumers** — `test-authoring:verify-add-unit-test-agent`, `test-authoring:verify-add-integration-test-agent`. The `verify-update-*-test-agent` variants are **partial consumers**: they follow their own input contract, check sequence, output schema, and routing (defined in their agent files), and consume only the role boundary and the U4 build/run expectations here.
 >
-> This document holds what every per-type verifier does identically. Per-type checks (Gherkin shape for component, assertion-style fidelity for unit, seeded-data expectations for integration, etc.) live in each per-type verifier file. Keep this file minimal — if a check is not truly universal, it belongs in the per-type file.
+> This document holds what every per-type verifier does identically. Per-type checks (assertion-style fidelity for unit, seeded-data expectations for integration, etc.) live in each per-type verifier file. Keep this file minimal — if a check is not truly universal, it belongs in the per-type file.
 
 ## Role boundary
 
@@ -28,7 +28,7 @@ Every per-type verifier receives a prompt containing one or more writer agent re
 - **Original task / spec description** — the task as originally given (not only the writer's reported results), so you can sanity-check the writer's `spec_vs_impl_divergence` flags (see U2b) against what the task actually asked for
 - **Pre-writer source snapshot** — the orchestrator's record of `{{SRC_DIR}}`'s state taken before any writer was spawned (e.g. the `git diff -- {{SRC_DIR}}` output at that moment); the baseline for the U3 SUT-modification check
 
-Per-type verifiers may extend this with extra fields (e.g. component adds `reused_steps`, `new_steps_added`, `assertion_mode`, `scenario_name`). Extensions live in the per-type file, not here.
+Per-type verifiers may extend this with extra fields. Extensions live in the per-type file, not here.
 
 ## Universal check sequence
 
@@ -64,7 +64,7 @@ For each violation, record:
 - What the writer used vs what the sibling convention requires
 - Whether it is a mechanical fix (find-and-replace) or requires logic changes
 
-Per-type verifiers add type-specific compliance checks (e.g. Gherkin shape for component, assertion-style fidelity for unit). Those belong in the per-type file, not here.
+Per-type verifiers add type-specific compliance checks (e.g. assertion-style fidelity for unit). Those belong in the per-type file, not here.
 
 **Do NOT modify the files.** The orchestrator will apply fixes.
 
@@ -73,7 +73,7 @@ Per-type verifiers add type-specific compliance checks (e.g. Gherkin shape for c
 A writer tests **observable behaviour**, which is correct — but when the SUT contradicts the task spec, the writer is required to report it via `spec_vs_impl_divergence` rather than silently codify it (see `.claude/rules/tests/test-writer-rules.md` → "When observed behaviour contradicts the spec"). You are the safety net that this was not lost:
 
 1. Read the **original task / spec description** from your input.
-2. For each `spec_vs_impl_divergence` entry the writer reported, confirm the test was written against the observed behaviour (not the spec) and that the note accurately describes the mismatch. (Component: confirm the divergent scenario was **skipped** and reported instead — component writers do not pick a side; see the component writer's variant.)
+2. For each `spec_vs_impl_divergence` entry the writer reported, confirm the test was written against the observed behaviour (not the spec) and that the note accurately describes the mismatch.
 3. **Independently** scan for a divergence the writer did NOT flag — a test that asserts behaviour contradicting the task description with no matching divergence entry. A silently-codified divergence (a real bug frozen behind a green test) is exactly what this check exists to catch.
 
 Surface every divergence as a **non-deterministic finding** — the user decides whether the SUT is buggy (fix source) or the spec is stale (accept the test). Do NOT treat a divergence as a convention violation to auto-fix, and do NOT pass `🟩` purely because the test matches the SUT — a test can match a buggy SUT.
@@ -84,11 +84,9 @@ Surface every divergence as a **non-deterministic finding** — the user decides
 
 Search all generated **or modified** test files for signs that the writer bypassed failures instead of fixing them:
 
-1. **Skip/ignore attributes or tags** — no test (or scenario) should be skipped. Exact form depends on framework; grep for the equivalents:
-   - Code-driven: `[Fact(Skip=...)]`, `[Theory(Skip=...)]`, `@Ignore`, `@pytest.mark.skip`, `xit(`, `test.skip(`, etc.
-   - Config-driven (component): `@pending` (legitimate only for known-incomplete), `@ignore` (always a violation)
-2. **Commented-out test methods or scenario lines**
-3. **Test count mismatch** — does the number of test attributes (or scenario blocks) match what the writer reported? For files the writer created, count all test attributes; for files the writer modified, count the added attributes in that file's diff — the writer's `test_count` covers only its own additions.
+1. **Skip/ignore attributes** — no test should be skipped. Exact form depends on framework; grep for the equivalents: `[Fact(Skip=...)]`, `[Theory(Skip=...)]`, `@Ignore`, `@pytest.mark.skip`, `xit(`, `test.skip(`, etc.
+2. **Commented-out test methods**
+3. **Test count mismatch** — does the number of test attributes match what the writer reported? For files the writer created, count all test attributes; for files the writer modified, count the added attributes in that file's diff — the writer's `test_count` covers only its own additions.
 4. **SUT modifications** — compare the current `{{SRC_DIR}}` state against the **pre-writer source snapshot** from your input. In Mode A the user's own uncommitted source changes are expected, so `git diff` alone cannot distinguish them from writer tampering — flag only differences that appeared **after** the writers started.
 5. **Tautological / vacuous golden value** (deterministic-transform SUTs only) — when a test asserts an **opaque expected value** from a deterministic transform (hash / fingerprint, canonical serialization, encoding, formatting), decide whether that golden is an **implementation-independent oracle** or merely **captured from the SUT's own output** (a tautology: the test asserts the SUT returns what it returns, freezing a day-one bug green). You **cannot** tell from the assertion text alone — an independently-derived golden and a pasted-back one are byte-identical — so check **provenance**: is the golden's derivation stated (a comment, a known-answer vector, an independent tool such as `sha256sum` over a stated input), and can you **independently recompute** it from that stated derivation and get a match? A golden with no stated provenance, or one you cannot independently reproduce, is a **green-but-vacuous** finding. This is a provenance / adequacy check — it shows the golden is not a tautology, it does not prove the oracle is semantically correct.
 
@@ -102,7 +100,7 @@ For each violation, record:
 
 ### U4. Build and run verification (report only)
 
-Build and run the tests. Reference `.claude/rules/tests/test-rules.md` for the exact build/test commands per test project; per-type rules files (`.claude/rules/tests/test-component-rules.md`, etc.) may pin stricter filter syntax or iteration rules.
+Build and run the tests. Reference `.claude/rules/tests/test-rules.md` for the exact build/test commands per test project.
 
 - If the build fails, report the errors.
 - If tests fail, report which tests failed and why.
@@ -163,7 +161,7 @@ See `.claude/rules/tests/fix-protocol.md` for the authoritative fix-protocol. In
   - `convention_violations`
   - `build_status: failed`
   - `test_results: failed` (non-environmental)
-  - Per-type deterministic additions (e.g. `guideline_violations`, `step_reuse_violations` for component)
+  - Per-type deterministic additions declared in the per-type verifier file
 - **Non-deterministic** — present to the user, do not auto-route:
   - `anti_gaming_violations`
   - `quality_flags`

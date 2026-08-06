@@ -70,7 +70,7 @@ To stop it: the dashboard **stops itself after about 30 minutes with no connecte
 - **Agent activity** — the live tool-call stream from the session and its subagents, so you can see what each component's writer/verifier is doing (tool, target, status, duration).
 - **Stat cards** — pipeline step `N` of the registry's total, elapsed (wall-clock) duration, tool-call count, and tokens in/out.
 - **Gate banner** — when the run is paused at the plan-approval gate, an amber banner reminds you to respond in the Claude Code terminal.
-- **Test-contention banner** — a global warning appears when two or more runs (any repo) are positioned at a test-executing step (the ones that run integration / component tests). Those steps share one host container stack — Podman, SQL, and Azurite — so running them at once can conflict, race, or starve. The banner names the colliding runs so you can stagger them; it only warns, since the dashboard never controls a run.
+- **Test-contention banner** — a global warning appears when two or more runs (any repo) are positioned at a test-executing step (the ones that run integration tests). Those steps share one host container stack — Podman, SQL, and Azurite — so running them at once can conflict, race, or starve. The banner names the colliding runs so you can stagger them; it only warns, since the dashboard never controls a run.
 
 Updates arrive over Server-Sent Events at message granularity (Claude Code flushes the transcript per message), so the view is near-real-time rather than token-by-token.
 

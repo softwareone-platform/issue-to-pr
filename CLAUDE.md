@@ -30,7 +30,7 @@ plugins/<plugin>/
 |---|---|
 | `adversarial-review` | Adversarial review at 3 altitudes: `review-issue-fact` (issue), `review-plan-risk` (plan/design), `review-code-risk` (implemented fix) |
 | `pr-lifecycle` | PR lifecycle (Azure DevOps or GitHub): `open-pr`, `resolve-pr-comments` |
-| `test-authoring` | Test authoring: 8 skills + 12 subagents (see below) |
+| `test-authoring` | Test authoring: 6 skills + 8 subagents (see below) |
 | `issue-to-pr-pipeline` | `resolve-issue` (full issue→PR pipeline), `resolve-issue-dashboard`, `resolve-issue-learnings` |
 
 Current versions live in `.claude-plugin/marketplace.json` — do not duplicate them here.
@@ -43,7 +43,7 @@ A skill is `skills/<name>/SKILL.md` with YAML frontmatter (`name`, `description`
 
 The `description` field is **load-bearing**: it is how Claude decides when to auto-trigger the skill. It typically packs three things — what the skill does, "Use when…" trigger phrases, and an explicit "Do NOT trigger for…" list that routes look-alike requests to sibling skills. Preserve this structure and do not compress or shorten descriptions casually; terse descriptions break triggering.
 
-**Description length cap**: Claude Code truncates each description at **1,536 characters** in the skill listing (`skillListingMaxDescChars` default) — whatever sits past the cap is silently invisible at trigger time, and the trailing "Do NOT trigger for…" list is exactly what gets cut. When editing a description, measure its whitespace-normalized length and keep it **≤ ~1,450** (headroom matters: with many skills installed, least-used descriptions get compressed further). If space is tight, cut how-it-works mechanism detail (the body covers that after invoke) and quotes that duplicate the trigger-phrase list — never the "Do NOT trigger for…" routing. All 16 descriptions were audited and brought under the cap on 2026-07-03.
+**Description length cap**: Claude Code truncates each description at **1,536 characters** in the skill listing (`skillListingMaxDescChars` default) — whatever sits past the cap is silently invisible at trigger time, and the trailing "Do NOT trigger for…" list is exactly what gets cut. When editing a description, measure its whitespace-normalized length and keep it **≤ ~1,450** (headroom matters: with many skills installed, least-used descriptions get compressed further). If space is tight, cut how-it-works mechanism detail (the body covers that after invoke) and quotes that duplicate the trigger-phrase list — never the "Do NOT trigger for…" routing. All shipped descriptions were audited and brought under the cap on 2026-07-03.
 
 ## Subagents (test-authoring)
 
@@ -60,7 +60,7 @@ The architecture is **orchestrator → writer → verifier**:
 - **Cacheless path** (no setup run): rules read directly from the plugin's `resources/templates/`; conventions discovered from the nearest sibling tests at runtime.
 - **Fast path** (setup has run in the consumer repo): per-repo files cached under the consumer's `.claude/{conventions,rules,shared}/tests/`.
 
-Distinction that matters when editing content: **rules are non-negotiable**; **conventions are descriptive patterns** that observed sibling tests can override. `resources/templates/rules/` = strict; `resources/templates/conventions/` = descriptive.
+Distinction that matters when editing content: **rules are non-negotiable**; **conventions are descriptive patterns** that observed sibling tests can override. `resources/templates/rules/` = strict; the per-repo `.claude/conventions/tests/` files setup generates = descriptive. There is no conventions *template* dir — every convention file is generated from analysis, not filled from a template.
 
 `common-*` files are role-lifecycle documents (one per actor: orchestrator/writer/update-writer/verifier); the other rule files are rule books. Put an actor's procedure in its `common-*` file and a constraint in the matching rule book — never both, or the rule drifts into two sources of truth.
 

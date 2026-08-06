@@ -30,7 +30,7 @@ Content:
 
 ## `{type}-test-conventions.md` — one per confirmed test type
 
-> **Slim default: NOT generated for code-driven types.** This schema is retained for backward-compat (existing files keep validating) and for a manual full regeneration, but the Slim default does not produce `unit` / `integration` / extra code-driven `{type}-test-conventions.md` — writers derive these conventions from the nearest sibling at runtime. `component-test-conventions.md` (config-driven, its own section below) IS still generated.
+> **Slim default: NOT generated.** This schema is retained for backward-compat (existing files keep validating) and for a manual full regeneration, but the Slim default does not produce `{type}-test-conventions.md` for any test type — writers derive these conventions from the nearest sibling at runtime.
 
 Frontmatter:
 ```yaml
@@ -116,65 +116,3 @@ Each pattern entry includes:
 
 If repo had no clear layers (layered sampling fallback), include only a "General" section with project-wide patterns.
 
----
-
-## `component-test-conventions.md` — conditional (component-like × config-driven supported)
-
-When Step 1.7 classified a project as `component-like × config-driven 🟩`, the template `templates/conventions/component-test-conventions.md` is copied (Step 3.4) with its methodology sections verbatim. The **observed-values sections** must be filled by sampling real `.feature` files and step classes:
-
-### Sampling procedure
-
-1. **`.feature` sampling** — pick 1-2 real `.feature` files from `{{FEATURES_DIR}}`. Extract:
-   - `feature_header` — the literal text of the `Feature:` line + description
-   - `rule_usage` — observed `Rule:` usage (none / single / multiple)
-   - `background_usage` — observed `Background:` usage (yes / no)
-   - `scenario_naming` — pattern (Subject + verb + object, question, directive, etc.)
-   - `scenario_outline_usage` — yes / no
-   - `variable_naming` — bracket style and case convention (`{camelCase}`, `<placeholder>`, etc.)
-   - `tag_usage` — observed tags (`@pending`, `@ignore`, none, etc.)
-   - `data_table_format` — pipe-delimited with header / other
-   - `step_phrasing_style` — voice / form observed
-
-2. **Step-class sampling** — pick 2-3 step classes from different `{{STEPS_DIR}}/<Area>/` folders. Extract:
-   - `class_split` — how step methods are organised (4-class Setup/Request/Response/Assertion, 3-class Given/When/Then, single combined, other)
-   - `binding_attribute` — `[Binding]` or framework equivalent
-   - `constructor_injection` — primary-constructor parameters per class role
-   - `step_attribute_form` — regex vs literal, quoting style
-   - `step_method_naming` — PascalCase verb-led / other
-   - `dto_location` — nested record inside step class / separate file / other
-   - `default_dto_factory` — presence and form of a `Default` factory
-   - `state_setup_style` — black-box API / direct DB / mixed
-   - `assertion_library` — FluentAssertions / xUnit Assert / other
-   - `response_reader_pattern` — `PeekAsync<T>` / one-shot reader / other
-
-3. **Area-mapping examples** — pick 2-3 real `(.feature, Steps/<folder>)` pairs, fill the "Naming pairing" table in the template.
-
-4. **Layout tree** — sample the top 5-10 entries under `{{FEATURES_DIR}}` and `{{STEPS_DIR}}` to populate the layout block.
-
-Fill all `{{FEATURE_HEADER_VALUE}}`, `{{RULE_USAGE_VALUE}}`, …, `{{NAMING_PAIRING_ROWS}}`, `{{FEATURE_EXAMPLE_*}}`, `{{STEPS_FOLDER_EXAMPLE_*}}`, `{{STEP_CLASS_EXAMPLE_*}}`, and `{{DEFAULT_*}}` fallback-spec placeholders with observed values. For `{{*_DETAIL}}` pattern-section placeholders, insert short narratives describing what was actually observed; if a pattern is not used, write "not used in this repo" rather than inventing content.
-
----
-
-## `fixture-capabilities.md` — conditional (fixture class detected)
-
-**Detection signal**: a class under the component test project that composes Testcontainers / `WebApplicationFactory` (or framework equivalent) and exposes `Reset()` (or equivalent scenario reset) and wire-up for fakes. Typical file name forms: `*ComponentTestsFixture*.cs`, `*TestFixture*.cs`, `conftest.py` (behave), `IntegrationSteps.java` (Cucumber-JVM).
-
-**If no fixture class is detected**:
-- Do NOT generate `.claude/conventions/tests/fixture-capabilities.md`.
-- Warn in Step 2.1 preview: "Component tests detected but no fixture class observed; `fixture-capabilities.md` will NOT be generated. Orchestrator pre-flight and writer assertion-mode gate will fall back to the no-fixture path."
-
-**If a fixture class is detected**:
-
-1. Copy `templates/conventions/fixture-capabilities.md` to `.claude/conventions/tests/fixture-capabilities.md` (already listed in Step 3.4).
-2. Fill the role-boundary / workflow-assumption / maintenance-checklist / fixture-gap-response-options sections verbatim (repo-agnostic policy).
-3. Parse the fixture class source with regex:
-   - `services.Replace(ServiceDescriptor...)` / `services.AddSingleton<I…, Fake…>()` / `services.AddScoped<...>()` invocations → wired substitutes
-   - Exposed properties / methods returning fakes (`public Fake<X> GetX() => ...`) → observation APIs
-   - `Reset()` body (if present) → between-scenario reset list
-   - Host / subsystem splits (e.g., separate `ConfigureApiServices` vs `ConfigureWorkerServices` methods) → host-grouped catalog tables
-4. Populate `{{SUBSTITUTES_WIRED_TODAY_TABLES}}` grouped by host/subsystem (e.g., Both / Api host only / Worker host only / Cross-cutting). If no clear host split, use a single "All hosts" table.
-5. Populate `{{RESET_CLEARS_LIST}}` from the `Reset()` body. If no `Reset()` method detected, emit a note asking the operator to confirm inter-scenario state leakage is controlled.
-6. Leave the "Not wired today" section empty on first generation.
-7. Fill `{{FIXTURE_CLASS_NAME}}` and `{{FIXTURE_SOURCE_PATH}}` from the detected file.
-
-**Confidence threshold**: if the parser cannot confidently extract at least 3 wired substitutes from the fixture class, skip generation entirely and warn — partial catalogs mislead the writer. The operator can fill the file manually later.

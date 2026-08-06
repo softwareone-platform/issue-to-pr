@@ -1,6 +1,6 @@
 # Shared Primer -- Scope & Status
 
-This primer documents cross-cutting concepts shared by all 8 test-automation skills (`setup-test-context`, `scan-test-gaps`, `add-{unit,integration,component}-test`, `update-{unit,integration,component}-test`) and their subagents. Other docs link to the anchors in this file rather than repeating these definitions.
+This primer documents cross-cutting concepts shared by all 6 test-automation skills (`setup-test-context`, `scan-test-gaps`, `add-{unit,integration}-test`, `update-{unit,integration}-test`) and their subagents. Other docs link to the anchors in this file rather than repeating these definitions.
 
 ## Scope Resolution
 

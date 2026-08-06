@@ -37,7 +37,7 @@ Goal: detect when the plugin's template schema has changed since the last setup 
 2. Read `<plugin-root>/resources/templates/template-schema-versions.json` (single JSON file with per-category fields `conventions`, `rules`, `shared`).
 3. Try to read `.claude/shared/tests/.setup-manifest.json`. If it does not exist → **fresh install**, skip drift check, continue to Step 1.
 4. Parse the manifest. Compare its `schema_versions.{category}` with each plugin per-category version from step 2:
-   - **All categories match AND `plugin_version` matches** → no drift. **Schema = file *format*, not content**: the analysis-derived cross-layer map (`project-architecture.md` / `common-*` / `fixture-capabilities.md`) can be stale relative to repo evolution even when schemas match, and re-running setup IS how it refreshes. Ask the user: "Schemas current, but the analysis-derived test map may be stale relative to repo changes — re-write per-repo files anyway to refresh? [y/N]". If `y` → continue Step 1; if no → exit cleanly.
+   - **All categories match AND `plugin_version` matches** → no drift. **Schema = file *format*, not content**: the analysis-derived cross-layer map (`project-architecture.md` / `common-*`) can be stale relative to repo evolution even when schemas match, and re-running setup IS how it refreshes. Ask the user: "Schemas current, but the analysis-derived test map may be stale relative to repo changes — re-write per-repo files anyway to refresh? [y/N]". If `y` → continue Step 1; if no → exit cleanly.
    - **Any category schema version differs** → schema-drift detected. For each diverged category, present this prompt:
      ```
      Category <conventions/rules/shared> schema changed: was <manifest-version>, now <plugin-version>.
@@ -57,9 +57,9 @@ The manifest's `schema_versions` are updated only at the end of Step 3 (after su
 
 Located relative to this skill's base directory:
 
-- **`<plugin-root>/resources/templates/rules/`** — 9 rules templates with `{{PLACEHOLDER}}` markers.
+- **`<plugin-root>/resources/templates/rules/`** — 8 rules templates with `{{PLACEHOLDER}}` markers.
 - **`<plugin-root>/resources/templates/shared/`** — `scope-resolution.md` template only (`status-legend.md` is plugin-internal at `<plugin-root>/resources/static/`, never written per-repo).
-- **`<plugin-root>/resources/templates/conventions/`** — 2 fixed templates (`component-test-conventions.md`, `fixture-capabilities.md`); the rest (`project-architecture.md`, `<type>-test-conventions.md`) are generated dynamically from Step 1 analysis per `references/tier3-schemas.md`.
+- **Conventions have no templates** — every conventions file (`project-architecture.md`, the conditional `common-*`) is generated dynamically from Step 1 analysis per `references/tier3-schemas.md`.
 - **`references/`** — detailed detection recipes, placeholder rules, manifest schema, subagent contracts, and the uninstall procedure. Loaded on demand during the relevant step.
 
 ## Output overview
@@ -72,10 +72,6 @@ For a typical repo with **unit + integration**:
 - 1 conventions (`project-architecture`) + optional `common-test-utilities` / `common-verification-patterns` — code-driven per-type `{type}-test-conventions.md` are **NOT** written under the Slim default; writers derive those conventions from the nearest sibling at runtime
 - 1 manifest (`.setup-manifest.json`)
 - 1 README (`.claude/shared/tests/README.md`)
-
-Adding **component** support adds:
-- 1 rule (`test-component-rules`)
-- 1–2 conventions (`component-test-conventions` + `fixture-capabilities` if fixture detected)
 
 setup-test-context does NOT write any of: agents, commands, skills, status-legend (all plugin-bundled).
 
@@ -114,8 +110,6 @@ Files setup-test-context will write (new or refresh):
 
 Conventions (.claude/conventions/tests/):
 - project-architecture.md
-- component-test-conventions.md     (if component supported)
-- fixture-capabilities.md            (if component + fixture detected)
 - common-test-utilities.md           (if shared test project detected)
 - common-verification-patterns.md    (if cross-layer pattern detected)
   NOTE (Slim default): code-driven per-type {type}-test-conventions.md are NOT written
@@ -130,7 +124,6 @@ Rules (.claude/rules/tests/):
 - common-writer-instructions.md
 - common-update-instructions.md
 - common-verifier-checks.md
-- test-component-rules.md            (if component supported)
 
 Shared (.claude/shared/tests/):
 - scope-resolution.md
@@ -170,7 +163,7 @@ Two exclusions are NOT stale and stay carried forward (§3.5):
 - files of a category the user chose to skip via Step 0 option (b) — deleting them would contradict that choice;
 - code-driven `{type}-test-conventions.md` kept by the Slim default carve-out.
 
-Conditional files (`fixture-capabilities.md`, `common-test-utilities.md`, `common-verification-patterns.md`) are deliberately NOT excluded: when their generation condition is unmet this run they are not write targets, so they follow stale semantics — the managed set reflects THIS run's analysis, and the backup + confirmation listing is the guard against a mis-detection.
+Conditional files (`common-test-utilities.md`, `common-verification-patterns.md`) are deliberately NOT excluded: when their generation condition is unmet this run they are not write targets, so they follow stale semantics — the managed set reflects THIS run's analysis, and the backup + confirmation listing is the guard against a mis-detection.
 
 Collect the user's per-file decisions in a planning table before reaching the final atomic confirmation.
 
@@ -207,14 +200,13 @@ Read `references/subagent-contract.md` first. Note that for setup-test-context, 
 |---|---|
 | 1 supported type (unit only) | `shared-tier2`, `shared-tier3` (2) |
 | 2 supported types (unit + integration) | `shared-tier2`, `shared-tier3` (2) |
-| + component support | + `component` (3) |
-| + extra code-driven types | no additional subagent (per-type conventions no longer generated) |
+| + extra test types | no additional subagent (per-type conventions no longer generated) |
 
 The `shared-tier2` subagent owns the universal rule set (`test-rules`, `test-writer-rules`, `fix-protocol`, `sut-analysis`, `common-orchestrator-flow`, `common-writer-instructions`, `common-update-instructions`, `common-verifier-checks`) plus the `scope-resolution.md` shared utility.
 
 The `shared-tier3` subagent owns the `project-architecture.md` convention (universal) plus the optional `common-test-utilities.md` / `common-verification-patterns.md` (when applicable).
 
-**Slim default — code-driven per-type subagents are not spawned**: `<type>-test-conventions.md` for code-driven types (`unit`, `integration`, extra) is no longer generated; writers derive those conventions from the nearest sibling at runtime. Among per-type kinds only the **component** subagent (config-driven) is still spawned — it owns `component-test-conventions.md`, `fixture-capabilities.md` (if fixture detected), and `test-component-rules.md`.
+**Slim default — per-type subagents are not spawned**: `<type>-test-conventions.md` is no longer generated for any test type; writers derive those conventions from the nearest sibling at runtime. Only the two shared subagents run.
 
 ### 3.3 Subagent prompt skeleton
 
@@ -222,7 +214,7 @@ Pass everything inline. The prompt MUST include:
 
 1. Working directory (repo root, absolute).
 2. Backup folder path (already created in §3.1, if applicable).
-3. Subagent kind (`per-type` / `shared-tier2` / `shared-tier3`). The component subagent is dispatched as `per-type` with test type label `component` (item 4); its three-file, fixed-sequence special-case behaviour is driven by the explicit destination paths (item 9) plus the `Component-type subagent` section of `subagent-contract.md`, not by a distinct kind value.
+3. Subagent kind (`shared-tier2` / `shared-tier3`; the legacy `per-type` kind is never dispatched under the Slim default).
 4. Test type label (per-type only).
 5. Per-file decision flags from Step 2.2 (which targets to overwrite — pristine and user-modified alike, the latter already backed up per §3.1 — and which legacy targets the user chose to keep).
 6. The relevant slice of Step 1 analysis as structured text.
@@ -280,8 +272,8 @@ After all writes:
    - Failure here → rollback.
 6. **Cross-reference check**: for each plugin agent matching a test type confirmed as supported in Step 2 — the plugin agents live at `<plugin-root>/agents/` (e.g. `<plugin-root>/agents/add-unit-test-agent.md` for `unit`) — extract the `.claude/{conventions,rules,shared}/tests/` paths it references and check each against disk:
    - exists → pass.
-   - missing but **conditional** (`fixture-capabilities.md`, `common-test-utilities.md`, `common-verification-patterns.md`) with its generation condition unmet this run → warning (🟨), not a failure.
-   - **missing code-driven `{type}-test-conventions.md`** (`unit`, `integration`, or any extra code-driven type) → **expected-absent / silent pass**. The Slim default does not generate these — writers derive per-type conventions from the nearest sibling at runtime — so an agent referencing one while it is absent is the normal state: NOT a warning, NOT a failure. (`component-test-conventions.md` is config-driven and still generated, so it keeps the conditional/exists semantics above.)
+   - missing but **conditional** (`common-test-utilities.md`, `common-verification-patterns.md`) with its generation condition unmet this run → warning (🟨), not a failure.
+   - **missing `{type}-test-conventions.md`** (`unit`, `integration`, or any extra type) → **expected-absent / silent pass**. The Slim default does not generate these — writers derive per-type conventions from the nearest sibling at runtime — so an agent referencing one while it is absent is the normal state: NOT a warning, NOT a failure.
    - missing and non-conditional → verification failure → rollback.
    Agents for unsupported test types are skipped entirely — their dangling references are expected. The plugin's agents are read-only here; this check confirms our outputs satisfy their input expectations.
 
@@ -333,8 +325,6 @@ Generated files (per-repo, managed by setup-test-context):
 
 Conventions (.claude/conventions/tests/):
   - project-architecture.md
-  - component-test-conventions.md (if component supported)
-  - fixture-capabilities.md (if component + fixture)
   - common-test-utilities.md (if applicable)
   - common-verification-patterns.md (if applicable)
   (Slim default: code-driven {type}-test-conventions.md not written -- sibling-derived at runtime)
@@ -343,7 +333,6 @@ Rules (.claude/rules/tests/):
   - test-rules.md, test-writer-rules.md, fix-protocol.md, sut-analysis.md
   - common-orchestrator-flow.md, common-writer-instructions.md
   - common-update-instructions.md, common-verifier-checks.md
-  - test-component-rules.md (if component supported)
 
 Shared (.claude/shared/tests/):
   - scope-resolution.md
@@ -352,8 +341,8 @@ Shared (.claude/shared/tests/):
 
 Plugin-bundled (NOT written here — supplied by test-authoring plugin):
   - status-legend.md (in plugin static)
-  - 12 agents (test-authoring: namespace)
-  - 7 skills (setup-test-context, scan-test-gaps, add-* / update-*)
+  - 8 agents (test-authoring: namespace)
+  - 6 skills (setup-test-context, scan-test-gaps, add-* / update-*)
   - guarded hook templates
 ```
 

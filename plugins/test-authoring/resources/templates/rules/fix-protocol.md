@@ -6,7 +6,7 @@ paths: [".claude/rules/tests/fix-protocol.md"]
 
 # Verifier Fix Protocol
 
-When a read-only verifier agent (`test-authoring:verify-add-<type>-test-agent` or `test-authoring:verify-update-<type>-test-agent` — one per supported test type, e.g. `test-authoring:verify-add-unit-test-agent`, `test-authoring:verify-add-component-test-agent`) reports findings, the orchestrator routes them based on determinism.
+When a read-only verifier agent (`test-authoring:verify-add-<type>-test-agent` or `test-authoring:verify-update-<type>-test-agent` — one per supported test type, e.g. `test-authoring:verify-add-unit-test-agent`, `test-authoring:verify-add-integration-test-agent`) reports findings, the orchestrator routes them based on determinism.
 
 > **Orchestrator role boundary (CRITICAL)** — The orchestrator NEVER applies file edits itself. It does not invoke `Write` / `Edit` / `MultiEdit` on test files under any circumstances, including when a fix is small, when the user has already approved the change, or when a writer agent appears unavailable. All edits go through writer agents. If you cannot route a fix, follow the "On circuit break" steps below — do not "just do it yourself".
 
@@ -19,9 +19,9 @@ Agent(subagent_type="test-authoring:<add-or-update>-<type>-test-agent"):
   fix_invocation: true
 
   original_scope:
-    source_files: [...]               # same list passed to the first writer (component: area + scenario title instead)
+    source_files: [...]               # same list passed to the first writer
     method_filter: ...                # if any
-    test_type: unit | integration | component
+    test_type: unit | integration
 
   pre_fetch:
     sibling_paths: [...]              # from orchestrator pre-fetch (add flow) or the Phase 1 audit (update flow)
@@ -51,7 +51,7 @@ Agent(subagent_type="test-authoring:<add-or-update>-<type>-test-agent"):
 
 The orchestrator already holds every field of this block in working state (pre_fetch from Step 2, previously_produced from the prior writer's structured return, findings_to_fix from the verifier's structured return). No new caching mechanism is required — this is a structured prompt assembled from records the orchestrator already keeps for the final summary.
 
-The block is written in add-flow terms; map the equivalents for other writers. **Update writers** (the verify-update single-fix-attempt path): `pre_fetch` comes from the Phase 1 audit, `previously_produced` maps from the execute output contract (`changes_applied` and `deleted_tests_record` → files_modified, `build_status` → last_build_status). **Component writers**: `original_scope` carries the area + scenario title. Fields with no equivalent are omitted — the writer treats the prompt as authoritative.
+The block is written in add-flow terms; map the equivalents for other writers. **Update writers** (the verify-update single-fix-attempt path): `pre_fetch` comes from the Phase 1 audit, `previously_produced` maps from the execute output contract (`changes_applied` and `deleted_tests_record` → files_modified, `build_status` → last_build_status). Fields with no equivalent are omitted — the writer treats the prompt as authoritative.
 
 ### Circuit breaker (CRITICAL)
 

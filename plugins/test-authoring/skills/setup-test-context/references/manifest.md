@@ -56,7 +56,7 @@ Inventory of every per-repo file written by `/test-authoring:setup-test-context`
 | `generated_at` | UTC ISO-8601 timestamp of the install/re-install run. |
 | `plugin_version` | `version` field from `plugins/test-authoring/.claude-plugin/plugin.json` at the time of write; `unknown` if unreadable. |
 | `schema_versions.{category}` | Per-category template schema version, sourced from `<plugin-root>/resources/templates/template-schema-versions.json` field `<category>` at the time of write — EXCEPT categories the user chose to skip via Step 0 option (b), which retain their previous manifest value so the unresolved drift re-surfaces on the next run. Used by Step 0 to detect drift on re-install. |
-| `test_types` | List of test-type labels confirmed in Step 2 (`unit`, `integration`, `component`, etc.). |
+| `test_types` | List of test-type labels confirmed in Step 2 (`unit`, `integration`, etc.). |
 | `files[].path` | Repo-relative path of a per-repo file written by setup. |
 | `files[].sha256` | Lowercase hex digest of the file's content as written **by the most recent setup run that wrote it**, line endings normalised CRLF→LF before hashing (see § SHA-256 calculation). Used to classify pristine vs user-modified at re-install / uninstall. |
 | `files[].category` | One of `conventions`, `rules`, `shared`. Determines which `<plugin-root>/resources/templates/{category}/` the file came from. |

@@ -6,7 +6,7 @@ paths: [".claude/rules/tests/common-writer-instructions.md"]
 
 # Common Writer Instructions
 
-> **Consumers** — `test-authoring:add-unit-test-agent` / `test-authoring:add-integration-test-agent` / `test-authoring:add-component-test-agent` (and the update-flow writers `test-authoring:update-unit-test-agent` / `test-authoring:update-integration-test-agent` / `test-authoring:update-component-test-agent` for the writer-side concerns that are not flow-scoped — sections marked "add-flow only" do not apply to them; on conflict, `common-update-instructions.md` governs update writers).
+> **Consumers** — `test-authoring:add-unit-test-agent` / `test-authoring:add-integration-test-agent` (and the update-flow writers `test-authoring:update-unit-test-agent` / `test-authoring:update-integration-test-agent` for the writer-side concerns that are not flow-scoped — sections marked "add-flow only" do not apply to them; on conflict, `common-update-instructions.md` governs update writers).
 >
 > Keep this file minimal — if a step is not truly shared across all writers, it belongs in the per-type file.
 
@@ -20,14 +20,14 @@ Your job: for each source file, find sibling tests, learn their conventions, gen
 
 Every per-type writer receives a prompt containing at minimum:
 
-- A list of source file paths to cover (for add-flow) or an explicit scope (area + scenario for component)
+- A list of source file paths to cover (for add-flow)
 - (Optional) specific method/endpoint names to focus on
 - (Optional) context about what changed (new methods, modified logic)
 - Pre-fetched sibling context (convention spec, sibling paths) — acceleration hint; if the sibling differs from the spec, **follow the sibling**.
 
 **Alternate mode — fix round**: the prompt may instead carry a `fix_invocation` block. That spawn is a targeted fix, not fresh generation: skip scope analysis and sibling discovery, read your `previously_produced.files_*` paths, and apply only the changes in `findings_to_fix`. See "Fix rules" below and `.claude/rules/tests/fix-protocol.md` for the full contract.
 
-Per-type writers extend this — integration adds a target test project, component adds a scenario title and plan + fixture-capability context. Extensions live in the per-type file.
+Per-type writers extend this — integration adds a target test project. Extensions live in the per-type file.
 
 ## SUT analysis
 
@@ -35,13 +35,13 @@ For each source file, follow the **SUT Analysis Procedure** in `.claude/rules/te
 
 If that procedure requires stopping on a missing framework source ("Runtime resolution flow"), remember you are a subagent and cannot wait for user input: **return your structured output now**, naming the missing package and the path you tried in `issues:`. The orchestrator presents the options to the user and **re-spawns you fresh** with the user's choice (Option A path or Option B go-ahead) in the prompt — there is no resume of the stopped instance.
 
-Per-type writers may add focused identification items (integration identifies endpoints / consumers / persistence; component focuses on the action under test and its observable side-effects). Those additions live in the per-type file.
+Per-type writers may add focused identification items (integration identifies endpoints / consumers / persistence). Those additions live in the per-type file.
 
 ## Locate and learn from sibling tests (CRITICAL)
 
 Follow the procedure in `.claude/conventions/tests/{type}-test-conventions.md`:
 
-- Use the **source → test path mapping** (or test project mapping for integration-like; feature-area mapping for component) to find corresponding test files.
+- Use the **source → test path mapping** (or test project mapping for integration-like) to find corresponding test files.
 - Apply the **sibling convention checklist** and **learn-from-sibling procedure** to adopt the exact style.
 
 **Before creating a new file**, search the target directory for existing test files that already cover the same class / method / endpoint / area. Do not duplicate.
@@ -55,23 +55,24 @@ Style is **not fixed globally** — adopt whatever the sibling tests use. See `.
 Follow:
 
 - `.claude/rules/tests/test-rules.md` (common project-wide rules — test framework / mocking library / assertion library versions, language-specific syntax conventions, naming, fix rules)
-- `.claude/rules/tests/test-writer-rules.md` (what-to-test, what-not-to-do, step-reuse rule for component, context priority)
-- the type-specific rules file, when one exists — today only component has one (`.claude/rules/tests/test-component-rules.md`). Unit and integration have NO type-specific rules file; their build/test specifics live in `test-rules.md` plus the per-type agent definition — do not probe for `unit-test-rules.md` / `integration-test-rules.md`, they are never generated.
+- `.claude/rules/tests/test-writer-rules.md` (what-to-test, what-not-to-do, context priority)
+
+There is **no type-specific rules file**: unit and integration build/test specifics live in `test-rules.md` plus the per-type agent definition — do not probe for `unit-test-rules.md` / `integration-test-rules.md`, they are never generated.
 
 ## Writing (add-flow only)
 
 - If a test file already exists for the class / endpoint / area, **add new test methods** to it but **never modify or delete existing test methods**. Only touch existing tests if they fail due to a build error or because the source they cover has changed — and any such touch MUST be recorded in `files_modified` and explained in `issues:`, so the verifier reviews the modified file, not just the created ones.
-- If no test file exists, **create a new file** in the correct mirrored directory (or feature directory for integration-like / feature-area folder for component).
+- If no test file exists, **create a new file** in the correct mirrored directory (or feature directory for integration-like).
 
 Update writers: Phase 2 file modifications are governed by `.claude/rules/tests/common-update-instructions.md` (Steps E2/E3) — this section does not apply to them.
 
 ## Build and test verification
 
-After writing all tests, follow the **build and test verification** procedure from `.claude/rules/tests/test-rules.md`, plus the type-specific rules file when one exists (today only `test-component-rules.md` for component; unit / integration writers rely on `test-rules.md` alone).
+After writing all tests, follow the **build and test verification** procedure from `.claude/rules/tests/test-rules.md` — it is the only rules file that pins build/test commands.
 
 Use the filter pattern for your test runner to run only the newly added tests. Per-type rules docs pin the exact filter syntax (e.g., `FullyQualifiedName~ClassName` for .NET + xUnit, `-Dtest=ClassName` for Maven + JUnit).
 
-**Iteration rule** — do not run the whole project repeatedly during fix loops. Run a focused filter (target class / target feature / target module). Per-type rules docs may prescribe stricter rules for slow test suites (e.g., test-component-rules mandates full-feature filter to catch cross-scenario isolation bugs).
+**Iteration rule** — do not run the whole project repeatedly during fix loops. Run a focused filter (target class / target feature / target module).
 
 ## Fix rules (CRITICAL)
 
@@ -135,13 +136,13 @@ spec_vs_impl_divergence:
 build_status: success | failed (<errors>)
 ```
 
-Per-type writers add fields — integration adds `test_project`, component adds `assertion_mode`, `reused_steps`, `new_steps_added`, `scenario_count`, `self_review_check`. Those are declared in the per-type file.
+Per-type writers add fields — integration adds `test_project`. Those are declared in the per-type file.
 
 ### `spec_vs_impl_divergence` — when the SUT contradicts the task spec
 
-The rule itself — test the observed behaviour, never modify the SUT, never assert spec behaviour the code does not exhibit, and populate this block for **every** such case — lives in `.claude/rules/tests/test-writer-rules.md` → "When observed behaviour contradicts the spec" (the single source of truth). This schema block is how you report it: leaving it empty when a divergence exists hides a potential bug behind a passing test — the exact failure mode this field prevents. (Component writers: see the component-specific variant in `add-component-test-agent` — they report the divergence and skip the scenario instead of picking a side.)
+The rule itself — test the observed behaviour, never modify the SUT, never assert spec behaviour the code does not exhibit, and populate this block for **every** such case — lives in `.claude/rules/tests/test-writer-rules.md` → "When observed behaviour contradicts the spec" (the single source of truth). This schema block is how you report it: leaving it empty when a divergence exists hides a potential bug behind a passing test — the exact failure mode this field prevents.
 
-## Env_failure handling (integration-like and component writers)
+## Env_failure handling (integration-like writers)
 
 Distinguish between:
 

@@ -16,33 +16,22 @@ and `.claude/commands/tests/` — those tiers no longer exist in this skill.
 After Step 2 confirmation and §3.1 (backup) complete, the orchestrator spawns N subagents
 **in a single message with multiple `Agent` tool calls** so they run in parallel (SKILL.md §3.2).
 
-Subagent counts by repo shape (**Slim default: code-driven per-type subagents are NOT spawned** — their sole output `{type}-test-conventions.md` is no longer generated; writers derive per-type conventions from the nearest sibling at runtime):
+Subagent counts by repo shape (**Slim default: per-type subagents are NOT spawned** — their sole output `{type}-test-conventions.md` is no longer generated; writers derive per-type conventions from the nearest sibling at runtime):
 - 1 supported test type (unit only): **2 subagents** — `shared-tier2`, `shared-tier3`
 - 2 supported test types (unit + integration): **2 subagents** — `shared-tier2`, `shared-tier3`
-- 3 supported test types (incl. component): **3 subagents** — `shared-tier2`, `shared-tier3`, `component` (component is config-driven and IS spawned — it owns more than a per-type conventions file)
-- extra code-driven types: **no additional subagent** (was: + one per-type each)
+- extra test types: **no additional subagent** (was: + one per-type each)
 
 ## Subagent kinds
 
-### Per-type subagent (code-driven types) — **Slim default: NOT spawned**
+### Per-type subagent — **Slim default: NOT spawned**
 
-> Under the Slim default, code-driven per-type subagents (`unit`, `integration`, and any extra code-driven type) are **not spawned**: their sole output `{type}-test-conventions.md` is no longer generated (writers derive per-type conventions from the nearest sibling at runtime). This section documents the legacy / full-regeneration behaviour. The component-type subagent below is config-driven and IS still spawned.
+> Under the Slim default no per-type subagent is spawned for any test type: its sole output `{type}-test-conventions.md` is no longer generated, and writers derive per-type conventions from the nearest sibling at runtime. This section documents the legacy / full-regeneration behaviour only.
 
 Owns the Tier 3 generated conventions for one test type
 (generated per `references/tier3-schemas.md`, not template-copied).
 
 Files owned (e.g. for `type=unit`) — paths relative to repo root:
 - `.claude/conventions/tests/unit-test-conventions.md`
-
-### Component-type subagent (special case)
-
-Same shape as a per-type subagent, but writes its three files in a fixed sequence
-inside the subagent (cross-file references):
-1. `.claude/conventions/tests/component-test-conventions.md` first
-2. `.claude/conventions/tests/fixture-capabilities.md` (only if a fixture class was detected in Step 1)
-3. `.claude/rules/tests/test-component-rules.md`
-
-Cross-type parallelism with other subagents is unaffected.
 
 ### `shared-tier2` subagent
 
@@ -69,8 +58,8 @@ The orchestrator passes everything inline as structured text in the prompt.
 
 1. **Working directory** — repo root (absolute path).
 2. **Backup folder path** — already created in §3.1, e.g. `.claude/backup/setup-2026-04-28-103045/` (if applicable).
-3. **Subagent kind** — one of `per-type`, `shared-tier2`, `shared-tier3`. The component subagent (§ Component-type subagent) is dispatched as `per-type` with test type label `component` (item 4); its three-file, fixed-sequence behaviour is driven by that section plus the explicit Files-to-write list (item 8), not by a distinct kind value.
-4. **Test type label + authoring model** (per-type only) — e.g. `unit`, `integration`, `component`;
+3. **Subagent kind** — one of `shared-tier2`, `shared-tier3` (the legacy `per-type` kind is never dispatched under the Slim default).
+4. **Test type label + authoring model** (per-type only) — e.g. `unit`, `integration`;
    `code-driven` or `config-driven`. The user-confirmed values from Step 2.1.
 5. **Per-file decision flags** — from Step 2.2: which targets to overwrite (pristine and user-modified alike — user-modified files are backed up by the orchestrator in §3.1 before subagents spawn), and which legacy targets the user chose to keep.
 6. **Analysis slice** — only the parts of Step 1 output relevant to this subagent. Examples by kind:
@@ -85,8 +74,7 @@ The orchestrator passes everything inline as structured text in the prompt.
     - `references/tier3-schemas.md` (Tier 3 generation schemas)
     - **Pre-resolved language fragment files for the detected language**, absolute paths. The orchestrator derives the fragment directory name from `{{LANGUAGE}}` via the rule in `references/placeholders.md` § Language fragments, then probes `<plugin-root>/resources/templates/lang/<derived>/` on the filesystem. Only the fragments relevant to this subagent's owned templates are resolved. Examples (assuming the directory exists):
       - shared-tier2 receives: `<plugin-root>/resources/templates/lang/<derived>/project-wide-rules.md`, `<plugin-root>/resources/templates/lang/<derived>/visibility-note.md`, `<plugin-root>/resources/templates/lang/<derived>/known-packages-naming.md`
-      - component subagent receives: `<plugin-root>/resources/templates/lang/<derived>/component-build-commands.md`
-      - per-type subagents (unit, integration): no language fragments today — Tier 3 conventions are sampler-driven from siblings.
+      - shared-tier3: no language fragments today — Tier 3 conventions are sampler-driven from siblings.
     If the derived directory does not exist, OR a specific fragment file is missing from a directory that does exist, the orchestrator passes the literal sentinel `"(no fragment available for <lang>; rely on Step 1 analysis only)"` in place of that path. The sentinel signals to the subagent: no baseline available, generate the placeholder content from Step 1 analysis observations only.
 
     Subagents read these for fill rules, generation schemas, and language-specific baselines; do not duplicate the schemas in the prompt.

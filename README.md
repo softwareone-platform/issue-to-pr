@@ -35,7 +35,7 @@ Then run `/reload-plugins` to activate — it also re-resolves any missing depen
 |---|---|
 | [`adversarial-review`](#adversarial-review) | Adversarial review at the issue, plan, and code altitudes |
 | [`pr-lifecycle`](#pr-lifecycle) | Pull-request lifecycle (Azure DevOps or GitHub) |
-| [`test-authoring`](#test-authoring) | Test authoring — unit, integration, and component |
+| [`test-authoring`](#test-authoring) | Test authoring — unit and integration |
 | [`issue-to-pr-pipeline`](#issue-to-pr-pipeline) | Issue-to-PR orchestration (chains the three above) |
 
 Invoke any skill as `/<plugin>:<skill>`, or just describe the task — each skill auto-triggers from natural language.
@@ -92,12 +92,12 @@ Team-agnostic PR lifecycle for Azure DevOps or GitHub — the platform is detect
 
 ### test-authoring
 
-Test authoring that delegates to writer and verifier subagents (12 in total). A one-time `setup-test-context` run profiles the repo and caches per-repo conventions for a faster path; without it, every workflow still runs cacheless by learning from the nearest sibling tests. See the [plugin README](plugins/test-authoring/README.md) for the full architecture.
+Test authoring that delegates to writer and verifier subagents (8 in total). A one-time `setup-test-context` run profiles the repo and caches per-repo conventions for a faster path; without it, every workflow still runs cacheless by learning from the nearest sibling tests. See the [plugin README](plugins/test-authoring/README.md) for the full architecture.
 
 - **setup-test-context** — One-time profile of the repo; writes per-repo conventions/rules to `.claude/…/tests/`. Also handles uninstall and schema-drift refreshes.
 - **scan-test-gaps** — Finds untested code and stale tests, then iteratively delegates generation and updates.
-- **add-{unit,integration,component}-test** — Generate tests for changed source or a named target.
-- **update-{unit,integration,component}-test** — Two-phase audit → execute refresh of existing tests.
+- **add-{unit,integration}-test** — Generate tests for changed source or a named target.
+- **update-{unit,integration}-test** — Two-phase audit → execute refresh of existing tests.
 
 ### issue-to-pr-pipeline
 

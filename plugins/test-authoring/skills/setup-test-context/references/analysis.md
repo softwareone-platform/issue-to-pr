@@ -88,7 +88,7 @@ Sample tests in a **layered** fashion:
 
 ### Per-file observations
 
-> **Slim mode (default): skip this sub-pass.** These per-file dimensions feed only the per-type `{type}-test-conventions.md` checklist, which the Slim default does not generate for code-driven types — writers derive them from the nearest sibling at runtime (siblings are the primary source of truth). Run this sub-pass ONLY when a per-type conventions file is actually being generated (e.g. `component-test-conventions.md`, or a manual full regeneration). The **layered sampling above** and the **verification-pattern detection below** are independent of this sub-pass and run regardless — they feed `common-verification-patterns.md`, which Slim retains. So the layered sampling read is NOT eliminated by skipping per-file observations.
+> **Slim mode (default): skip this sub-pass.** These per-file dimensions feed only the per-type `{type}-test-conventions.md` checklist, which the Slim default does not generate for code-driven types — writers derive them from the nearest sibling at runtime (siblings are the primary source of truth). Run this sub-pass ONLY when a per-type conventions file is actually being generated (a manual full regeneration). The **layered sampling above** and the **verification-pattern detection below** are independent of this sub-pass and run regardless — they feed `common-verification-patterns.md`, which Slim retains. So the layered sampling read is NOT eliminated by skipping per-file observations.
 
 For each sampled file, note:
 - Which test project it belongs to
@@ -137,7 +137,7 @@ Note patterns affecting test writing:
 - Event / message handling patterns
 - Background job / worker patterns
 - ORM / database access patterns
-- Integration/component test infrastructure
+- Integration test infrastructure
 
 ## 1.6.1 Detect authorization and security patterns
 
@@ -162,18 +162,16 @@ For each test project, determine two independent dimensions.
 
 ### Infrastructure classification
 
-- **Classification** — `unit-like`, `integration-like`, `hybrid`, or `component-like`
+- **Classification** — `unit-like`, `integration-like`, or `hybrid`
 - **Classification basis** — evidence:
   - `unit-like` — all dependencies mocked; no containers, no DB, no real HTTP
   - `integration-like` — Testcontainers / real DB / real HTTP / `WebApplicationFactory` / equivalent
   - `hybrid` — areas of the same project follow different patterns
-  - `component-like` — project contains `.feature` files **AND** step classes carrying `[Binding]` / `[Given]` / `[When]` / `[Then]` attributes (or framework equivalents — SpecFlow, Cucumber-JVM, behave, Gauge). Usually also carries integration-like infrastructure (containers, WebApplicationFactory), but the defining signal is the presence of a scenario framework with real step code, not pure Gherkin
 
-**Gherkin-project detection procedure** (for recognising `component-like`):
-1. Glob the repo for `**/*.feature` files. If none found, no project is `component-like`.
+**Gherkin-project detection procedure** (feeds the authoring model below, not this classification):
+1. Glob the repo for `**/*.feature` files. If none found, no project is Gherkin-driven.
 2. For each `.feature`-containing directory, walk up to the test project root. Glob the project for step-definition code — files with `[Binding]` (Reqnroll/SpecFlow), `@Given` / `@When` / `@Then` annotations (Cucumber-JVM), `@given` / `@when` / `@then` decorators (behave), or the framework-specific equivalent.
-3. If both `.feature` files AND step-definition code are found in the same project → classify as `component-like`.
-4. If `.feature` files exist but no step code is found (pure Gherkin / spec-only) → classify the `.feature`s as `config-driven` and mark the project 🟨 skip (no per-test-type generation).
+3. A project whose test entry points are `.feature` files is **config-driven** — with or without step code — which makes it 🟨 skip in the matrix below. This plugin does not author Gherkin scenarios.
 
 ### Authoring model
 
@@ -191,18 +189,16 @@ Determine support status per project by the **combined** infrastructure × autho
 | unit-like | code-driven | 🟩 yes | `unit` |
 | integration-like | code-driven | 🟩 yes | `integration` |
 | hybrid | code-driven | 🟩 yes | (user decides in Step 2.1) |
-| **component-like** | **config-driven** | 🟩 yes | `component` |
-| unit-like / integration-like / hybrid | config-driven | 🟨 skip | — (pure Pact, YAML-driven, etc. are not supported) |
-| component-like | code-driven | 🟨 skip — unusual combination; ask user | — |
+| unit-like / integration-like / hybrid | config-driven | 🟨 skip | — (Gherkin `.feature` suites, standalone Pact, YAML-driven, etc. are not supported) |
 
-The `component-like × config-driven` cell is supported because Gherkin-hybrid projects carry real step code (via Reqnroll / SpecFlow / Cucumber / etc.) even though the entry point is `.feature`. Pure config-driven projects (Gherkin without step code, standalone Pact, YAML test suites) remain 🟨 skip because their execution model does not map to the per-type writer / verifier pattern.
+Config-driven projects are 🟨 skip because their execution model does not map to the per-type writer / verifier pattern — the unit of authoring is a scenario in a non-code file, not a test method mirroring a source class. **Classify by entry point, not by fixtures**: a Gherkin project usually carries integration-like infrastructure (containers, `WebApplicationFactory`), so reading its fixtures alone would wrongly admit it as an integration target.
 
 ### Full classification record
 
 For each test project, record:
-- **Test type label** — short identifier (e.g., `unit`, `integration`, `component`, `e2e`, `sync`)
-- **Classification** — `unit-like`, `integration-like`, `hybrid`, or `component-like`
+- **Test type label** — short identifier (e.g., `unit`, `integration`, `e2e`, `sync`)
+- **Classification** — `unit-like`, `integration-like`, or `hybrid`
 - **Authoring** — `code-driven` or `config-driven` (note what drives it, e.g., "Reqnroll/Gherkin", "Pact contracts")
 - **Supported** — 🟩 yes or 🟨 skip (with reason)
 - **Test infrastructure** — key base classes, fixtures, factories
-- **Source mapping** — which source projects / layers map here; for component-like, note the feature-area structure (e.g., `Features/` + `Steps/<Area>/`) instead of source-class mirror
+- **Source mapping** — which source projects / layers map here

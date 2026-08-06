@@ -52,7 +52,6 @@ Each fragment file provides the language-specific baseline for one or more place
 | `{{PROJECT_WIDE_RULES}}` | `project-wide-rules.md` | shared-tier2 | `rules/test-rules.md` |
 | `{{VISIBILITY_NOTE}}` | `visibility-note.md` | shared-tier2 | `rules/sut-analysis.md` |
 | `{{KNOWN_PACKAGES_TABLE}}` (and naming-convention prose preceding it) | `known-packages-naming.md` | shared-tier2 | `rules/sut-analysis.md` |
-| `{{BUILD_COMMAND}}`, `{{TEST_COMMAND_ALL}}`, `{{TEST_COMMAND_FEATURE_FILTER}}`, `{{TEST_COMMAND_SCENARIO_FILTER}}` | `component-build-commands.md` | component subagent | `rules/test-component-rules.md` |
 
 ### Adding a language
 
@@ -115,35 +114,16 @@ Templates are **per-type** (not `{{TEST_TYPE}}`-parameterised). Bootstrap copies
 
 Hybrid types: if a test project is classified `hybrid × code-driven`, bootstrap asks the user (Step 2.1 confirmation) which type label to use and copies the corresponding per-type pair. Hybrid-specific detection happens at runtime inside the generated agent (sibling-based).
 
-### Component-track files — copy when `component-like × config-driven` is 🟩 supported
-
-| Template | Destination | Component-specific placeholders |
-|---|---|---|
-| `templates/commands/add-component-test.md` | `.claude/commands/tests/add-component-test.md` | `{{SCENARIO_FRAMEWORK}}`, `{{COMPONENT_TEST_PROJECT_PATH}}`, `{{FEATURES_DIR}}`, `{{STEPS_DIR}}` |
-| `templates/agents/add-component-test-agent.md` | `.claude/agents/tests/add-component-test-agent.md` | `{{SCENARIO_FRAMEWORK}}`, `{{MODULE_NAME}}`, `{{STACK_LIST}}`, `{{COMPONENT_TEST_PROJECT_PATH}}`, `{{FEATURES_DIR}}`, `{{STEPS_DIR}}` |
-| `templates/agents/verify-add-component-test-agent.md` | `.claude/agents/tests/verify-add-component-test-agent.md` | `{{SCENARIO_FRAMEWORK}}`, `{{MODULE_NAME}}`, `{{STACK_LIST}}`, `{{STEPS_DIR}}` |
-| `templates/commands/update-component-test.md` | `.claude/commands/tests/update-component-test.md` | `{{SCENARIO_FRAMEWORK}}`, `{{COMPONENT_TEST_PROJECT_PATH}}`, `{{FEATURES_DIR}}`, `{{STEPS_DIR}}` |
-| `templates/agents/update-component-test-agent.md` | `.claude/agents/tests/update-component-test-agent.md` | `{{SCENARIO_FRAMEWORK}}`, `{{MODULE_NAME}}`, `{{STACK_LIST}}`, `{{COMPONENT_TEST_PROJECT_PATH}}`, `{{FEATURES_DIR}}`, `{{STEPS_DIR}}` |
-| `templates/agents/verify-update-component-test-agent.md` | `.claude/agents/tests/verify-update-component-test-agent.md` | `{{MODULE_NAME}}`, `{{STACK_LIST}}`, `{{SCENARIO_FRAMEWORK}}`, `{{COMPONENT_TEST_PROJECT_PATH}}`, `{{STEPS_DIR}}` |
-| `templates/rules/test-component-rules.md` | `.claude/rules/tests/test-component-rules.md` | `{{SCENARIO_FRAMEWORK}}`, `{{INFRA_PREREQUISITE}}`, `{{COMPONENT_TEST_PROJECT_PATH}}`, `{{SOURCE_EXT}}`, `{{STEPS_DIR}}`, `{{TOOLING_TABLE_EXTRA}}`, `{{STEP_CLASS_SPLIT_TABLE}}`, `{{INFRA_PREREQUISITE_NOTE}}`, `{{BUILD_COMMAND}}`, `{{TEST_COMMAND_ALL}}`, `{{TEST_COMMAND_FEATURE_FILTER}}`, `{{TEST_COMMAND_SCENARIO_FILTER}}` |
-| `templates/conventions/component-test-conventions.md` | `.claude/conventions/tests/component-test-conventions.md` | Methodology sections verbatim; example / derivation sections + sibling checklist "Typical values" columns filled from Step 3.5 convention-checklist sampler |
-
-### Fixture catalog — copy + fill only if a fixture class was detected in Step 1.7
-
-| Template | Destination | Fill condition |
-|---|---|---|
-| `templates/conventions/fixture-capabilities.md` | `.claude/conventions/tests/fixture-capabilities.md` | Only when fixture class detected; catalog sections filled by Step 3.5 generator. If no fixture class detected, do NOT generate this file and warn in Step 2.1. |
-
 ### Batch scanner
 
 | Template | Destination | Special placeholders |
 |---|---|---|
-| `templates/commands/scan-test-gaps.md` | `.claude/commands/tests/scan-test-gaps.md` | `{{LANGUAGE_EXCLUSIONS}}`, `{{COVERAGE_EXCLUSION_HANDLING}}`, `{{TEST_TYPES_LIST}}` (must exclude `component` — scan is unit + integration only), `{{HIGH_PRIORITY_CRITERIA}}`, `{{TEST_TYPES_COUNT_BREAKDOWN}}`, `{{EXAMPLE_TYPE_1}}`, `{{EXAMPLE_TYPE_2}}`. Uses `SINGLE_TYPE_ONLY` / `MULTI_TYPE_ONLY` HTML conditional blocks for single-type vs multi-type repos. |
+| `templates/commands/scan-test-gaps.md` | `.claude/commands/tests/scan-test-gaps.md` | `{{LANGUAGE_EXCLUSIONS}}`, `{{COVERAGE_EXCLUSION_HANDLING}}`, `{{TEST_TYPES_LIST}}` (must exclude Gherkin / config-driven projects — scan is unit + integration only), `{{HIGH_PRIORITY_CRITERIA}}`, `{{TEST_TYPES_COUNT_BREAKDOWN}}`, `{{EXAMPLE_TYPE_1}}`, `{{EXAMPLE_TYPE_2}}`. Uses `SINGLE_TYPE_ONLY` / `MULTI_TYPE_ONLY` HTML conditional blocks for single-type vs multi-type repos. |
 
 ## Per-type selection rules
 
-- **Only copy a per-type template pair when that combo cell is 🟩 in Step 1.7.** A repo with only unit tests gets only the unit templates; a repo with unit + integration + component gets all three tracks.
-- **🟨 Skipped cells** (pure Gherkin without step code, pure Pact, YAML suites, `component-like × code-driven` outliers): do NOT generate any per-type files for these. They still appear in the Step 2.1 confirmation table for visibility.
-- **`SINGLE_TYPE_ONLY` / `MULTI_TYPE_ONLY` HTML conditional blocks** (scan-test-gaps only): when exactly ONE test type is supported (by scan's scope — unit or integration), keep `SINGLE_TYPE_ONLY` blocks and remove `MULTI_TYPE_ONLY` blocks. When ≥2, keep `MULTI_TYPE_ONLY` blocks and remove `SINGLE_TYPE_ONLY` blocks. Component does not count toward this.
+- **Only copy a per-type template pair when that combo cell is 🟩 in Step 1.7.** A repo with only unit tests gets only the unit templates; a repo with unit + integration gets both tracks.
+- **🟨 Skipped cells** (Gherkin `.feature` suites, standalone Pact, YAML suites): do NOT generate any per-type files for these. They still appear in the Step 2.1 confirmation table for visibility.
+- **`SINGLE_TYPE_ONLY` / `MULTI_TYPE_ONLY` HTML conditional blocks** (scan-test-gaps only): when exactly ONE test type is supported (by scan's scope — unit or integration), keep `SINGLE_TYPE_ONLY` blocks and remove `MULTI_TYPE_ONLY` blocks. When ≥2, keep `MULTI_TYPE_ONLY` blocks and remove `SINGLE_TYPE_ONLY` blocks.
 
 Remove HTML comments from the final output after substitution.

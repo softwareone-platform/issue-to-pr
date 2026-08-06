@@ -6,7 +6,7 @@ paths: [".claude/rules/tests/common-update-instructions.md"]
 
 # Common Update Instructions
 
-> **Consumers** — `test-authoring:update-unit-test-agent` / `test-authoring:update-integration-test-agent` / `test-authoring:update-component-test-agent`. Each per-type update writer references this file and adds type-specific audit / execute pieces inline.
+> **Consumers** — `test-authoring:update-unit-test-agent` / `test-authoring:update-integration-test-agent`. Each per-type update writer references this file and adds type-specific audit / execute pieces inline.
 >
 > Universal writer concerns (SUT analysis, sibling learning, fix rules, style rules) live in `.claude/rules/tests/common-writer-instructions.md` — update writers reference both.
 
@@ -34,7 +34,7 @@ Agent(subagent_type="test-authoring:update-<type>-test-agent"):
   original_scope:
     source_files: [...]               # same as Phase 1
     method_filter: ...                # if any
-    test_type: unit | integration | component
+    test_type: unit | integration
 
   pre_fetch:
     sibling_paths: [...]              # from the Phase 1 audit (test_file + sibling_conventions)
@@ -65,8 +65,6 @@ Agent(subagent_type="test-authoring:update-<type>-test-agent"):
 ```
 
 Phase 2 input fields are everything the orchestrator captured during Phase 1 + the action record (derived from the audit). No session-state handoff is required.
-
-Component substitutes its own scope shape: `original_scope` carries `feature_file` + `steps_folder` + `scenario_filter` instead of `source_files` / `method_filter`, and `test_file_paths` becomes the feature file + steps folder.
 
 ## Phase 1 — Audit
 
@@ -121,9 +119,9 @@ Compare the SUT's public / internal methods (or endpoints for integration-like) 
 
 ### Step A5 — Run existing tests
 
-Run existing tests to record their current pass/fail state per `.claude/rules/tests/test-rules.md`, plus the type-specific rules file when one exists (today only `test-component-rules.md` for component; unit / integration rely on `test-rules.md` alone).
+Run existing tests to record their current pass/fail state per `.claude/rules/tests/test-rules.md` — it is the only rules file that pins build/test commands.
 
-For integration-like / component writers, distinguish `passed` / `failed (<reason>)` / `env_failure (<reason>)`.
+For integration-like writers, distinguish `passed` / `failed (<reason>)` / `env_failure (<reason>)`.
 
 ### Audit output contract
 
@@ -171,7 +169,7 @@ issues:
 - <description> (or "none")
 ```
 
-Per-type writers add fields — integration adds `test_project` (singular — each audit covers one (source, project) pair), `env_failure_count`, `env_failure` details; component adds `drift_cause` per scenario and audits per feature file.
+Per-type writers add fields — integration adds `test_project` (singular — each audit covers one (source, project) pair), `env_failure_count`, and `env_failure` details.
 
 ## Phase 2 — Execute
 
@@ -257,7 +255,7 @@ issues:
 - <description> (or "none")
 ```
 
-Per-type writers add fields — integration adds `env_failure` details; component adds step-method deletion records (deleted step methods, plus retained ones still referenced by other scenarios).
+Per-type writers add fields — integration adds `env_failure` details.
 
 ## Git-based rollback coordination
 

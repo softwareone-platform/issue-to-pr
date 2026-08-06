@@ -1,8 +1,8 @@
 # test-authoring
 
-A self-contained plugin for test authoring in your codebases. Ships a cohesive set of 8 skills, 12 subagents, and per-repo template scaffolding.
+A self-contained plugin for test authoring in your codebases. Ships a cohesive set of 6 skills, 8 subagents, and per-repo template scaffolding.
 
-The plugin is **cohesive**: skills are designed to work together. `setup-test-context` is an **optional accelerator** — it profiles the consumer repo once and caches per-repo conventions/rules/shared files under `.claude/` (the **fast path**). Without it, every test workflow (`scan-test-gaps`, `add/update {unit,integration,component} test`) still runs in **cacheless mode** — reading rules from the plugin's bundled `resources/templates/` and discovering conventions from the nearest sibling tests at runtime. Repos that have run setup take the unchanged fast path (zero migration); running setup additionally unlocks cross-layer pattern analysis, the component fixture-capabilities catalog, and user-editable convention files.
+The plugin is **cohesive**: skills are designed to work together. `setup-test-context` is an **optional accelerator** — it profiles the consumer repo once and caches per-repo conventions/rules/shared files under `.claude/` (the **fast path**). Without it, every test workflow (`scan-test-gaps`, `add/update {unit,integration} test`) still runs in **cacheless mode** — reading rules from the plugin's bundled `resources/templates/` and discovering conventions from the nearest sibling tests at runtime. Repos that have run setup take the unchanged fast path (zero migration); running setup additionally unlocks cross-layer pattern analysis and user-editable convention files.
 
 ---
 
@@ -12,26 +12,23 @@ The plugin is **cohesive**: skills are designed to work together. `setup-test-co
 plugins/test-authoring/
 ├── .claude-plugin/plugin.json              # plugin metadata
 ├── README.md                               # this file
-├── skills/                                 # 8 plugin-bundled skills
+├── skills/                                 # 6 plugin-bundled skills
 │   ├── setup-test-context/SKILL.md         # one-time bootstrap
 │   ├── scan-test-gaps/SKILL.md
 │   ├── add-unit-test/SKILL.md
 │   ├── add-integration-test/SKILL.md
-│   ├── add-component-test/SKILL.md
 │   ├── update-unit-test/SKILL.md
-│   ├── update-integration-test/SKILL.md
-│   └── update-component-test/SKILL.md
-├── agents/                                 # 12 plugin-bundled subagents (flat, bare names)
-│   ├── add-{unit,integration,component}-test-agent.md
-│   ├── update-{unit,integration,component}-test-agent.md
-│   ├── verify-add-{unit,integration,component}-test-agent.md
-│   └── verify-update-{unit,integration,component}-test-agent.md
+│   └── update-integration-test/SKILL.md
+├── agents/                                 # 8 plugin-bundled subagents (flat, bare names)
+│   ├── add-{unit,integration}-test-agent.md
+│   ├── update-{unit,integration}-test-agent.md
+│   ├── verify-add-{unit,integration}-test-agent.md
+│   └── verify-update-{unit,integration}-test-agent.md
 ├── resources/
 │   ├── templates/                          # filled by setup-test-context, written per-repo
 │   │   ├── template-schema-versions.json   # per-category schema versions (one JSON, three fields)
-│   │   ├── rules/                          # 9 .md
-│   │   ├── shared/                         # scope-resolution.md
-│   │   └── conventions/                    # 2 fixed .md; others generated dynamically
+│   │   ├── rules/                          # 8 .md
+│   │   └── shared/                         # scope-resolution.md
 │   └── static/                             # plugin-internal, never written per-repo
 │       └── status-legend.md                # controlled vocabulary, do not extend
 └── docs/                                   # detailed per-skill / per-agent / shared docs
@@ -53,8 +50,6 @@ When `/test-authoring:setup-test-context` runs in a consumer repo, it produces f
 ├── conventions/tests/                  # repo-specific patterns, learned from codebase
 │   ├── project-architecture.md         # source/test layout, naming, mirroring (Tier 3 — generated from analysis)
 │   ├── {type}-test-conventions.md      # code-driven per-type (unit/integration): NOT written (Slim default) — writers use siblings at runtime
-│   ├── component-test-conventions.md   # if component type supported (Template + Tier 3 fill)
-│   ├── fixture-capabilities.md         # if component + fixture class detected (Template + Tier 3 fill)
 │   ├── common-test-utilities.md        # if shared test project detected (Tier 3 — conditional)
 │   └── common-verification-patterns.md # if cross-type patterns detected (Tier 3 — conditional)
 ├── rules/tests/                        # strict, prescriptive (must-follow), filled from plugin templates
@@ -65,8 +60,7 @@ When `/test-authoring:setup-test-context` runs in a consumer repo, it produces f
 │   ├── common-orchestrator-flow.md
 │   ├── common-writer-instructions.md
 │   ├── common-update-instructions.md
-│   ├── common-verifier-checks.md
-│   └── test-component-rules.md         # if component type supported
+│   └── common-verifier-checks.md
 └── shared/tests/
     ├── scope-resolution.md             # filled from plugin template
     └── .setup-manifest.json            # uninstall inventory + schema-version tracking
@@ -75,8 +69,8 @@ When `/test-authoring:setup-test-context` runs in a consumer repo, it produces f
 **Why `rules/` vs `conventions/`**: writer agents treat them differently. **Rules are non-negotiable**; **conventions are descriptive patterns** that observed sibling tests can override.
 
 **Not written per-repo** (lives in plugin):
-- 8 user-invocable skills (invoked as `/test-authoring:<name>`)
-- 12 subagents (invoked as `Agent(subagent_type="test-authoring:<name>-agent")`)
+- 6 user-invocable skills (invoked as `/test-authoring:<name>`)
+- 8 subagents (invoked as `Agent(subagent_type="test-authoring:<name>-agent")`)
 - `status-legend.md` — controlled vocabulary, plugin-internal at `resources/static/status-legend.md`
 - Guarded hook block templates — for plugin authors only
 
@@ -92,10 +86,8 @@ Run via `/test-authoring:<skill-name> [scope]` in the Claude Code prompt. Auto-t
 | `scan-test-gaps` | [SKILL.md](skills/scan-test-gaps/SKILL.md) | [docs](docs/skills/readme-scan-test-gaps.md) | Find untested code and stale tests; iteratively delegate generation/updates. Scope: unit and integration only |
 | `add-unit-test` | [SKILL.md](skills/add-unit-test/SKILL.md) | [docs](docs/skills/readme-add-unit-test.md) | Generate unit tests for changed source or a specified target |
 | `add-integration-test` | [SKILL.md](skills/add-integration-test/SKILL.md) | [docs](docs/skills/readme-add-integration-test.md) | Generate integration tests (endpoints, handlers, consumers) |
-| `add-component-test` | [SKILL.md](skills/add-component-test/SKILL.md) | [docs](docs/skills/readme-add-component-test.md) | Generate a component (Gherkin) scenario for a specified area + title |
 | `update-unit-test` | [SKILL.md](skills/update-unit-test/SKILL.md) | [docs](docs/skills/readme-update-unit-test.md) | Two-phase audit→execute update of unit tests |
 | `update-integration-test` | [SKILL.md](skills/update-integration-test/SKILL.md) | [docs](docs/skills/readme-update-integration-test.md) | Same, integration-specific (with env_failure handling) |
-| `update-component-test` | [SKILL.md](skills/update-component-test/SKILL.md) | [docs](docs/skills/readme-update-component-test.md) | Same, component-specific (with drift-cause taxonomy) |
 
 ---
 
@@ -107,12 +99,10 @@ Not directly invoked by users. Spawned by orchestrator skills via `Agent(subagen
 |---|---|---|
 | `add-unit-test-agent` | [agents/add-unit-test-agent.md](agents/add-unit-test-agent.md) | Writer for unit tests |
 | `add-integration-test-agent` | [agents/add-integration-test-agent.md](agents/add-integration-test-agent.md) | Writer for integration tests (test-project selection + env_failure handling) |
-| `add-component-test-agent` | [agents/add-component-test-agent.md](agents/add-component-test-agent.md) | Writer for Gherkin scenarios (step reuse, fixture-gap awareness, assertion-mode declaration) |
 | `update-unit-test-agent` | [agents/update-unit-test-agent.md](agents/update-unit-test-agent.md) | Two-phase update writer for unit tests |
 | `update-integration-test-agent` | [agents/update-integration-test-agent.md](agents/update-integration-test-agent.md) | Same, integration-specific |
-| `update-component-test-agent` | [agents/update-component-test-agent.md](agents/update-component-test-agent.md) | Two-phase update writer for component scenarios (SUT inference per scenario, drift-cause checks, feature-scope filter) |
-| `verify-add-{unit,integration,component}-test-agent` | [agents/](agents/) | Read-only verifiers for add-flow output |
-| `verify-update-{unit,integration,component}-test-agent` | [agents/](agents/) | Read-only verifiers for update-flow output (deletion confirmations, valid-test preservation, env_failure distinction) |
+| `verify-add-{unit,integration}-test-agent` | [agents/](agents/) | Read-only verifiers for add-flow output |
+| `verify-update-{unit,integration}-test-agent` | [agents/](agents/) | Read-only verifiers for update-flow output (deletion confirmations, valid-test preservation, env_failure distinction) |
 
 Detailed docs for the high-complexity update + verify-update agents in [`docs/agents/`](docs/agents/). Add-flow and verify-add agents are simpler — read the agent files directly.
 
@@ -147,7 +137,6 @@ and the constraint in the matching rule book — never both
 | `common-writer-instructions.md` | [resources/templates/rules/common-writer-instructions.md](resources/templates/rules/common-writer-instructions.md) | Universal writer procedure: role, input contract, SUT analysis, sibling learning, output schema |
 | `common-update-instructions.md` | [resources/templates/rules/common-update-instructions.md](resources/templates/rules/common-update-instructions.md) | Universal two-phase audit→execute procedure for update writers |
 | `common-verifier-checks.md` | [resources/templates/rules/common-verifier-checks.md](resources/templates/rules/common-verifier-checks.md) | Universal verifier check sequence, output schema, routing |
-| `test-component-rules.md` | [resources/templates/rules/test-component-rules.md](resources/templates/rules/test-component-rules.md) | Component-specific rules; only when component type supported |
 
 ---
 
@@ -159,8 +148,6 @@ Repo-specific patterns derived from actual codebase analysis. Writer agents use 
 |---|---|---|
 | `project-architecture.md` | _(Tier 3 — generated from analysis, no template)_ | Source/test directory structure, naming conventions, feature organisation |
 | `{type}-test-conventions.md` | _(Tier 3 — generated from analysis)_ | Per-type path mapping, sibling convention checklist, common patterns |
-| `component-test-conventions.md` | [resources/templates/conventions/component-test-conventions.md](resources/templates/conventions/component-test-conventions.md) + Tier 3 fill | Methodology template + sampler fills observed values from `.feature` files and step classes |
-| `fixture-capabilities.md` | [resources/templates/conventions/fixture-capabilities.md](resources/templates/conventions/fixture-capabilities.md) + Tier 3 fill | Policy template + parser fills wired-substitutes catalog from fixture class |
 | `common-test-utilities.md` | _(Tier 3 — conditional, generated if shared test project detected)_ | Shared utilities across test types |
 | `common-verification-patterns.md` | _(Tier 3 — conditional, generated if cross-type patterns detected)_ | Recurring verification patterns |
 

@@ -72,7 +72,7 @@ STEP_IDS = [s["id"] for s in STEPS]
 GATE_STEPS = {s["id"] for s in STEPS if s["gate"]}
 GATE_LABELS = {s["id"]: s["label"] for s in STEPS if s["gate"]}
 
-# steps that execute integration / component tests against the shared host
+# steps that execute integration tests against the shared host
 # container stack (Podman + SQL + Azurite); two runs here at once contend for it
 TEST_STEPS = {s["id"] for s in STEPS if s.get("runsTests")}
 
@@ -1020,7 +1020,7 @@ def list_runs(launch_cwd=None):
 def contention(runs):
     """Cross-run heads-up derived purely from the run list (no extra I/O):
     which discovered runs are parked on a test-executing step. Those steps run
-    integration / component tests against the shared host container stack
+    integration tests against the shared host container stack
     (Podman + SQL + Azurite), so two or more on such a step can conflict, race,
     or starve each other. The status is the coarse next-step value, so a run
     parked at the step counts even if its session is momentarily idle - this is

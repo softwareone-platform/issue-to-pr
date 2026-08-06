@@ -129,7 +129,7 @@ Full legend: [readme-shared-scope-and-status.md#status-legend](../shared/readme-
 
 ### Cross-Coverage Exclusion
 
-A method is excluded from the gap list when it is already exercised by a **unit or integration** test, whether directly or indirectly. Component tests are not considered here — scan operates on code-driven test types only. Partially covered classes list only the uncovered methods. When in doubt, the scan errs on the side of excluding -- a false negative is less costly than recommending unnecessary tests that duplicate existing coverage.
+A method is excluded from the gap list when it is already exercised by a **unit or integration** test, whether directly or indirectly. Gherkin scenarios are not considered here — scan operates on code-driven test types only. Partially covered classes list only the uncovered methods. When in doubt, the scan errs on the side of excluding -- a false negative is less costly than recommending unnecessary tests that duplicate existing coverage.
 
 ---
 

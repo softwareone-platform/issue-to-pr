@@ -31,7 +31,7 @@ Resolve `common-orchestrator-flow.md` the same way: fast path reads `.claude/rul
 
 - **Now**: `common-orchestrator-flow.md` (previous paragraph).
 - **At the step that uses it**: Step 1 → `.claude/shared/tests/scope-resolution.md`. Step 1.5 → `.claude/conventions/tests/integration-test-conventions.md` (test project mapping; cacheless: sibling inference instead of a read). Step 3 (an audit issue cites the Source-change advisory) or Step 5a (the full `phase: execute` structure beyond the inlined block) → `.claude/rules/tests/common-update-instructions.md`, and only its orchestrator-facing sections ("Phase 2 invocation contract", the advisory) — the Phase 1 audit and Phase 2 execute procedure bodies are the update-writer's own rule book. Final multi-agent build → `.claude/rules/tests/test-rules.md` (cacheless: skip the read — use the session-detected per-project `build_test_command`). First verifier finding or attributable build failure → `.claude/rules/tests/fix-protocol.md`. A writer stopping on missing framework source → `.claude/rules/tests/sut-analysis.md` → "Runtime resolution flow".
-- **Never**: `common-writer-instructions.md`, `common-verifier-checks.md`, `test-writer-rules.md`, `test-component-rules.md`. They are subagent rule books — the writers/verifiers read them in their own isolated contexts; preloading them here only bloats the main context.
+- **Never**: `common-writer-instructions.md`, `common-verifier-checks.md`, `test-writer-rules.md`. They are subagent rule books — the writers/verifiers read them in their own isolated contexts; preloading them here only bloats the main context.
 
 
 # Update Integration Tests

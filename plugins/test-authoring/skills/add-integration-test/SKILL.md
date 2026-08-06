@@ -31,7 +31,7 @@ Resolve `common-orchestrator-flow.md` the same way: fast path reads `.claude/rul
 
 - **Now**: `common-orchestrator-flow.md` (previous paragraph).
 - **At the step that uses it**: Step 1 → `.claude/shared/tests/scope-resolution.md`. Step 1.5 → `.claude/conventions/tests/integration-test-conventions.md` (test project mapping; cacheless: sibling inference instead of a read). Step 2 → `.claude/conventions/tests/project-architecture.md` (reuse the conventions doc from Step 1.5). Step 4, only when it runs → `.claude/rules/tests/test-rules.md` (cacheless: skip the read — use the session-detected per-project `build_test_command`). First verifier finding or attributable build failure → `.claude/rules/tests/fix-protocol.md`. A writer stopping on missing framework source → `.claude/rules/tests/sut-analysis.md` → "Runtime resolution flow".
-- **Never**: `common-writer-instructions.md`, `common-verifier-checks.md`, `test-writer-rules.md`, and the other flows' rule books (`common-update-instructions.md`, `test-component-rules.md`). They are subagent rule books — the writers/verifiers read them in their own isolated contexts; preloading them here only bloats the main context.
+- **Never**: `common-writer-instructions.md`, `common-verifier-checks.md`, `test-writer-rules.md`, and the other flow's rule book (`common-update-instructions.md`). They are subagent rule books — the writers/verifiers read them in their own isolated contexts; preloading them here only bloats the main context.
 
 
 # Add Integration Tests for Pending Changes
