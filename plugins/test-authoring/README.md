@@ -42,7 +42,7 @@ plugins/test-authoring/
 
 ## What setup-test-context writes per-repo
 
-When `/test-authoring:setup-test-context` runs in a consumer repo it writes one or two files, both generated from the analysis — no template is copied or filled, and nothing is written outside this one directory.
+When `/test-authoring:setup-test-context` runs in a consumer repo it writes one or two files, both generated from the analysis — no template is copied or filled. The only thing it touches outside this directory is one line appended to the repo-root `.gitignore`.
 
 ```
 .claude/
@@ -152,7 +152,7 @@ Repo-specific patterns derived from actual codebase analysis — the only thing 
 - Nothing detects staleness on a consumer's behalf. A template change reaches a repo when someone
   re-runs setup there. Bump the plugin version so `/plugin update` actually fetches the change.
 
-To keep a hand-edit, commit it before re-running.
+To keep a hand-edit, copy it out before re-running — the write list marks it `OVERWRITE` first. Committing it does not work: `.gitignore` covers that path.
 
 ---
 

@@ -29,10 +29,15 @@ something you wrote yourself. A repo set up by an older version has a populated
 `.claude/rules/tests/` and a `scope-resolution.md`; those are all unmanaged now, and the report is
 where you will see them.
 
-**There is no undo.** Re-running **is** the refresh, and an overwritten file is gone — git cannot help
-either, because §4.5a gitignores the very path it sits at, so `git add` on it silently does nothing.
-The protection is the §2.2 confirmation gate: it names every file this run will overwrite *before*
-anything is written. If you hand-tuned one, copy it out at that point, or answer No.
+**There is no undo.** Re-running **is** the refresh, and an overwritten file is gone. Do not count on
+git: §4.5a gitignores that path, so an untracked file cannot be staged at all (`git add` on it silently
+does nothing). The one exception is a repo that committed these files before adopting the ignore rule
+— §4.5b detects exactly that case — where the previous content is in `HEAD` and `git restore` recovers
+it.
+
+The protection that always applies is the §2.1 write list: it labels every target `NEW` or `OVERWRITE`
+*before* anything is written. If a file you hand-tuned is marked `OVERWRITE`, copy it out then, or
+answer No.
 
 That is deliberate. These are generated artifacts, not documents you maintain — with one or two files
 listed up front, a copy-out is cheaper than a backup mechanism, and the mechanism carried its own
@@ -91,27 +96,40 @@ Proceed to Step 2 with the completed analysis.
 
 **Zero supported types — stop here.** If Step 1.7 classified no project 🟩 (a Gherkin-only repo, or no test project at all), do not render the write list and do not spawn anything: report that this repo has no test project the plugin can author for, list each skipped project with its reason, and exit cleanly without writing.
 
-Render the findings table with the columns: language, test framework, mocking library, build tool, and a per-test-project table showing path / type / supported flag / infrastructure summary. Files to be created / overwritten lists reflect ONLY the per-repo files setup-test-context manages:
+Render the findings table with the columns: language, test framework, mocking library, build tool, and a per-test-project table showing path / type / supported flag / infrastructure summary. Then render the write list.
+
+**Resolve each target path's state first — this is the step that makes the confirmation gate mean
+something.** For every path this run will write, check whether it already exists (Glob or a bounded
+Read) and label it `NEW` or `OVERWRITE`. Do not render the list from this document's example: build it
+from what you found on disk. Since there is no backup and no undo, an `OVERWRITE` line is the **only**
+warning the user gets that content is about to be destroyed — a canned list that always looks the same
+would silently hand a hand-tuned file to the next write.
 
 ```
-Files setup-test-context will write (new or refresh):
+Files setup-test-context will write:
 
-Conventions (.claude/conventions/tests/):
-- project-architecture.md
-- common-verification-patterns.md    (if cross-layer pattern detected)
-  NOTE: per-type {type}-test-conventions.md are NOT written
-  -- writers derive per-type conventions from the nearest sibling at runtime.
+  NEW        .claude/conventions/tests/project-architecture.md
+  OVERWRITE  .claude/conventions/tests/common-verification-patterns.md   <- current content is lost
+
+Not generated this run:
+  common-verification-patterns.md -- no qualifying cross-layer pattern detected
+  (omit this section when nothing was skipped)
 
 Not written -- read from the plugin at runtime:
   the 9 rule books (.claude/rules/tests/* and scope-resolution.md in earlier versions),
   the status legend, every agent and skill.
+  Per-type {type}-test-conventions.md are not written either -- writers derive those
+  from the nearest sibling at runtime.
 ```
+
+State each `OVERWRITE` path on its own line. If there are none, say so — "all targets are new, nothing
+will be lost" is worth one line, because it tells the user they can answer Yes without checking.
 
 ### What happens to a path that already exists
 
-It is overwritten, and the confirmation block says so. There is no pristine / user-modified
-distinction (that needed recorded hashes, which the skill does not keep) and no per-file prompt — with
-one or two paths, the §2.2 batch confirmation carries the same information without asking twice.
+It is overwritten, with no undo. There is no pristine / user-modified distinction (that needed recorded
+hashes, which the skill does not keep) and no per-file prompt — with one or two paths, the labelled
+list above plus the §2.2 batch confirmation carry the same information without asking twice.
 
 ### Unmanaged files at managed paths (report only)
 
@@ -122,9 +140,12 @@ listing hides it. Do not
 delete it and do not offer to — without recorded state, a leftover from a retired template and a file
 you wrote by hand are indistinguishable, and deleting the wrong one is unrecoverable.
 
-The conditional convention (`common-verification-patterns.md`) lands here whenever its generation
-condition is unmet this run. That is correct: it is simply not written, and the report names it so a
-mis-detection is visible rather than silent.
+This report covers **files that exist on disk**. A conditional file that was not generated this run is
+not one of them — it has no file to report. Name that skip in the write list's "Not generated this run"
+section instead, so a mis-detection is still visible. The one case where
+`common-verification-patterns.md` *does* appear here is a repo where an earlier run generated it and
+this run's detection found no qualifying pattern: it is then on disk, outside the write set, and left
+alone like any other unmanaged file.
 
 Collect the list before reaching the confirmation.
 
@@ -132,7 +153,7 @@ Collect the list before reaching the confirmation.
 
 Ask:
 1. Are the test types and Supported flags correct?
-2. Review the two lists from §2.1: files that will be **overwritten** — there is no undo, so copy out anything you hand-tuned before answering — and unmanaged files that will be left untouched.
+2. Review the `OVERWRITE` lines in §2.1's write list — there is no undo, so copy out anything you hand-tuned before answering — and the unmanaged files that will be left untouched.
 3. **Proceed?** (Yes / No)
 
 Single yes/no for the whole set. Proceed to Step 3 only after confirmation.
@@ -162,7 +183,7 @@ than re-reading the files, and Step 5 renders it.
 After all writes:
 
 1. Confirm every file exists.
-2. **Frontmatter check (bounded read — never re-read whole files into the main context)**: for each written file (both carry frontmatter), read only the opening frontmatter block — a bounded read of the first ~20 lines (Read with a line limit, or `sed -n '1,20p'`). Assert the block closes with `---` inside that bound **and** carries a non-empty `description`; either failing is a verification failure. Whole-file content checks belong to item 3's mechanical sweep; re-reading every generated file would pull the entire rule set into the main context — the exact bloat the per-type skills' lazy loading removed. (Unresolved `{{PLACEHOLDER}}` tokens and leaked HTML comments are item 3's greps — do not re-check them by reading file bodies.)
+2. **Frontmatter check (bounded read — never re-read whole files into the main context)**: for each file in this run's write log — every generated conventions file carries frontmatter, and the log is the authority on which were actually written (a skipped conditional is not in it) — read only the opening frontmatter block — a bounded read of the first ~20 lines (Read with a line limit, or `sed -n '1,20p'`). Assert the block closes with `---` inside that bound **and** carries a non-empty `description`; either failing is a verification failure. Whole-file content checks belong to item 3's mechanical sweep; re-reading every generated file would pull the entire rule set into the main context — the exact bloat the per-type skills' lazy loading removed. (Unresolved `{{PLACEHOLDER}}` tokens and leaked HTML comments are item 3's greps — do not re-check them by reading file bodies.)
 3. **Mechanical grep sweep** — run against the files written THIS run, never the whole directory: unmanaged files (§2.1) are outside this run's contract, and their content (e.g. quoted `{{ }}` template syntax) must not fail verification.
    ```bash
    # <written-files…> = every path in this run's write log
@@ -172,11 +193,15 @@ After all writes:
    Both MUST return no output. Any match is a verification failure. This is the check that earns its
    keep: a leaked `{{SRC_GLOB}}` reaches a writer as a literal token.
 4. **Path existence check** — extract concrete paths mentioned in generated output, verify with Glob. Missing paths are warnings (🟨), not failures.
-5. **On failure**: **report it loudly and stop** — name the failing file, quote the failing check, and
-   say plainly that the file is on disk and wrong. Do **not** attempt a rollback: the previous content
-   was not kept, and deleting the file instead would leave a repo that looks un-set-up while the user
-   believes it is set up. The fix is to correct the cause and re-run — the outputs are regenerable by
-   this same skill, which is why no undo is carried.
+5. **On failure**: **delete every file in this run's write log, then report loudly and stop** — name
+   the file that failed, quote the failing check, and say the run wrote nothing. Deleting is not a
+   rollback (the previous content was not kept and does not come back); it is removal of a known-bad
+   artifact. It is the right move because every downstream agent reads
+   `.claude/conventions/tests/project-architecture.md` *if present* with no validity check of its
+   own — so a file left behind with a leaked `{{SRC_GLOB}}` in it would be consumed silently by every
+   later add / update / scan run. Removing it puts the repo in the no-setup state, which every skill in
+   this plugin already handles by deriving from siblings. Tell the user that: the run failed, nothing
+   was written, the skills still work sibling-driven, and re-running is the fix.
 6. **On success**: keep all written files. Do NOT auto-commit.
 
 Render a Verification Results table: one row per check above, each with its status icon and a one-line result.
@@ -216,7 +241,9 @@ If `git ls-files` returns nothing (fresh setup, or already untracked) → say no
 
 ## Step 5 — Report
 
-Render the report below.
+**Only on the Step 4 success path.** If Step 4 failed, its own item 5 already reported the failure and
+deleted this run's output — do not also render the report below, which would list files that no longer
+exist and invite the user to try skills against them.
 
 ### Repo profile recap
 

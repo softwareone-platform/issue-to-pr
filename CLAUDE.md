@@ -65,7 +65,7 @@ Distinction that matters when editing content: **rules are non-negotiable**; **c
 
 `common-*` files are role-lifecycle documents (one per actor: orchestrator/writer/update-writer/verifier); the other rule files are rule books. Put an actor's procedure in its `common-*` file and a constraint in the matching rule book — never both, or the rule drifts into two sources of truth.
 
-**No versioning of the generated files, and no state between runs.** There is no manifest, no recorded hashes, and no per-file `schema_version`: `setup-test-context` knows only the fixed set of paths the current version writes. Existing files at those paths are backed up and rewritten; anything else under `.claude/{conventions,rules,shared}/tests/` is reported and left alone. Re-running is the refresh, so a template change reaches a repo when someone re-runs setup — nothing detects staleness for them.
+**No versioning of the generated files, and no state between runs.** There is no manifest, no recorded hashes, and no per-file `schema_version`: `setup-test-context` knows only the fixed set of paths the current version writes. An existing file at one of those paths is rewritten with no undo — the confirmation gate labels it `OVERWRITE` beforehand, and that is the only protection; anything else under `.claude/{conventions,rules,shared}/tests/` is reported and left alone. Re-running is the refresh, so a template change reaches a repo when someone re-runs setup — nothing detects staleness for them.
 
 ## Making changes
 

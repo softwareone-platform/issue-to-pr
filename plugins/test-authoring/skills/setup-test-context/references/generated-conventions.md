@@ -1,6 +1,6 @@
 # Generated Conventions — Generation Schemas
 
-Read this file during Step 3.2. It carries the recipe for every file setup-test-context generates.
+Read this file during Step 3.1. It carries the recipe for every file setup-test-context generates.
 These are analysis-derived, not template-filled: there is no template to copy, so write each one
 directly from the Step 1 analysis. They all live under `.claude/conventions/tests/`.
 

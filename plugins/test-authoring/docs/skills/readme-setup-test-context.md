@@ -2,7 +2,7 @@
 
 The `setup-test-context` skill is the **optional** profiler that caches this repo's **cross-layer test map** for the rest of the `test-authoring` plugin. It analyses the repository's language, test frameworks, project structure, and test conventions, then writes one or two files under `.claude/conventions/tests/` — `project-architecture.md` and, when the analysis found one, `common-verification-patterns.md`. Those are the parts a single sibling test cannot reconstruct, and they are the only thing it writes. Every add/update/scan skill runs **with or without** them.
 
-Beyond those three files it writes nothing. The rule books those skills obey live in the plugin at `resources/templates/{rules,shared}/` and are read from there at runtime; nothing copies them into a repo, so there is no second copy to fall out of date. Per-type (`unit` / `integration`) conventions are not cached either — writers derive those from the nearest sibling, which is more current than any cache could be.
+Beyond those one or two files it writes nothing. The rule books those skills obey live in the plugin at `resources/templates/{rules,shared}/` and are read from there at runtime; nothing copies them into a repo, so there is no second copy to fall out of date. Per-type (`unit` / `integration`) conventions are not cached either — writers derive those from the nearest sibling, which is more current than any cache could be.
 
 It is re-runnable, and re-running **is** the refresh: managed files are generated artifacts, not user documents. The skill keeps **no state between runs** — no manifest, no recorded hashes, no per-file version. It knows only the fixed set of paths the current version writes: an existing file at one of those paths is **overwritten with no undo**, and anything else under the managed directories is reported and left untouched. One confirmation gate lists both sets before anything is written — that gate is where a hand-edit is protected, so copy one out there or answer No.
 
@@ -30,7 +30,8 @@ rm -rf .claude/conventions/tests .claude/rules/tests .claude/shared/tests
 
 Only the first is still written to. The other two hold what older versions left — rule-book copies,
 `scope-resolution.md`, a `README.md`, and the `.setup-manifest.json` dotfile — and clearing them is the
-point. Then run the skill: nothing is reported as unmanaged.
+point. Then run the skill: with the managed directories empty, nothing is reported as unmanaged and every
+target is `NEW`.
 
 Overwriting in place also works, but it leaves any file the current version no longer writes sitting on
 disk, because the skill will not delete what it cannot prove it wrote. It is also not safer for a
@@ -82,7 +83,7 @@ flowchart TB
         B1[Analysis summary and test-project table]
         B2[Files to create / update]
         B3[Unmanaged files / git state]
-        B4[Atomic confirmation gate]
+        B4[Confirmation gate]
         B1 --> B2 --> B3 --> B4
     end
     subgraph P3["Phase 3 — Generate"]
@@ -113,9 +114,12 @@ flowchart TB
 
 `CLAUDE.md` is read for **hints only** (build commands, project descriptions, framework references). It is **never modified** — that's the responsibility of `/init` or manual edits. Drift between CLAUDE.md claims and actual codebase findings is reported, not auto-corrected.
 
-### Atomic confirmation
+### Confirmation gate
 
-After presenting the full analysis and file plan, the user gives a single yes/no decision for the entire batch. Per-file selective acceptance is not supported because partial updates leave the system inconsistent (e.g., conventions updated but matching rules untouched).
+After presenting the analysis and the write list, the user gives a single yes/no for the whole set.
+Per-file selective acceptance is not supported — with one or two files it would only ask the same
+question twice. The gate carries real weight now that there is no backup: each target is labelled `NEW`
+or `OVERWRITE`, and an `OVERWRITE` is the only warning that content is about to be lost.
 
 ### Overwrite-safe flow
 
@@ -133,7 +137,7 @@ the hand-edited case get the same treatment.
 A file under a managed directory that is **not** among this run's write targets is reported and left
 alone — never deleted. Without recorded state, a retired template's leftover and a file you wrote
 yourself are indistinguishable, and deleting the wrong one is unrecoverable. This is why the guidance
-is to commit a hand-edit before re-running.
+is to copy a hand-edit out before re-running — committing it does not work, because `.gitignore` covers that path.
 
 ### Re-run, refresh & legacy per-type conventions
 
@@ -159,7 +163,7 @@ Setup fills no templates — the rule books under `<plugin-root>/resources/templ
 
 ### No test-agent delegation during setup
 
-Setup spawns **no subagents at all**. It writes its two or three files itself — the analysis they come from is already in the orchestrator's context, so a subagent would copy that context rather than save it, and two files offer no parallelism to win. It also never delegates to the plugin's test writer, update, or verifier agents. Consequently no circuit breaker, no fix loop, no `fix_invocation` routing. Verification is mechanical (file existence, frontmatter, placeholder grep) rather than an independent agent review.
+Setup spawns **no subagents at all**. It writes its one or two files itself — the analysis they come from is already in the orchestrator's context, so a subagent would copy that context rather than save it, and two files offer no parallelism to win. It also never delegates to the plugin's test writer, update, or verifier agents. Consequently no circuit breaker, no fix loop, no `fix_invocation` routing. Verification is mechanical (file existence, frontmatter, placeholder grep) rather than an independent agent review.
 
 ### Status icons
 
