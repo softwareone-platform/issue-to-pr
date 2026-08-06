@@ -17,6 +17,25 @@ Unlike the runtime test skills (add/update/scan), this skill spawns **no subagen
 
 ---
 
+## Clean re-setup after a plugin upgrade
+
+Nothing tells a repo its cached files are stale — that detection was removed along with the manifest.
+After upgrading the plugin, the reliable move is to delete and regenerate rather than overwrite:
+
+```
+rm -rf .claude/conventions/tests .claude/rules/tests .claude/shared/tests
+```
+
+That directory list is exhaustive for what setup writes, and `rm -rf` also takes the dotfile
+(`.setup-manifest.json`) that an older version left behind. Then run the skill: with every target
+path fresh, no backup folder is created and nothing is reported as unmanaged.
+
+Overwriting in place also works and is safer if you have hand-edits worth keeping — the previous copy
+goes into `.claude/backup/setup-<timestamp>/` — but it leaves any file the current version no longer
+writes sitting on disk, because the skill will not delete what it cannot prove it wrote.
+
+---
+
 ## Invocation
 
 ```

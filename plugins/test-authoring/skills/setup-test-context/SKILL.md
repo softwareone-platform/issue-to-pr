@@ -28,6 +28,11 @@ something you wrote yourself.
 Keeping a hand-edit therefore means committing it (or copying it out) before re-running. Re-running
 **is** the refresh.
 
+After a plugin upgrade, prefer a **clean** re-setup: delete `.claude/{conventions,rules,shared}/tests/`
+outright (which also removes the `.setup-manifest.json` an older version left behind), then run. Every
+target is then fresh, so no backup folder is created and nothing is left behind that this version no
+longer writes.
+
 ## Supporting assets
 
 Located relative to this skill's base directory:
