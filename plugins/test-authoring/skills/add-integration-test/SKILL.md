@@ -9,7 +9,7 @@ description: >
 
 This skill runs **with or without** a prior `setup-test-context`.
 
-**Resolve the plugin resources root once, unconditionally** — you also pass it to every subagent, because subagents cannot resolve it themselves. The bundled rule books sit two directories above this `SKILL.md`, under `resources/templates`. Prefer bash injection at load time:
+**Resolve the plugin templates root once, unconditionally** — you also pass it to every subagent, because subagents cannot resolve it themselves. The bundled rule books sit two directories above this `SKILL.md`, under `resources/templates`. Prefer bash injection at load time:
 
 !`echo "${CLAUDE_SKILL_DIR}/../../resources/templates"`
 
@@ -17,7 +17,7 @@ Call the result `PLUGIN_TEMPLATES`. If that line did not expand to a real absolu
 
 Two kinds of file, resolved differently:
 
-- **Rule books.** Every `<PLUGIN_TEMPLATES>/rules/…` and `<PLUGIN_TEMPLATES>/shared/…` path below is literal — read it from there. Nothing writes these into a repo, so there is no per-repo copy to prefer and none to fall out of date. Read each lazily, at the step that uses it — never as an upfront batch (see "Orchestrator reading list").
+- **Rule books.** Every `<PLUGIN_TEMPLATES>/rules/…` and `<PLUGIN_TEMPLATES>/shared/…` path below is literal — read it from there. Inside a rule book, a bare filename means a sibling rule book in that same `rules/` directory, and a `../shared/<f>` path is relative to it. Nothing writes any of them into a repo, so there is no per-repo copy to prefer and none to fall out of date. Read each lazily, at the step that uses it — never as an upfront batch (see "Orchestrator reading list").
 - **Conventions.** `.claude/conventions/tests/…` is the repo's own cache, written only where `setup-test-context` has run. Treat every one as **optional**: prefer the nearest sibling test for the scope (the writer's top-priority source anyway); when no sibling exists either, the writer reports the gap rather than inventing conventions — there is no language baseline to fall back to. A missing conventions file is never fatal.
 
 If `.claude/conventions/tests/project-architecture.md` is absent, say so once: `"No cached repo profile — deriving from siblings. Run /test-authoring:setup-test-context once to cache the repo cross-layer test map."` Then carry on — it blocks nothing.
@@ -26,7 +26,7 @@ If `.claude/conventions/tests/project-architecture.md` is absent, say so once: `
 
 **Orchestrator reading list (context discipline).** Load into the main context only what this orchestrator itself needs, when it needs it:
 
-- **Now**: `common-orchestrator-flow.md` (previous paragraph).
+- **Now**: `<PLUGIN_TEMPLATES>/rules/common-orchestrator-flow.md`.
 - **At the step that uses it**: Step 1 → `<PLUGIN_TEMPLATES>/shared/scope-resolution.md`. Step 1.5 → `.claude/conventions/tests/integration-test-conventions.md` (test project mapping, when a prior setup cached it; otherwise infer from siblings). Step 2 → `.claude/conventions/tests/project-architecture.md` (reuse the conventions doc from Step 1.5). Step 4, only when it runs → `<PLUGIN_TEMPLATES>/rules/test-rules.md` (use the session-detected per-project `build_test_command`). First verifier finding or attributable build failure → `<PLUGIN_TEMPLATES>/rules/fix-protocol.md`. A writer stopping on missing framework source → `<PLUGIN_TEMPLATES>/rules/sut-analysis.md` → "Runtime resolution flow". A writer stopping on no convention source → `<PLUGIN_TEMPLATES>/rules/common-orchestrator-flow.md` → "Writer stop on no convention source".
 - **Never**: `common-writer-instructions.md`, `common-verifier-checks.md`, `test-writer-rules.md`, and the other flow's rule book (`common-update-instructions.md`). They are subagent rule books — the writers/verifiers read them in their own isolated contexts; preloading them here only bloats the main context.
 

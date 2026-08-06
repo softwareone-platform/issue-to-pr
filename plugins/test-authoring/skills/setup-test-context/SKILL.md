@@ -203,7 +203,9 @@ After all writes:
    ```
    Both MUST return no output. Any match → verification failure → rollback.
 4. **Path existence check** — extract concrete paths mentioned in generated output, verify with Glob. Missing paths are warnings (🟨), not failures.
-5. **Cross-reference check**: for each plugin agent matching a test type confirmed as supported in Step 2 — the plugin agents live at `<plugin-root>/agents/` (e.g. `<plugin-root>/agents/add-unit-test-agent.md` for `unit`) — extract the **`.claude/conventions/tests/`** paths it references and check each against disk. Those are the only repo paths an agent names — its rule books are cited as `<plugin_resources_path>/{rules,shared}/…`, which is the plugin's own directory and nothing this run writes. If a `.claude/rules/tests/` reference ever reappears in an agent, that is a plugin-authoring bug, not a missing output: report it and do not roll back.
+5. **Cross-reference check**: for each plugin agent matching a test type confirmed as supported in Step 2 — the plugin agents live at `<plugin-root>/agents/` (e.g. `<plugin-root>/agents/add-unit-test-agent.md` for `unit`) — extract **every `.claude/…` path** it references, then route by prefix:
+   - `.claude/conventions/tests/…` — our output; check it against disk by the bullets below.
+   - `.claude/rules/tests/…` or `.claude/shared/tests/…` — should not appear at all: an agent cites its rule books as `<plugin_resources_path>/{rules,shared}/…`. One that reappears is a plugin-authoring bug, not a missing output — report it as a warning (🟨) and **never** roll back for it, since nothing this run writes could satisfy it.
    - exists → pass.
    - missing but **conditional** (`common-verification-patterns.md`) with its generation condition unmet this run → warning (🟨), not a failure.
    - **missing `{type}-test-conventions.md`** (`unit`, `integration`, or any extra type) → **expected-absent / silent pass**. Nothing generates these — writers derive per-type conventions from the nearest sibling at runtime — so an agent referencing one while it is absent is the normal state: NOT a warning, NOT a failure.
@@ -231,9 +233,12 @@ setup-test-context's per-repo files are **user-scope** — local, never committe
 .claude/backup/
 ```
 
-`.claude/rules/tests/` is deliberately **not** on that list any more: nothing writes there, and ignoring
-it would hide the one thing §2.1 wants visible — an older version's rule-book copies still sitting in
-the repo. If the report named some, delete them; they are dead weight, not a fallback.
+`.claude/rules/tests/` is deliberately **not** on that list any more — nothing writes there. Note that
+this step only *adds* missing lines and never removes one, so a repo set up by an older version still
+carries that line: dropping it here changes nothing for them. That is fine, because §2.1's unmanaged-file
+report reads the directory directly and does not care what `.gitignore` says. If the report named
+leftovers there, tell the user to delete them and to drop the now-pointless `.gitignore` line — do not
+edit their `.gitignore` to remove it yourself.
 
 **4.5b — Untrack anything already committed (migration).** `.gitignore` does not affect files git already tracks. Run `git ls-files .claude/conventions/tests .claude/rules/tests .claude/shared/tests`. If it lists any files, **print this notice; do NOT run the command automatically** — then continue to Step 5 (this skill never auto-commits; untracking is a committable change the user owns and reviews):
 ```

@@ -52,7 +52,7 @@ Agent(subagent_type="test-authoring:update-<type>-test-agent"):
   consent_proceeded_files: [...]      # files Step 4.5 found untracked/dirty and proceeded on user consent — see Step E1; empty when none
 
   plugin_context:                     # always present — the agent can resolve neither field itself
-    plugin_resources_path: ...        # absolute plugin resources root; read rules/shared from <here>/{rules,shared}, per your agent's Path-resolution preamble
+    plugin_resources_path: ...        # absolute path of the plugin's resources/templates dir; read rules/shared from <here>/{rules,shared}
     build_test_command: ...           # session-detected build/test invocation (adjust --filter to the actual test class)
 
   instructions: |
@@ -93,7 +93,7 @@ If no test file exists, report `no_existing_tests: true`.
 
 ### Step A3 — Classify each test
 
-Compare each test against the current SUT and classify using the icons defined in `<plugin-root>/resources/static/status-legend.md` (plugin-internal controlled vocabulary — never written per-repo):
+Compare each test against the current SUT and classify using the icons defined in `<plugin_resources_path>/../static/status-legend.md` (plugin-internal controlled vocabulary — never written per-repo):
 
 - 🟩 **valid** — still aligned with current SUT behaviour
 - 🟨 **outdated-minor** — needs targeted tweak (specific assertion, value, detail)
@@ -117,7 +117,7 @@ Compare the SUT's public / internal methods (or endpoints for integration-like) 
 
 ### Step A5 — Run existing tests
 
-Run existing tests to record their current pass/fail state per `test-rules.md` — it is the only rules file that pins build/test commands.
+Run existing tests to record their current pass/fail state, following `test-rules.md` → Build and Test Verification. The invocation itself is the `build_test_command` your prompt carries — `test-rules.md` states the procedure and deliberately lists no commands.
 
 For integration-like writers, distinguish `passed` / `failed (<reason>)` / `env_failure (<reason>)`.
 

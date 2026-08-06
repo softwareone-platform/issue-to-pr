@@ -16,6 +16,10 @@ Convention violations and build/test failures are deterministic — there is a c
 Agent(subagent_type="test-authoring:<add-or-update>-<type>-test-agent"):
   fix_invocation: true
 
+  plugin_context:                     # always — a fresh spawn resolves neither field itself
+    plugin_resources_path: ...        # absolute path of the plugin's resources/templates dir
+    build_test_command: ...           # session-detected; the writer adjusts --filter to its test class
+
   original_scope:
     source_files: [...]               # same list passed to the first writer
     method_filter: ...                # if any
@@ -47,14 +51,14 @@ Agent(subagent_type="test-authoring:<add-or-update>-<type>-test-agent"):
     Return the universal output schema (files_modified, build_status, ...).
 ```
 
-The orchestrator already holds every field of this block in working state (pre_fetch from Step 2, previously_produced from the prior writer's structured return, findings_to_fix from the verifier's structured return). No new caching mechanism is required — this is a structured prompt assembled from records the orchestrator already keeps for the final summary.
+The orchestrator already holds every field of this block in working state (plugin_context from Step -1, pre_fetch from Step 2, previously_produced from the prior writer's structured return, findings_to_fix from the verifier's structured return). `plugin_context` is not optional here: a fix spawn is a *fresh* agent that stops immediately without it, so omitting it turns every fix round into a stop. No new caching mechanism is required — this is a structured prompt assembled from records the orchestrator already keeps for the final summary.
 
 The block is written in add-flow terms; map the equivalents for other writers. **Update writers** (the verify-update single-fix-attempt path): `pre_fetch` comes from the Phase 1 audit, `previously_produced` maps from the execute output contract (`changes_applied` and `deleted_tests_record` → files_modified, `build_status` → last_build_status). Fields with no equivalent are omitted — the writer treats the prompt as authoritative.
 
 ### Protocol stops do not count
 
-A writer that returns early with a `stop_reason` — `no_convention_source` or `missing_framework_source`
-(see `common-orchestrator-flow.md`) — has not failed a fix attempt. It wrote nothing, so there is nothing
+A writer that returns early with a `stop_reason` — `no_convention_source`, `missing_framework_source`,
+or `missing_plugin_context` (see `common-orchestrator-flow.md`) — has not failed a fix attempt. It wrote nothing, so there is nothing
 to have got wrong. **Do not increment any counter below for such a return**, and do not route it through
 the fix protocol at all: it has its own handler.
 

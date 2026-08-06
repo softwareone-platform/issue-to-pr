@@ -43,7 +43,7 @@ Before spawning writer agents, pre-fetch sibling context to reduce agent explora
 
 ## Writer delegation
 
-> **Plugin handoff (every spawn, always).** The orchestrator passes `plugin_resources_path` (the absolute plugin resources root it resolved in Step -1) and `build_test_command` (session-detected; `--filter` adjusted per test class) into **every** subagent prompt — writer, verifier, and the audit / execute phases of update flows. Neither is optional and neither is conditional: a subagent cannot resolve the plugin path itself, and the rule books it must obey live only there. It reads rules/shared from the passed path per its own Path-resolution preamble, and treats convention docs as optional (sibling-first).
+> **Plugin handoff (every spawn, always).** The orchestrator passes `plugin_resources_path` (the absolute path of the plugin's `resources/templates` directory, resolved in Step -1 — the directory that *contains* `rules/` and `shared/`, not the `resources/` directory above it) and `build_test_command` (session-detected; `--filter` adjusted per test class) into **every** subagent prompt — writer, verifier, and the audit / execute phases of update flows. Neither is optional and neither is conditional: a subagent cannot resolve the plugin path itself, and the rule books it must obey live only there. It reads rules/shared from the passed path per its own Path-resolution preamble, and treats convention docs as optional (sibling-first).
 
 Use the **Agent tool** to spawn the matching per-type writer:
 
@@ -58,7 +58,7 @@ Use the **Agent tool** to spawn the matching per-type writer:
 
 **Fix rounds**: when a verifier flags issues, the orchestrator spawns a **fresh writer** with a `fix_invocation` block per `fix-protocol.md`. Every fix round is a new `Agent` invocation, not a continuation of any previous writer instance.
 
-**Pre-writer source snapshot**: before spawning the first writer, record the current source state (`git diff --` over the source root(s) you resolved in Step 1, at that moment). The verifier needs it as the baseline for its SUT-modification check — in Mode A the user's own uncommitted source changes are expected, and without this snapshot the verifier cannot tell them apart from writer tampering.
+**Pre-writer source snapshot**: before spawning the first writer, record the current source state: `git diff --` over the repo's **whole** source tree, not the scope Step 1 resolved. The scope can be a single class (Mode B), and a writer editing a source file *outside* its scope is precisely what this baseline exists to catch. The verifier needs it as the baseline for its SUT-modification check — in Mode A the user's own uncommitted source changes are expected, and without this snapshot the verifier cannot tell them apart from writer tampering.
 
 ## Structured-output enforcement
 
@@ -85,6 +85,15 @@ When a writer output contains such an entry, do NOT proceed to the build check o
 
 This stop is a protocol step, not a failure — it does not count toward any fix circuit breaker.
 
+## Writer stop on missing plugin context
+
+`stop_reason: missing_plugin_context` means you did not pass `plugin_resources_path` in that spawn.
+It is **your** bug, not the repo's, and re-spawning the same prompt reproduces it exactly — so do not
+treat it as a malformed-output case and do not count it toward any circuit breaker. Fix the spawn:
+add `plugin_resources_path` (and `build_test_command`) per **Plugin handoff** above, then spawn once
+more. If the second spawn stops the same way, report to the user that this skill cannot hand its
+subagents the plugin path, and stop — do not fall back to running the subagent without its rule books.
+
 ## Writer stop on no convention source
 
 A writer that finds neither a sibling test nor a convention file
@@ -110,7 +119,7 @@ prompt per writer.
 
 ## Multi-agent build check
 
-If **multiple writer agents** were spawned, run a final build after all complete to catch cross-file issues. Reference `test-rules.md` for the exact command. Skip when a single agent was spawned — the agent verifies its own build.
+If **multiple writer agents** were spawned, run a final build after all complete to catch cross-file issues, following the fix rules in `test-rules.md`. Use the `build_test_command` **you** detected in Step -1 — `test-rules.md`'s Build and Test Verification section is addressed to a subagent whose caller passed it one, and you are that caller. Skip when a single agent was spawned — the agent verifies its own build.
 
 If the final build fails, treat each error as a deterministic finding: attribute it to the writer whose files it points at and route it via the `fix_invocation` protocol in `fix-protocol.md` (counting toward that lineage's circuit breaker) before spawning the verifier. Errors that cannot be attributed to any writer's files are reported to the user as 🟥 unresolved — never fixed by the orchestrator directly.
 
@@ -151,7 +160,7 @@ Collect results from writers and verifiers and present a brief summary:
 
 ### Status per file
 
-For each test file, report a status using the icons defined in `<plugin-root>/resources/static/status-legend.md` (plugin-internal controlled vocabulary — never written per-repo).
+For each test file, report a status using the icons defined in `<PLUGIN_TEMPLATES>/../static/status-legend.md` (plugin-internal controlled vocabulary — never written per-repo).
 
 ## Env_failure handling (integration-like orchestrators)
 

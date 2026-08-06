@@ -9,7 +9,7 @@ description: >
 
 This skill runs **with or without** a prior `setup-test-context`.
 
-**Resolve the plugin resources root once, unconditionally** — you also pass it to every subagent you delegate to (add / update writers and their verifiers), because subagents cannot resolve it themselves. The bundled rule books sit two directories above this `SKILL.md`, under `resources/templates`. Prefer bash injection at load time:
+**Resolve the plugin templates root once, unconditionally** — you also pass it to every subagent you delegate to (add / update writers and their verifiers), because subagents cannot resolve it themselves. The bundled rule books sit two directories above this `SKILL.md`, under `resources/templates`. Prefer bash injection at load time:
 
 !`echo "${CLAUDE_SKILL_DIR}/../../resources/templates"`
 
@@ -17,7 +17,7 @@ Call the result `PLUGIN_TEMPLATES`. If that line did not expand to a real absolu
 
 Two kinds of file, resolved differently:
 
-- **Rule books.** Every `<PLUGIN_TEMPLATES>/rules/…` and `<PLUGIN_TEMPLATES>/shared/…` path below is literal — read it from there. Nothing writes these into a repo, so there is no per-repo copy to prefer and none to fall out of date. Read each lazily, at the step that uses it — never as an upfront batch (see "Orchestrator reading list").
+- **Rule books.** Every `<PLUGIN_TEMPLATES>/rules/…` and `<PLUGIN_TEMPLATES>/shared/…` path below is literal — read it from there. Inside a rule book, a bare filename means a sibling rule book in that same `rules/` directory, and a `../shared/<f>` path is relative to it. Nothing writes any of them into a repo, so there is no per-repo copy to prefer and none to fall out of date. Read each lazily, at the step that uses it — never as an upfront batch (see "Orchestrator reading list").
 - **Conventions.** `.claude/conventions/tests/…` is the repo's own cache, written only where `setup-test-context` has run. Treat every one as **optional**: derive source/test layout and conventions from the repo structure + nearest sibling tests; the delegated writers and verifiers prefer siblings too. A missing conventions file is never fatal.
 
 If `.claude/conventions/tests/project-architecture.md` is absent, say so once: `"No cached repo profile — deriving from siblings. Run /test-authoring:setup-test-context once to cache the repo cross-layer test map."` Then carry on — it blocks nothing.
@@ -26,7 +26,7 @@ If `.claude/conventions/tests/project-architecture.md` is absent, say so once: `
 
 **Orchestrator reading list (context discipline).** Load into the main context only what this orchestrator itself needs, when it needs it:
 
-- **Now**: `common-orchestrator-flow.md` (previous paragraph), then `.claude/conventions/tests/project-architecture.md` — the "Placeholder resolution" note below needs it before Step 1 (absent: per-invocation detection per that note, no read).
+- **Now**: `<PLUGIN_TEMPLATES>/rules/common-orchestrator-flow.md`, then `.claude/conventions/tests/project-architecture.md` — the "Placeholder resolution" note below needs it before Step 1 (absent: per-invocation detection per that note, no read).
 - **At the step that uses it**: Step 1 → `<PLUGIN_TEMPLATES>/shared/scope-resolution.md`. Steps 2–3 reuse `project-architecture.md` (already loaded). The "Stale test detection" quick build → `<PLUGIN_TEMPLATES>/rules/test-rules.md` (use the session-detected `build_test_command`). Delegation and update segments, on demand → `.claude/conventions/tests/integration-test-conventions.md` (target test project mapping), `<PLUGIN_TEMPLATES>/rules/common-update-instructions.md` (orchestrator-facing sections only), `<PLUGIN_TEMPLATES>/rules/fix-protocol.md` (first verifier finding or attributable build failure).
 - **Never**: `common-writer-instructions.md`, `common-verifier-checks.md`, `test-writer-rules.md`. They are subagent rule books — the writers/verifiers read them in their own isolated contexts; preloading them here only bloats the main context.
 
@@ -54,7 +54,7 @@ You are a test coverage analyst for {{PROJECT_DESCRIPTION}}. Your job is to find
 >
 > **Inferring the test types (always):** resolve `{{PROJECT_DESCRIPTION}}` and language from `project-architecture.md` when a prior setup cached it, and from per-invocation detection (project manifest + file extensions) when it did not — never render the token literally. The plugin records no confirmed type list between runs, so **infer the supported test types from the filesystem every time** — unit-like (mirrors source, mocks deps) and/or integration-like (HTTP/DB/container fixtures). **A test project containing `.feature` / Gherkin files (or Gherkin-binding step classes) is not a supported target — exclude it from the inferred types even though it uses containers/fixtures** (do NOT count it as integration-like). Use the inferred count to drive the SINGLE_TYPE_ONLY vs MULTI_TYPE_ONLY behaviour below, and **echo the inferred types in the Step 1.5 scope echo** so the user can correct them. Exclusions and priority criteria come from the detected language + nearest siblings.
 
-> Every `.claude/{conventions,rules,shared}/tests/…` read below follows **Step -1's resolution** — and happens lazily, at the step that uses it, never as an upfront batch; a body reference to one of these files at a step IS that step's read instruction: Read the file before acting on it, never from memory of its name. Pass `plugin_resources_path` and `build_test_command` (per target test project for integration) into **every** subagent you delegate to — add / update writers and their verifiers — they cannot resolve these themselves. The `<plugin-root>/resources/static/status-legend.md` reference (Step 8) resolves to `<PLUGIN_TEMPLATES>/../static/status-legend.md` (Step -1); `PLUGIN_TEMPLATES` is always resolved by then — Step -1 stops rather than continuing without it.
+> Every `<PLUGIN_TEMPLATES>/…` and `.claude/conventions/tests/…` read below follows **Step -1's resolution** — and happens lazily, at the step that uses it, never as an upfront batch; a body reference to one of these files at a step IS that step's read instruction: Read the file before acting on it, never from memory of its name. Pass `plugin_resources_path` and `build_test_command` (per target test project for integration) into **every** subagent you delegate to — add / update writers and their verifiers — they cannot resolve these themselves. The `<plugin-root>/resources/static/status-legend.md` reference (Step 8) resolves to `<PLUGIN_TEMPLATES>/../static/status-legend.md` (Step -1); `PLUGIN_TEMPLATES` is always resolved by then — Step -1 stops rather than continuing without it.
 
 ## Scope: unit and integration tests only
 

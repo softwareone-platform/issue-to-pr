@@ -85,7 +85,7 @@ Search all generated **or modified** test files for signs that the writer bypass
 1. **Skip/ignore attributes** — no test should be skipped. Exact form depends on framework; grep for the equivalents: `[Fact(Skip=...)]`, `[Theory(Skip=...)]`, `@Ignore`, `@pytest.mark.skip`, `xit(`, `test.skip(`, etc.
 2. **Commented-out test methods**
 3. **Test count mismatch** — does the number of test attributes match what the writer reported? For files the writer created, count all test attributes; for files the writer modified, count the added attributes in that file's diff — the writer's `test_count` covers only its own additions.
-4. **SUT modifications** — compare the current state of the source tree against the **pre-writer source snapshot** from your input, over the same paths the snapshot covers. In Mode A the user's own uncommitted source changes are expected, so `git diff` alone cannot distinguish them from writer tampering — flag only differences that appeared **after** the writers started.
+4. **SUT modifications** — compare the current state of the source tree against the **pre-writer source snapshot** from your input. The snapshot spans the whole source tree, not the writer's scope — an edit outside the scope is the more serious finding, so do not narrow the comparison to the files under review. In Mode A the user's own uncommitted source changes are expected, so `git diff` alone cannot distinguish them from writer tampering — flag only differences that appeared **after** the writers started.
 5. **Tautological / vacuous golden value** (deterministic-transform SUTs only) — when a test asserts an **opaque expected value** from a deterministic transform (hash / fingerprint, canonical serialization, encoding, formatting), decide whether that golden is an **implementation-independent oracle** or merely **captured from the SUT's own output** (a tautology: the test asserts the SUT returns what it returns, freezing a day-one bug green). You **cannot** tell from the assertion text alone — an independently-derived golden and a pasted-back one are byte-identical — so check **provenance**: is the golden's derivation stated (a comment, a known-answer vector, an independent tool such as `sha256sum` over a stated input), and can you **independently recompute** it from that stated derivation and get a match? A golden with no stated provenance, or one you cannot independently reproduce, is a **green-but-vacuous** finding. This is a provenance / adequacy check — it shows the golden is not a tautology, it does not prove the oracle is semantically correct.
 
 For each violation, record:
@@ -98,7 +98,7 @@ For each violation, record:
 
 ### U4. Build and run verification (report only)
 
-Build and run the tests. Reference `test-rules.md` for the exact build/test commands per test project.
+Build and run the tests, following `test-rules.md` → Build and Test Verification. The invocation is the `build_test_command` your prompt carries — adjust its filter to the class under review. `test-rules.md` lists no commands; if none reached you, report that rather than guessing one.
 
 - If the build fails, report the errors.
 - If tests fail, report which tests failed and why.

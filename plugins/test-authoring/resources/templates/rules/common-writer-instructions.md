@@ -73,15 +73,19 @@ written. Neither is a failure; both are protocol steps the orchestrator handles.
   `test-writer-rules.md` → Fallback Chain. Name the directories you searched in `issues:`.
 - **Missing framework source** — per `sut-analysis.md` → Runtime resolution flow.
   Name the package and the path you tried in `issues:`.
+- **Missing plugin context** — your prompt carried no `plugin_resources_path`, so the rule books you are
+  required to obey are unreachable and you cannot resolve the path yourself. This one **is** a caller
+  bug rather than a repo state: say so in `issues:`.
 
 In both cases: report the scope you could not cover, write **no** files at all (not even a partial one),
 and set `build_status: not_run (<reason>)` — there is nothing to build. Name the stop in your output as
-`stop_reason: no_convention_source` or `stop_reason: missing_framework_source` so the orchestrator routes
-to the right handler without having to parse your prose; omit the field entirely on a normal run.
+`stop_reason: no_convention_source`, `stop_reason: missing_framework_source`, or
+`stop_reason: missing_plugin_context` so the orchestrator routes to the right handler without having to
+parse your prose; omit the field entirely on a normal run.
 
 ## Build and test verification
 
-After writing all tests, follow the **build and test verification** procedure from `test-rules.md` — it is the only rules file that pins build/test commands.
+After writing all tests, follow the **build and test verification** procedure in `test-rules.md`.
 
 Use the filter pattern for your test runner to run only the newly added tests (e.g., `FullyQualifiedName~ClassName` for .NET + xUnit, `-Dtest=ClassName` for Maven + JUnit). The repo's actual command is the `build_test_command` your prompt carries — `test-rules.md` describes how to use it, and deliberately lists none.
 

@@ -1,6 +1,6 @@
 # setup-test-context
 
-The `setup-test-context` skill is the **optional** profiler that caches this repo's **cross-layer test map** for the rest of the `test-authoring` plugin. It analyses the repository's language, test frameworks, project structure, and test conventions, then writes two files under `.claude/conventions/tests/` — `project-architecture.md` and, when the analysis found one, `common-verification-patterns.md`. Those are the parts a single sibling test cannot reconstruct. Every add/update/scan skill runs **with or without** them.
+The `setup-test-context` skill is the **optional** profiler that caches this repo's **cross-layer test map** for the rest of the `test-authoring` plugin. It analyses the repository's language, test frameworks, project structure, and test conventions, then writes two files under `.claude/conventions/tests/` — `project-architecture.md` and, when the analysis found one, `common-verification-patterns.md` — plus a provenance `README.md` under `.claude/shared/tests/`. Those are the parts a single sibling test cannot reconstruct. Every add/update/scan skill runs **with or without** them.
 
 It writes conventions and nothing else. The rule books those skills obey live in the plugin at `resources/templates/{rules,shared}/` and are read from there at runtime; nothing copies them into a repo, so there is no second copy to fall out of date. Per-type (`unit` / `integration`) conventions are not cached either — writers derive those from the nearest sibling, which is more current than any cache could be.
 
@@ -28,8 +28,8 @@ After upgrading the plugin, the reliable move is to delete and regenerate rather
 rm -rf .claude/conventions/tests .claude/rules/tests .claude/shared/tests
 ```
 
-Only the first of those three is still written by the current version; the other two hold what older
-versions left — rule-book copies, `scope-resolution.md`, and the `.setup-manifest.json` dotfile — and
+The current version writes into the first (both conventions files) and the third (the provenance
+`README.md`, and nothing else); the second holds only what older versions left — rule-book copies, `scope-resolution.md`, and the `.setup-manifest.json` dotfile — and
 clearing them is the point. Then run the skill: with every target path fresh, no backup folder is
 created and nothing is reported as unmanaged.
 

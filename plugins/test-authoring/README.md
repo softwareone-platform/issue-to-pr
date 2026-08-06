@@ -36,7 +36,7 @@ plugins/test-authoring/
     └── shared/{readme-*.md}                # cross-cutting concept primers
 ```
 
-**Plugin-bundled vs per-repo**: everything under `plugins/test-authoring/` — skills, agents, rule books, static assets — ships in the plugin and is read from there, so a plugin upgrade reaches every consumer at once. The only per-repo files are the conventions `setup-test-context` generates from analysis, and those have no template: they exist precisely because they cannot be shipped.
+**Plugin-bundled vs per-repo**: everything under `plugins/test-authoring/` — skills, agents, rule books, static assets — ships in the plugin and is read from there, so a plugin upgrade reaches every consumer at once. The only per-repo files are the conventions `setup-test-context` generates from analysis (no template exists for them: they exist precisely because they cannot be shipped) plus the `README.md` it writes beside them under `.claude/shared/tests/`, which records what was generated and by which plugin version.
 
 ---
 
@@ -55,7 +55,7 @@ When `/test-authoring:setup-test-context` runs in a consumer repo it writes two 
 
 Per-type `{type}-test-conventions.md` are **not** written — writers read the nearest sibling instead, which is always more current than a cache.
 
-**Why `conventions/` is the only per-repo folder**: writer agents treat rules and conventions differently. **Rules are non-negotiable** and identical in every repo, so they ship with the plugin. **Conventions are descriptive patterns** that observed sibling tests can override, and they are the only thing analysis can discover that shipping cannot supply.
+**Why `conventions/` holds the only per-repo *content***: writer agents treat rules and conventions differently. **Rules are non-negotiable** and identical in every repo, so they ship with the plugin. **Conventions are descriptive patterns** that observed sibling tests can override, and they are the only thing analysis can discover that shipping cannot supply.
 
 **Not written per-repo** (lives in plugin):
 - the 9 rule books — `resources/templates/{rules,shared}/`, read directly at runtime
@@ -101,7 +101,7 @@ Detailed docs for the high-complexity update + verify-update agents in [`docs/ag
 
 ## Rule books (strict, prescriptive, plugin-bundled)
 
-Read directly from `resources/templates/{rules,shared}/` by every skill and agent — nothing writes them into a repo. All of them are universal; there is no type-specific rules file. A skill resolves the plugin resources root once in its Step -1 and hands it to every subagent, because a subagent cannot resolve it itself; if it cannot be resolved, the skill stops rather than running without its rules.
+Read directly from `resources/templates/{rules,shared}/` by every skill and agent — nothing writes them into a repo. All of them are universal; there is no type-specific rules file. A skill resolves the absolute path of `resources/templates/` once in its Step -1 and hands it to every subagent as `plugin_resources_path`, because a subagent cannot resolve it itself; if it cannot be resolved, the skill stops rather than running without its rules.
 
 **Context discipline (lazy loading)**: the orchestrator never bulk-reads this rule set upfront — each skill's Step -1 only *resolves* where the references live, and its "Orchestrator reading list" reads each orchestrator-facing document at the step that first uses it. The writer/verifier rule books (`common-writer-instructions.md`, `common-verifier-checks.md`, `test-writer-rules.md`, …) are read by the subagents in their own isolated contexts and are never preloaded into the main context.
 
