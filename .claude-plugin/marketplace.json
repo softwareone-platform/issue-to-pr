@@ -14,19 +14,19 @@
     {
       "name": "pr-lifecycle",
       "description": "Team-agnostic PR lifecycle skills (Azure DevOps or GitHub): open-pr, resolve-pr-comments",
-      "version": "0.8.0",
+      "version": "0.8.1",
       "source": "./plugins/pr-lifecycle"
     },
     {
       "name": "test-authoring",
-      "description": "Test authoring plugin: scan-test-gaps, add/update test workflows, setup-test-context",
-      "version": "0.16.0",
+      "description": "Test authoring plugin: scan-test-gaps, add/update test workflows, optional setup-test-context profiler; rules are read from the plugin, not copied per-repo",
+      "version": "0.17.0",
       "source": "./plugins/test-authoring"
     },
     {
       "name": "issue-to-pr-pipeline",
-      "description": "Issue-to-PR orchestration: resolve-issue chains the review, test, and PR-lifecycle skills into one resumable pipeline gated on plan approval, pausing again wherever a decision is yours; resolve-issue-dashboard is a read-only dashboard that visualises a run",
-      "version": "0.22.1",
+      "description": "Issue-to-PR orchestration: resolve-issue chains the review, test, and PR-lifecycle skills into one resumable pipeline gated on plan approval, pausing again wherever a decision is yours; resolve-issue-dashboard is a read-only dashboard that visualises a run; resolve-issue-learnings harvests learnings across runs",
+      "version": "0.23.0",
       "source": "./plugins/issue-to-pr-pipeline"
     }
   ]
