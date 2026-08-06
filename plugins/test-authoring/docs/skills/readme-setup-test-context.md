@@ -47,7 +47,7 @@ are about to be overwritten.
 ```
 
 No arguments. The skill always analyses the entire repository. To remove what it wrote, delete
-`.claude/conventions/tests/` and the line it added to the repo's `.gitignore`. An upgraded repo may
+`.claude/conventions/` — which takes the scoped `.gitignore` it wrote there with it, leaving the repo-root `.gitignore` untouched (this skill never edits that). An upgraded repo may
 also hold `.claude/rules/tests/`, `.claude/shared/tests/` and `.claude/backup/` from earlier
 versions — safe to delete too.
 

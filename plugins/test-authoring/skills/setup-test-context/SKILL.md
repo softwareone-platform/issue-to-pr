@@ -217,26 +217,31 @@ Render a Verification Results table: one row per check above, each with a status
 
 ---
 
-## Step 4.5 — Gitignore the per-repo files (user-scope) + migrate already-tracked files
+## Step 4.5 — Self-ignore the generated directory (user-scope) + migrate already-tracked files
 
 Run this **only after Step 4 reports success** (item 6). If Step 4 failed it deleted this run's output, so there is nothing to ignore and nothing to untrack — skip straight past Step 5 as well and end on the failure report.
 
 setup-test-context's per-repo files are **user-scope** — local, never committed — so a teammate who has not adopted the test-skills plugin never carries generated files in their tree, and there is no PR clutter or merge conflict. The skills run without these files at all — the rules they obey come from the plugin — so user-scope costs only a per-developer setup run, not correctness.
 
-**4.5a — Add the ignore line.** Ensure `.gitignore` (at repo root) contains this one line, added only if not already present (newline-safety: if `.gitignore` exists but does not end with a newline, append one first so the new line never concatenates onto the previous; create the file with just this line + newline if it does not exist):
+**4.5a — Write a scoped self-ignore.** Create `.claude/conventions/.gitignore` containing a single
+line, `*`, if it does not already exist. Do not overwrite one that does. That is all:
+
 ```
-.claude/conventions/tests/
+*
 ```
 
-That is now the only directory this skill writes to. `.claude/rules/tests/`, `.claude/shared/tests/`
-and `.claude/backup/` were on this list in earlier versions; nothing writes to any of them now. This
-step only *adds* lines and never removes one, so an upgraded repo still carries the old three — leave
-them. Removing an entry from someone's `.gitignore` can un-ignore files they still have on disk, and
-§2.1's unmanaged-file report reads the directories directly, so it surfaces leftovers regardless of
-what `.gitignore` says. If the report named some, tell the user they can delete both the leftovers and
-the stale ignore lines by hand.
+**Do not touch the repo-root `.gitignore`.** It is the team's file, and a per-developer artifact has no
+business in it. A directory-scoped ignore keeps the rule next to the thing it governs, needs no edit
+when this skill's write set changes, and ignores the ignore file itself — which is correct, since it is
+as much a per-developer artifact as the conventions are. This is the same pattern `resolve-issue` uses
+for `.claude/resolve/`; the two skills must not disagree about whose `.gitignore` is whose.
 
-**4.5b — Untrack anything already committed (migration).** `.gitignore` does not affect files git already tracks. Run `git ls-files .claude/conventions/tests` — **this directory only**. Earlier versions also wrote `.claude/rules/tests` and `.claude/shared/tests`, but this version neither writes nor manages them: §2.1 reports them and leaves them alone precisely because it cannot tell its own retired output from something you wrote, and it would be incoherent to then hand you a command that removes them from every teammate's working copy on the next pull. If you want those untracked too, that is your call to make deliberately. If it lists any files, **print this notice; do NOT run the command automatically** — then continue to Step 5 (this skill never auto-commits; untracking is a committable change the user owns and reviews):
+**Upgraded repos:** a version before 0.17.1 appended `.claude/conventions/tests/` (and older ones
+`.claude/rules/tests/`, `.claude/shared/tests/`, `.claude/backup/`) to the root `.gitignore`. Leave
+those lines alone — removing an entry can un-ignore files still on disk, and it is not this skill's
+file to edit in either direction. Tell the user they are now redundant and can be deleted by hand.
+
+**4.5b — Untrack anything already committed (migration).** No `.gitignore`, scoped or root, affects files git already tracks. Run `git ls-files .claude/conventions/tests` — **this directory only**. Earlier versions also wrote `.claude/rules/tests` and `.claude/shared/tests`, but this version neither writes nor manages them: §2.1 reports them and leaves them alone precisely because it cannot tell its own retired output from something you wrote, and it would be incoherent to then hand you a command that removes them from every teammate's working copy on the next pull. If you want those untracked too, that is your call to make deliberately. If it lists any files, **print this notice; do NOT run the command automatically** — then continue to Step 5 (this skill never auto-commits; untracking is a committable change the user owns and reviews):
 ```
 These per-repo test files are already tracked by git and will keep showing in PRs until untracked:
   <list the files>
@@ -284,6 +289,6 @@ Plugin-bundled (NOT written here -- read from the test-authoring plugin at runti
 2. Try `/test-authoring:scan-test-gaps` to test gap scanning on a small area.
 3. Try `/test-authoring:add-unit-test ComponentName` on a small change to verify the add workflow.
 4. (If CLAUDE.md drift was reported) Update CLAUDE.md to reflect the current codebase — setup-test-context did not modify CLAUDE.md.
-5. To remove this scaffolding later, delete `.claude/conventions/tests/`, plus the line this skill added to `.gitignore` (§4.5a). An upgraded repo may also hold `.claude/rules/tests/`, `.claude/shared/tests/` and `.claude/backup/` from earlier versions — those are safe to delete too.
+5. To remove this scaffolding later, delete `.claude/conventions/` — that takes the generated files and the scoped `.gitignore` (§4.5a) with it, and touches nothing outside. An upgraded repo may also hold `.claude/rules/tests/`, `.claude/shared/tests/`, `.claude/backup/`, and stale ignore lines in the root `.gitignore` from earlier versions — all safe to delete by hand.
 
 ---

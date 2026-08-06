@@ -42,7 +42,7 @@ plugins/test-authoring/
 
 ## What setup-test-context writes per-repo
 
-When `/test-authoring:setup-test-context` runs in a consumer repo it writes one or two files, both generated from the analysis — no template is copied or filled. The only thing it touches outside this directory is one line appended to the repo-root `.gitignore`.
+When `/test-authoring:setup-test-context` runs in a consumer repo it writes one or two files, both generated from the analysis — no template is copied or filled. It touches nothing outside that directory: the ignore rule is a scoped `.claude/conventions/.gitignore` containing `*`, the same pattern `resolve-issue` uses for `.claude/resolve/`. The repo-root `.gitignore` is the team's and is never edited.
 
 ```
 .claude/
