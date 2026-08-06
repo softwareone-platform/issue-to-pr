@@ -21,7 +21,7 @@ Then check `.claude/conventions/tests/project-architecture.md`:
 - **Absent → cacheless.** setup has never run. **Do NOT stop.** Announce once: `"No precomputed test conventions found — running cacheless (sibling-driven). Run /test-authoring:setup-test-context once to cache the repo cross-layer test map."` Then for the rest of the flow:
   - Resolve every `.claude/rules/tests/<f>` and `.claude/shared/tests/<f>` reference to `<PLUGIN_TEMPLATES>/{rules,shared}/<f>` instead (includes `common-update-instructions.md`) — same lazy rule: read at the step that uses it, never as an upfront batch. Cosmetic frontmatter/example tokens are inert when read explicitly.
   - Treat `.claude/conventions/tests/<f>` as **optional**: prefer the nearest sibling test for the scope (the audit's top-priority source anyway); when no sibling exists either, the writer reports the gap rather than inventing conventions — there is no language baseline to fall back to.
-  - **Detect once, reuse this session**: the language, and an *executable* build/test invocation (test-project path + filter syntax, e.g. `dotnet test <proj> --filter "FullyQualifiedName~<Class>"`) from the project manifest. In cacheless mode the template `test-rules.md` carries an unfilled `{{BUILD_AND_TEST_COMMANDS}}` token — the detected command replaces it everywhere (audit test-run, execute build, both verifiers' build, the final multi-agent build). Pass it as `build_test_command` to **every** subagent spawn (audit, execute, add, verify-update, verify-add); the writer/verifier adjust its `--filter` to the actual test class.
+  - **Detect once, reuse this session**: the language, and an *executable* build/test invocation (test-project path + filter syntax, e.g. `dotnet test <proj> --filter "FullyQualifiedName~<Class>"`) from the project manifest. `test-rules.md` carries no command list — the detected command is the only source, used everywhere (audit test-run, execute build, both verifiers' build, the final multi-agent build). Pass it as `build_test_command` to **every** subagent spawn (audit, execute, add, verify-update, verify-add); the writer/verifier adjust its `--filter` to the actual test class.
 
 Resolve `common-orchestrator-flow.md` the same way: fast path reads `.claude/rules/tests/common-orchestrator-flow.md`; cacheless reads `<PLUGIN_TEMPLATES>/rules/common-orchestrator-flow.md`.
 
@@ -215,7 +215,7 @@ Skip this step if the action record has no add actions.
 
 ### Multi-agent build check
 
-If multiple agents were spawned across 5a and 5b, run a final build. Reference `.claude/rules/tests/test-rules.md` (cacheless: use the session-detected `build_test_command`, not the unfilled `{{BUILD_AND_TEST_COMMANDS}}` token).
+If multiple agents were spawned across 5a and 5b, run a final build. Follow `.claude/rules/tests/test-rules.md` → Build and Test Verification, using the session-detected `build_test_command`.
 
 ## Step 6 — Verify
 

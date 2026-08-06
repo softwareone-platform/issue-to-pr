@@ -22,23 +22,11 @@ When reading a source file (SUT) before generating or auditing tests, perform al
 
 **NEVER decompile compiled artifacts from the package cache** (e.g., DLLs, JARs, `.whl` binaries). Decompilation output is unreliable and can lead to incorrect tests.
 
-### Known internal packages
-
-{{KNOWN_PACKAGES_TABLE}}
-<!-- Bootstrap (shared-tier2 subagent) fills this from the packages Step 1.2.1 detected in THIS repo, as a table with
-exactly these columns — Package | Install model | Local source path | Status — followed by the status legend:
-  🟩 — path verified to exist at analysis time
-  🟨 — path expected but absent on this machine (informational; the resolution flow below handles it)
-Record a 🟨 row rather than dropping the package: an expected-but-absent path is exactly what the writer needs to
-know. Never infer a path from a name-to-folder naming convention — every path here comes from the install model
-Step 1.2.1 identified. If none were detected, keep the header row and add one row reading
-"(none detected — add entries here)". -->
-
 ### Runtime resolution flow
 
 When you need to read a framework/external type:
 
-1. **Look up the package in the table above.** If it is absent from the table, work out whether a local checkout exists by install model, not by guessing a folder name:
+1. **Work out whether a local checkout exists by install model, not by guessing a folder name.** Resolve this for the one package you actually need, at the moment you need it — there is no precomputed list, and a list would be worse than none: a package with no local source today may have one tomorrow, and a cached "absent" verdict would stop you looking. Establish which of these applies:
    - **Workspace / solution member** — the package is another project in the same workspace, solution, or monorepo manifest; the manifest gives its path directly.
    - **Link / editable install** — the dependency resolves to a path outside the package cache (a `-e ../repo` line, a `*.pth` entry, a `file:` / `link:` protocol dependency, a path-type project reference). That path is the source.
    - **Vendored** — the package source sits inside this repo under a `vendor/`, `third_party/`, or similar directory.

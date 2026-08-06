@@ -21,7 +21,7 @@ Then check `.claude/conventions/tests/project-architecture.md`:
 - **Absent → cacheless.** setup has never run. **Do NOT stop.** Announce once: `"No precomputed test conventions found — running cacheless (sibling-driven). Run /test-authoring:setup-test-context once to cache the repo cross-layer test map."` Then for the rest of the flow:
   - Resolve every `.claude/rules/tests/<f>` and `.claude/shared/tests/<f>` reference to `<PLUGIN_TEMPLATES>/{rules,shared}/<f>` instead — same lazy rule: read at the step that uses it, never as an upfront batch. Cosmetic frontmatter/example tokens are inert when read explicitly.
   - Treat `.claude/conventions/tests/<f>` as **optional**: derive source/test layout and conventions from the repo structure + nearest sibling tests; the delegated writers/verifiers are themselves cacheless and prefer siblings.
-  - **Detect once, reuse this session**: the language, and the *executable* build/test invocation **form** (test-project path + filter syntax). In cacheless mode the template `test-rules.md` carries an unfilled `{{BUILD_AND_TEST_COMMANDS}}` token (whose filled form lists one command per test project) — the detected form replaces it for this skill's own quick build (Step 3) and is passed to every delegated agent as `build_test_command`. For integration spanning several test projects, instantiate the form per target test project (Step 7); subagents adjust its `--filter`.
+  - **Detect once, reuse this session**: the language, and the *executable* build/test invocation **form** (test-project path + filter syntax). `test-rules.md` carries no command list — the detected form is the only source: it drives this skill's own quick build (Step 3) and is passed to every delegated agent as `build_test_command`. For integration spanning several test projects, instantiate the form per target test project (Step 7); subagents adjust its `--filter`.
 
 Resolve `common-orchestrator-flow.md` the same way: fast path reads `.claude/rules/tests/common-orchestrator-flow.md`; cacheless reads `<PLUGIN_TEMPLATES>/rules/common-orchestrator-flow.md`.
 
@@ -136,7 +136,7 @@ For source classes that **have existing tests**, check if the tests may be outda
 - Test file has build errors
 - Test has failing assertions
 
-Do not deeply audit every test method — that is `update-*-test-agent`'s job. Only flag classes where there are **clear signals** of staleness. Build errors and failing assertions are only knowable from a build — do a quick build of the affected test projects (and a focused run where cheap) rather than guessing from code alone (cacheless: use the session-detected `build_test_command`, not the unfilled `{{BUILD_AND_TEST_COMMANDS}}` token); the full audit stays the update agent's job. List these with Type = `Update` in the gap tables.
+Do not deeply audit every test method — that is `update-*-test-agent`'s job. Only flag classes where there are **clear signals** of staleness. Build errors and failing assertions are only knowable from a build — do a quick build of the affected test projects (and a focused run where cheap) rather than guessing from code alone (use the session-detected `build_test_command`); the full audit stays the update agent's job. List these with Type = `Update` in the gap tables.
 
 <!-- MULTI_TYPE_ONLY: keep if ≥2 supported test types -->
 ### Cross-coverage exclusion

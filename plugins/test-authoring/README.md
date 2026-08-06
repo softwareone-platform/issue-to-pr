@@ -49,7 +49,6 @@ When `/test-authoring:setup-test-context` runs in a consumer repo, it produces f
 ├── conventions/tests/                  # repo-specific patterns, learned from codebase
 │   ├── project-architecture.md         # source/test layout, naming, mirroring (Tier 3 — generated from analysis)
 │   ├── {type}-test-conventions.md      # code-driven per-type (unit/integration): NOT written (Slim default) — writers use siblings at runtime
-│   ├── common-test-utilities.md        # if shared test project detected (Tier 3 — conditional)
 │   └── common-verification-patterns.md # if cross-type patterns detected (Tier 3 — conditional)
 ├── rules/tests/                        # strict, prescriptive (must-follow), filled from plugin templates
 │   ├── test-rules.md
@@ -147,7 +146,6 @@ Repo-specific patterns derived from actual codebase analysis. Writer agents use 
 |---|---|---|
 | `project-architecture.md` | _(Tier 3 — generated from analysis, no template)_ | Source/test directory structure, naming conventions, feature organisation |
 | `{type}-test-conventions.md` | _(Tier 3 — generated from analysis)_ | Per-type path mapping, sibling convention checklist, common patterns |
-| `common-test-utilities.md` | _(Tier 3 — conditional, generated if shared test project detected)_ | Shared utilities across test types |
 | `common-verification-patterns.md` | _(Tier 3 — conditional, generated if cross-type patterns detected)_ | Recurring verification patterns |
 
 ---

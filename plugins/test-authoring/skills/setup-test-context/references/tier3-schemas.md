@@ -24,6 +24,7 @@ Content:
 - **Test structure** — directory tree for each test project, with an example of how a feature is organised. Note mirroring style (mirror source vs scenario-based) and file organisation (flat vs subfolder-per-SUT).
 - **Naming conventions** — source file naming patterns and test file naming patterns
 - **Feature components** — if the source uses a consistent per-feature structure, document the pattern
+- **Shared test project** — if Step 1.3 found one, give its path and which test projects reference it. Location only: a writer reads the helper it needs from the sibling that already calls it, so an inventory of utilities here would compete with that sibling and go stale behind it.
 
 ---
 
@@ -43,7 +44,6 @@ Content:
 - **Cross-reference note (at top of file)**:
   > This file documents conventions and derivation rules, not directory structure.
   > For the directory tree and naming conventions, see `.claude/conventions/tests/project-architecture.md`.
-  > For shared utilities (if available), see `.claude/conventions/tests/common-test-utilities.md`.
   > For cross-type verification patterns (if available), see `.claude/conventions/tests/common-verification-patterns.md`.
 - **Test project mapping** (for integration-like) — which source areas map to which test project
 - **Source → test path derivation rules** — how to transform a source path into a test path (NOT a restatement of the directory tree; reference `project-architecture.md` instead). Include only:
@@ -56,34 +56,8 @@ Content:
   - **Emit as markdown table** in `<type>-test-conventions.md` (columns: `Field` / `Typical value in this repo`) — downstream agents locate each entry by table-row label, not by YAML key. YAML output is reserved for the writer's structured response (see **Convention spec output format** below).
 - **Learn from sibling tests (CRITICAL)** — priority rule (siblings are source of truth), search priority, "do not blend styles"
 - **Convention spec output format** — exact YAML format writer agents should output
-- **Authorization/security policy detection** (for integration-like, if applicable) — the policy → forbidden account types mapping from Step 1.6.1
 - **Type-specific common patterns** — recurring patterns observed only in this test type (not layer-correlated). Cross-type recurring patterns go into `common-verification-patterns.md` instead.
 - **Integration-specific test coverage** (for integration-like) — what to test and what NOT to do at this level
-
----
-
-## `common-test-utilities.md` — conditional (shared test project detected)
-
-Generate ONLY if Step 1.3 detected a shared test project (Tests.Common-style) providing utilities used across multiple test projects.
-
-Frontmatter:
-```yaml
----
-description: Shared test utilities available across test types (extensions, helpers, custom assertions from a shared test project).
-paths: ["<shared test project path>/**/*.<ext>"]
----
-```
-
-Content structure:
-- **Project location** (path from Step 1.3) — which test projects reference it
-- **Cross-reference note**:
-  > For the structural fact of which test projects reference this shared project, see `.claude/conventions/tests/project-architecture.md`.
-- **Utility sections** — one per category of utility discovered in Step 1.3 (e.g., "AutoFixture extensions", "FluentAssertions extensions", "Reflection helpers"). Each utility entry includes:
-  - Name (class/method/extension)
-  - Brief description of purpose
-  - Usage example extracted from actual test code (NOT invented)
-
-If multiple shared test projects exist (unlikely), use one section per project.
 
 ---
 

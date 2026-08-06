@@ -25,28 +25,6 @@ Determine from **actual files in the repo** (solution/project files, package man
 
 If CLAUDE.md claims different values, record the drift — use codebase findings.
 
-## 1.2.1 Detect local source for external dependencies
-
-When writer agents need to read framework/external dependency source code, they should read from **local source** when available. **Never decompile compiled artifacts** from the package cache.
-
-Some repos map internal package names to sibling checkout folders by a stable prefix; many do not — their internal packages come from a private feed with no local source at all. **Do not assume a convention.** Look for one the repo documents itself (`CLAUDE.md`, a workspace or solution file, an existing sibling checkout), and if none is documented, record that: the runtime resolution flow in `sut-analysis.md` already handles a missing local path by stopping and asking, which is the correct behaviour and needs no convention.
-
-**What to record for each detected internal package**:
-- Package name
-- Install model that located it (workspace / solution member, link or editable install, vendored, registry-only)
-- Local source path implied by that install model — registry-only packages have none
-- Verification status: 🟩 the path exists, 🟨 expected but absent on this machine
-
-**Verification procedure**: for each expected local path, use the Glob tool to check whether the directory exists at bootstrap time. Record:
-- 🟩 — path exists
-- 🟨 — path does not exist (informational; does not block bootstrap)
-
-Missing paths do not affect bootstrap. When an agent later needs to read from a missing path, the runtime resolution flow in `sut-analysis.md` handles the situation (stops and asks the user).
-
-These results are written into `sut-analysis.md`'s `{{KNOWN_PACKAGES_TABLE}}` (install model + resolved path + Status), which is where the writer's runtime resolution flow looks first.
-
-If no internal packages detected, still generate `sut-analysis.md` with the universal "never decompile" rule.
-
 ## 1.3 Map project structure
 
 Determine:
@@ -55,7 +33,7 @@ Determine:
 - **Source ↔ test mirroring pattern** — read 3–5 existing test files to understand directory mirroring and file naming
 - **File organization pattern** — flat files (`FooTests.cs`) or subfolder-per-SUT (`FooTests/BarTest.cs`). Different areas may use different patterns — generated agents must detect and match sibling pattern, not assume a global default.
 - **Test project separation** — list ALL test projects found. Do not assume a fixed number or naming convention.
-- **Shared test utilities** — detect shared test projects (Tests.Common-style) that provide extensions, helpers, base classes, or custom assertions used across multiple test projects. Record location and key utility types found. Repo-specific: may or may not exist.
+- **Shared test utilities** — detect shared test projects (Tests.Common-style) that provide extensions, helpers, base classes, or custom assertions used across multiple test projects. Record its path and which test projects reference it — that pair is all `project-architecture.md` carries. Do **not** inventory the utilities themselves: a writer needs to know the project exists, then reads the one helper it needs from the sibling that already calls it. Repo-specific: may or may not exist.
 - **Completeness check** — list ALL project directories under the source root. For each, find where its tests live. Flag non-obvious placements.
 - **Mixed test project layouts** — if unit-style tests are found inside an integration test project (or vice versa), document explicitly. Generated agents must pick conventions based on sibling tests, not project name.
 
@@ -112,15 +90,6 @@ For each qualifying pattern record: observed frequency per bucket, pattern code 
 
 **Important**: note if different areas use different conventions. Generated agents must learn from siblings, not assume one global convention.
 
-## 1.5 Identify build and test commands (from codebase)
-
-For **each test project**, determine from the actual project manifest:
-- Build the test project
-- Run all tests
-- Run filtered tests (single class/file)
-
-If CLAUDE.md lists different commands, record the drift. Use codebase findings in generated files.
-
 ## 1.6 Identify architectural patterns
 
 Note patterns affecting test writing:
@@ -131,23 +100,6 @@ Note patterns affecting test writing:
 - Background job / worker patterns
 - ORM / database access patterns
 - Integration test infrastructure
-
-## 1.6.1 Detect authorization and security patterns
-
-For repos with API endpoints or boundary code where authorization matters, detect:
-- **Authorization attributes / decorators / middleware**
-- **Policy definitions** — what account types/claims they represent
-- **Account type abstraction for tests** — how tests change current user's identity
-
-Record a **policy → forbidden account types** mapping. Example:
-```
-OPERATIONS_ONLY_POLICY → Client and Vendor are Forbidden
-CLIENT_OR_OPERATIONS_POLICY → only Vendor is Forbidden
-```
-
-This goes into `{type}-test-conventions.md` for integration-like types **when that file is generated** (manual full regeneration / legacy installs). **Slim default:** code-driven integration `{type}-test-conventions.md` is not generated, so the policy → forbidden map is **not separately cached** — integration writers derive auth / account-type setup from sibling tests (the integration writer agent already cross-references the auth table only "when present" and otherwise follows the sibling auth convention). Known minor loss: a brand-new area with no sibling lacks the consolidated map; a wrong account type then surfaces as a 401/403 at test-run time.
-
-If no authorization layer, skip.
 
 ## 1.7 Classify test projects
 

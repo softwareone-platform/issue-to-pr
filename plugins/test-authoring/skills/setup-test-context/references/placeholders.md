@@ -56,10 +56,10 @@ Templates are **per-type** (not `{{TEST_TYPE}}`-parameterised). Bootstrap copies
 | Template | Destination | Special placeholders |
 |---|---|---|
 | `templates/shared/scope-resolution.md` | `.claude/shared/tests/scope-resolution.md` | (standard only) |
-| `templates/rules/test-rules.md` | `.claude/rules/tests/test-rules.md` | `{{BUILD_AND_TEST_COMMANDS}}` — one section per test project from Step 1.5 |
+| `templates/rules/test-rules.md` | `.claude/rules/tests/test-rules.md` | (standard only) |
 | `templates/rules/test-writer-rules.md` | `.claude/rules/tests/test-writer-rules.md` | (standard only) |
 | `templates/rules/fix-protocol.md` | `.claude/rules/tests/fix-protocol.md` | (standard only) |
-| `templates/rules/sut-analysis.md` | `.claude/rules/tests/sut-analysis.md` | `{{KNOWN_PACKAGES_TABLE}}` — packages Step 1.2.1 detected, with the install model that located each and its verified local path; empty form if none |
+| `templates/rules/sut-analysis.md` | `.claude/rules/tests/sut-analysis.md` | (standard only) |
 | `templates/rules/common-orchestrator-flow.md` | `.claude/rules/tests/common-orchestrator-flow.md` | (standard only) |
 | `templates/rules/common-writer-instructions.md` | `.claude/rules/tests/common-writer-instructions.md` | (standard only) |
 | `templates/rules/common-update-instructions.md` | `.claude/rules/tests/common-update-instructions.md` | (standard only) |

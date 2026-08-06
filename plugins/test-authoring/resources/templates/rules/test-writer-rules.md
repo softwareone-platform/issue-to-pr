@@ -68,12 +68,17 @@ Only if all of the above yield nothing: use the convention file's documented pat
 
 ## Common Utilities Check
 
-Before writing new helpers, assertions, or test data constructs, check if shared utilities already exist:
+Before writing a new helper, assertion, or test data construct, check whether one already exists:
 
-1. If `.claude/conventions/tests/common-test-utilities.md` exists, scan it for utilities that fit your current need (extensions, custom assertions, fixture helpers, reflection utilities).
-2. **Sibling first**: if the sibling test already uses a specific helper, match the sibling's choice even if a more generic shared utility exists.
-3. **Use shared utility** when the sibling approach has duplication or overlap that the shared utility would eliminate — but never introduce a utility that siblings do not use.
-4. If `.claude/conventions/tests/common-test-utilities.md` does not exist, skip this check.
+1. **Sibling first.** Whatever helper the sibling test uses is the one to use, even where something more
+   generic exists elsewhere. In the common case this is the whole check.
+2. **Widen only to remove duplication you would otherwise write.** If following the sibling would make
+   you repeat the same construct several times, look for an existing shared helper: when the repo has a
+   shared test project, `.claude/conventions/tests/project-architecture.md` names it and says which test
+   projects reference it, and those tests show how it is called. Read the helper's own source before
+   using it.
+3. **Never introduce a utility that siblings do not use.** A helper nobody in this area calls is a new
+   convention rather than a reuse — surface it as a suggestion in your output instead of writing it in.
 
 ## Common Verification Patterns Check
 

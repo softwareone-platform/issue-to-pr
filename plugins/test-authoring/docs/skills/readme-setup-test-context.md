@@ -162,7 +162,7 @@ Setup does not rely on git for rollback (`.claude/` may be gitignored or uncommi
 
 ### Placeholder substitution
 
-Templates under `<plugin-root>/resources/templates/` contain `{{PLACEHOLDER}}` markers. Standard placeholders include `{{LANGUAGE}}`, `{{PROJECT_DESCRIPTION}}`, `{{SRC_DIR}}`, `{{TEST_DIR}}`, `{{SRC_GLOB}}`, `{{TEST_GLOB}}`. File-specific placeholders (e.g., `{{BUILD_AND_TEST_COMMANDS}}`, `{{KNOWN_PACKAGES_TABLE}}`) come from analysis — from what Step 1 observed in this repo, never from a shipped language baseline. HTML comments in templates serve as fill guidance and are stripped from output.
+Templates under `<plugin-root>/resources/templates/` contain `{{PLACEHOLDER}}` markers. Standard placeholders include `{{LANGUAGE}}`, `{{PROJECT_DESCRIPTION}}`, `{{SRC_DIR}}`, `{{TEST_DIR}}`, `{{SRC_GLOB}}`, `{{TEST_GLOB}}`. No placeholder is filled from a shipped language baseline — every value comes from what Step 1 observed in this repo. HTML comments in templates serve as fill guidance and are stripped from output.
 
 ### Classification-aware filling
 
@@ -196,7 +196,7 @@ Setup-test-context writes 11–13 files per consumer repo. Under the **Slim defa
 |---|---|---|
 | Shared (`.claude/shared/tests/`) | `scope-resolution.md`, `README.md` | `resources/templates/shared/scope-resolution.md` + README generated |
 | Rules (`.claude/rules/tests/`) | `test-rules.md`, `test-writer-rules.md`, `fix-protocol.md`, `sut-analysis.md`, `common-orchestrator-flow.md`, `common-writer-instructions.md`, `common-update-instructions.md`, `common-verifier-checks.md` | `resources/templates/rules/*.md` (placeholder-filled) |
-| Conventions (`.claude/conventions/tests/`) | `project-architecture.md`, plus conditional `common-test-utilities.md` / `common-verification-patterns.md`. **Slim default: per-type conventions are NOT written** — writers derive them from the nearest sibling at runtime | Tier 3 generated from analysis |
+| Conventions (`.claude/conventions/tests/`) | `project-architecture.md`, plus the conditional `common-verification-patterns.md`. **Slim default: per-type conventions are NOT written** — writers derive them from the nearest sibling at runtime | Tier 3 generated from analysis |
 
 **Not written per-repo** (lives in plugin):
 - `status-legend.md` — at `<plugin-root>/resources/static/status-legend.md`

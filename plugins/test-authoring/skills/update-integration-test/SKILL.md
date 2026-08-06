@@ -21,7 +21,7 @@ Then check `.claude/conventions/tests/project-architecture.md`:
 - **Absent → cacheless.** setup has never run. **Do NOT stop.** Announce once: `"No precomputed test conventions found — running cacheless (sibling-driven). Run /test-authoring:setup-test-context once to cache the repo cross-layer test map."` Then for the rest of the flow:
   - Resolve every `.claude/rules/tests/<f>` and `.claude/shared/tests/<f>` reference to `<PLUGIN_TEMPLATES>/{rules,shared}/<f>` instead (includes `common-update-instructions.md`) — same lazy rule: read at the step that uses it, never as an upfront batch. Cosmetic frontmatter/example tokens are inert when read explicitly.
   - Treat `.claude/conventions/tests/<f>` as **optional**: prefer the nearest sibling test for the scope (the audit's top-priority source anyway); when no sibling exists either, the writer reports the gap rather than inventing conventions — there is no language baseline to fall back to. Infer the target test project from siblings per Step 1.5.
-  - **Detect once, reuse this session**: the language, and the *executable* build/test invocation **form** (test-project path + filter syntax) from the project manifest. In cacheless mode the template `test-rules.md` carries an unfilled `{{BUILD_AND_TEST_COMMANDS}}` token whose filled form lists **one command per test project** — the detected form replaces it everywhere (audit test-run, execute build, both verifiers' build, the final multi-agent build). Integration may span several test projects (Step 1.5): **instantiate the form per target test project** and pass each spawn the command for ITS project as `build_test_command`; subagents adjust its `--filter` to the actual test class.
+  - **Detect once, reuse this session**: the language, and the *executable* build/test invocation **form** (test-project path + filter syntax) from the project manifest. `test-rules.md` carries no command list — the detected form is the only source, used everywhere (audit test-run, execute build, both verifiers' build, the final multi-agent build). Integration may span several test projects (Step 1.5): **instantiate the form per target test project** and pass each spawn the command for ITS project as `build_test_command`; subagents adjust its `--filter` to the actual test class.
 
 Resolve `common-orchestrator-flow.md` the same way: fast path reads `.claude/rules/tests/common-orchestrator-flow.md`; cacheless reads `<PLUGIN_TEMPLATES>/rules/common-orchestrator-flow.md`.
 
@@ -219,7 +219,7 @@ Skip if the action record has no add actions.
 
 ### Multi-agent build check
 
-If multiple agents were spawned across 5a and 5b, run a final build of **each affected test project**. Reference `.claude/rules/tests/test-rules.md` (cacheless: use each project's `build_test_command`, not the unfilled `{{BUILD_AND_TEST_COMMANDS}}` token).
+If multiple agents were spawned across 5a and 5b, run a final build of **each affected test project**. Follow `.claude/rules/tests/test-rules.md` → Build and Test Verification, using each project's `build_test_command`.
 
 ## Step 6 — Verify
 

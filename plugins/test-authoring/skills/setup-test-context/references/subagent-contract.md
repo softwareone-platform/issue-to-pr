@@ -48,7 +48,6 @@ Owns Tier 3 conventions that are not type-scoped.
 
 Files owned:
 - `.claude/conventions/tests/project-architecture.md`
-- `.claude/conventions/tests/common-test-utilities.md` (only if Step 1.3 detected a shared test project)
 - `.claude/conventions/tests/common-verification-patterns.md` (only if Step 1.4 detected ≥1 qualifying pattern)
 
 ## Input contract (passed inline in the orchestrator's `Agent` prompt)
@@ -62,7 +61,7 @@ The orchestrator passes everything inline as structured text in the prompt.
 4. **Test type label + authoring model** — legacy `per-type` field only (e.g. `unit`, `integration`; `code-driven` or `config-driven`, the user-confirmed values from Step 2.1). Never populated under the Slim default, which dispatches no per-type subagent. Item numbers below are stable — other documents cite them by number.
 5. **The write set for this run** — which target paths are fresh and which already exist. Every existing one is backed up by the orchestrator in §3.1 before subagents spawn, then overwritten; there is no keep option and no per-file classification.
 6. **Analysis slice** — only the parts of Step 1 output relevant to this subagent. Examples by kind:
-   - shared-tier2: language, universal rule set inputs (verifier expectations, fix protocol settings), full build/test commands across all test projects (for `test-rules.md`), and the internal packages detected in §1.2.1 with their install models and verified paths (for `sut-analysis.md`'s `{{KNOWN_PACKAGES_TABLE}}`).
+   - shared-tier2: language, and the universal rule set inputs (verifier expectations, fix protocol settings).
    - shared-tier3: project structure (§1.3), shared test project info if any, cross-layer verification patterns (§1.4 global), architectural patterns (§1.6).
 7. **Pre-resolved standard placeholders** — `{{LANGUAGE}}`, `{{PROJECT_DESCRIPTION}}`, `{{SRC_DIR}}`, `{{TEST_DIR}}`, `{{SRC_GLOB}}`, `{{TEST_GLOB}}`, and `{{TEST_TYPE}}` / `{{TEST_TYPE_TITLE}}` (legacy per-type placeholders with no surviving consumer). The orchestrator has already computed these.
 8. **Files to write** — explicit list of absolute target paths under `.claude/{conventions,rules,shared}/tests/`.
@@ -75,7 +74,7 @@ The orchestrator passes everything inline as structured text in the prompt.
 
 ### Boundary condition (note, do not design around)
 
-Inline handoff scales fine for typical repos — per-type analysis slice is a few KB to ~10 KB. It would start to strain prompt budgets only on outlier repos: §1.2.1 internal-package tables with 50+ entries, or unusually deep §1.4 sampling output across many test projects. If that materializes, revisit by spilling the largest sections to a file under the backup folder; do not pre-build that path.
+Inline handoff scales fine for typical repos — per-type analysis slice is a few KB to ~10 KB. It would start to strain prompt budgets only on an outlier repo: unusually deep §1.4 sampling output across many test projects. If that materializes, revisit by spilling the largest sections to a file under the backup folder; do not pre-build that path.
 
 ## Output contract (returned by the subagent in its final message)
 

@@ -12,7 +12,7 @@ description: >
 
 Your spawning prompt may include `plugin_resources_path` and `build_test_command`; the orchestrator sets these when the repo has no precomputed conventions ("cacheless mode"). Resolve every `.claude/…` reference in this agent and in the rule files it points to accordingly:
 
-- **`plugin_resources_path` present (cacheless):** read every `.claude/rules/tests/<f>` and `.claude/shared/tests/<f>` from `<plugin_resources_path>/{rules,shared}/<f>` instead. Treat every `.claude/conventions/tests/<f>` as **optional** — for the U1 spot-check, verify the writer's claims directly against the nearest sibling test rather than the convention doc. For the U4 build, use `build_test_command` as the base invocation — adjust its `--filter` to the actual test class under review; do **not** use the `{{BUILD_AND_TEST_COMMANDS}}` token in `test-rules.md` (unfilled in cacheless mode). You cannot resolve `${CLAUDE_SKILL_DIR}` yourself; rely solely on the absolute `plugin_resources_path` passed in.
+- **`plugin_resources_path` present (cacheless):** read every `.claude/rules/tests/<f>` and `.claude/shared/tests/<f>` from `<plugin_resources_path>/{rules,shared}/<f>` instead. Treat every `.claude/conventions/tests/<f>` as **optional** — for the U1 spot-check, verify the writer's claims directly against the nearest sibling test rather than the convention doc. For the U4 build, use `build_test_command` as the base invocation — adjust its `--filter` to the actual test class under review. You cannot resolve `${CLAUDE_SKILL_DIR}` yourself; rely solely on the absolute `plugin_resources_path` passed in.
 - **Absent (fast path):** read all `.claude/{conventions,rules,shared}/tests/<f>` from the repo as written below.
 
 ---

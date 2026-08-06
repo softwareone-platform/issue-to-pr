@@ -47,7 +47,7 @@ Located relative to this skill's base directory:
 setup-test-context produces files only in three per-repo namespaces. Under the Slim default the set does not vary by test type — only the conditional `common-*` conventions change it:
 - 1 shared (`scope-resolution.md`)
 - 8 rules (`test-rules`, `test-writer-rules`, `fix-protocol`, `sut-analysis`, `common-orchestrator-flow`, `common-writer-instructions`, `common-update-instructions`, `common-verifier-checks`)
-- 1 conventions (`project-architecture`) + optional `common-test-utilities` / `common-verification-patterns` — code-driven per-type `{type}-test-conventions.md` are **NOT** written under the Slim default; writers derive those conventions from the nearest sibling at runtime
+- 1 conventions (`project-architecture`) + optional `common-verification-patterns` — code-driven per-type `{type}-test-conventions.md` are **NOT** written under the Slim default; writers derive those conventions from the nearest sibling at runtime
 - 1 README (`.claude/shared/tests/README.md`)
 
 setup-test-context does NOT write any of: agents, commands, skills, status-legend (all plugin-bundled).
@@ -65,12 +65,11 @@ setup-test-context does NOT write any of: agents, commands, skills, status-legen
 Read `references/analysis.md` before starting this step. Work through §1.1–1.7 in order:
 
 1. §1.1 — read CLAUDE.md as hints only
-2. §1.2 / §1.2.1 — detect language, frameworks, internal package paths
-3. §1.3 — map project structure (source dirs, test dirs, mirroring pattern)
+2. §1.2 — detect language and frameworks
+3. §1.3 — map project structure (source dirs, test dirs, mirroring pattern, shared test project)
 4. §1.4 — learn test conventions via layered sampling
-5. §1.5 — identify build and test commands per test project
-6. §1.6 / §1.6.1 — identify architectural patterns
-7. §1.7 — classify each test project (combo-cell matrix)
+5. §1.6 — identify architectural patterns
+6. §1.7 — classify each test project (combo-cell matrix)
 
 Proceed to Step 2 with the completed analysis.
 
@@ -89,7 +88,6 @@ Files setup-test-context will write (new or refresh):
 
 Conventions (.claude/conventions/tests/):
 - project-architecture.md
-- common-test-utilities.md           (if shared test project detected)
 - common-verification-patterns.md    (if cross-layer pattern detected)
   NOTE (Slim default): code-driven per-type {type}-test-conventions.md are NOT written
   -- writers derive per-type conventions from the nearest sibling at runtime.
@@ -135,9 +133,9 @@ listing hides it. Do not
 delete it and do not offer to — without recorded state, a leftover from a retired template and a file
 you wrote by hand are indistinguishable, and deleting the wrong one is unrecoverable.
 
-The conditional conventions (`common-test-utilities.md`, `common-verification-patterns.md`) land here
-whenever their generation condition is unmet this run. That is correct: they are simply not written,
-and the report names them so a mis-detection is visible rather than silent.
+The conditional convention (`common-verification-patterns.md`) lands here whenever its generation
+condition is unmet this run. That is correct: it is simply not written, and the report names it so a
+mis-detection is visible rather than silent.
 
 Collect the list before reaching the final atomic confirmation.
 
@@ -190,7 +188,7 @@ Read `references/subagent-contract.md` first. Note that for setup-test-context, 
 
 The `shared-tier2` subagent owns the universal rule set (`test-rules`, `test-writer-rules`, `fix-protocol`, `sut-analysis`, `common-orchestrator-flow`, `common-writer-instructions`, `common-update-instructions`, `common-verifier-checks`) plus the `scope-resolution.md` shared utility.
 
-The `shared-tier3` subagent owns the `project-architecture.md` convention (universal) plus the optional `common-test-utilities.md` / `common-verification-patterns.md` (when applicable).
+The `shared-tier3` subagent owns the `project-architecture.md` convention (universal) plus the optional `common-verification-patterns.md` (when applicable).
 
 **Slim default — per-type subagents are not spawned**: `<type>-test-conventions.md` is no longer generated for any test type; writers derive those conventions from the nearest sibling at runtime. Only the two shared subagents run.
 
@@ -233,7 +231,7 @@ After all writes:
 4. **Path existence check** — extract concrete paths mentioned in generated output, verify with Glob. Missing paths are warnings (🟨), not failures.
 5. **Cross-reference check**: for each plugin agent matching a test type confirmed as supported in Step 2 — the plugin agents live at `<plugin-root>/agents/` (e.g. `<plugin-root>/agents/add-unit-test-agent.md` for `unit`) — extract the `.claude/{conventions,rules,shared}/tests/` paths it references and check each against disk:
    - exists → pass.
-   - missing but **conditional** (`common-test-utilities.md`, `common-verification-patterns.md`) with its generation condition unmet this run → warning (🟨), not a failure.
+   - missing but **conditional** (`common-verification-patterns.md`) with its generation condition unmet this run → warning (🟨), not a failure.
    - **missing `{type}-test-conventions.md`** (`unit`, `integration`, or any extra type) → **expected-absent / silent pass**. The Slim default does not generate these — writers derive per-type conventions from the nearest sibling at runtime — so an agent referencing one while it is absent is the normal state: NOT a warning, NOT a failure.
    - missing and non-conditional → verification failure → rollback.
    Agents for unsupported test types are skipped entirely — their dangling references are expected. The plugin's agents are read-only here; this check confirms our outputs satisfy their input expectations.
@@ -287,7 +285,6 @@ Generated files (per-repo, managed by setup-test-context):
 
 Conventions (.claude/conventions/tests/):
   - project-architecture.md
-  - common-test-utilities.md (if applicable)
   - common-verification-patterns.md (if applicable)
   (Slim default: code-driven {type}-test-conventions.md not written -- sibling-derived at runtime)
 

@@ -27,21 +27,15 @@ not fill it from what the language usually does.
 
 After writing or modifying tests, build and run them.
 
-{{BUILD_AND_TEST_COMMANDS}}
-<!-- Bootstrap fills this with one section per test project detected in Step 1.3/1.5, e.g.:
+The invocation is **handed to you**, not listed here. Your caller detects it once per session from the
+project manifest — the test project's build command plus its filtered-run syntax — and passes it as
+`build_test_command`. Adjust the filter to the test class you actually wrote: the caller's guess at the
+class name can differ from the sibling-driven name you chose. Where several test projects are in play,
+each one has its own command and they are not interchangeable.
 
-### Unit tests
-```bash
-<build command>
-<test command with filter>
-```
-
-### Integration tests
-```bash
-<build command>
-<test command with filter>
-```
--->
+No command list is cached anywhere, deliberately: a stored command goes stale the moment a test project
+is added, renamed, or re-targeted, and it fails in a way that looks like a broken test rather than a
+stale note. If no invocation reached you, report that in your output — never guess a command line.
 
 ### Verification procedure
 - If the build has errors, check whether they are **pre-existing** or caused by your changes. Only fix errors caused by your changes.
