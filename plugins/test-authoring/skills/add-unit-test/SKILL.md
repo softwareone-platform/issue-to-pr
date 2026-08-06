@@ -89,6 +89,7 @@ Agent(subagent_type="test-authoring:verify-add-unit-test-agent"):
   Test type: unit
   Original task: <the scope/spec as given to the writers — required by the verifier's U2b divergence cross-check>
   Pre-writer source snapshot: <the source diff state recorded before writers were spawned — baseline for the U3 SUT-modification check>
+  source_pathspec: <the exact pathspec that snapshot was taken over — the verifier re-runs the diff over it verbatim>
   Plugin context (always — the subagent cannot resolve either of these itself):
     plugin_resources_path: <PLUGIN_TEMPLATES>
     build_test_command: <session-detected executable build/test invocation>

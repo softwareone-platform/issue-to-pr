@@ -98,6 +98,7 @@ Agent(subagent_type="test-authoring:verify-add-integration-test-agent"):
   Test type: integration
   Original task: <the scope/spec as given to the writers — required by the verifier's U2b divergence cross-check>
   Pre-writer source snapshot: <the source diff state recorded before writers were spawned — baseline for the U3 SUT-modification check>
+  source_pathspec: <the exact pathspec that snapshot was taken over — the verifier re-runs the diff over it verbatim>
   Plugin context (always — the subagent cannot resolve either of these itself):
     plugin_resources_path: <PLUGIN_TEMPLATES>
     build_test_command: <build/test command form; for each writer under review, instantiate it for that writer's reported `test_project`>

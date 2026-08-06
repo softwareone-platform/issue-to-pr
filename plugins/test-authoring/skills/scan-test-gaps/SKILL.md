@@ -247,7 +247,7 @@ Process at most **5–8 items per batch**. If the user selects more, split into 
 
 Based on the user's selection, group the items by type and spawn subagents.
 
-Before spawning the first writer of a batch, record the **pre-writer source snapshot** per `<PLUGIN_TEMPLATES>/rules/common-orchestrator-flow.md` → "Pre-writer source snapshot" — the verifiers need it as the baseline for their SUT-modification check.
+Before spawning the first writer of a batch, record the **pre-writer source snapshot** per `<PLUGIN_TEMPLATES>/rules/common-orchestrator-flow.md` → "Pre-writer source snapshot" — the verifiers need it as the baseline for their SUT-modification check, and pass the pathspec you used alongside it as `source_pathspec` so they re-run the diff over the same set.
 
 - For **add** gaps → spawn one `test-authoring:add-<type>-test-agent` per source class (per type, e.g., `test-authoring:add-unit-test-agent`, `test-authoring:add-integration-test-agent`)
 - For **Update** gaps → spawn one `test-authoring:update-<type>-test-agent` per source class (per type)

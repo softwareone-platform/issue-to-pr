@@ -24,7 +24,8 @@ Every per-type verifier receives a prompt containing one or more writer agent re
 - **Test results** — which tests the writer reported as passed/failed
 - **Test type** — one of the confirmed test types (all items in a single invocation share the same type)
 - **Original task / spec description** — the task as originally given (not only the writer's reported results), so you can sanity-check the writer's `spec_vs_impl_divergence` flags (see U2b) against what the task actually asked for
-- **Pre-writer source snapshot** — the orchestrator's record of the source directories' state taken before any writer was spawned (a `git diff` pathspec'd to the source roots, excluding the test tree); the baseline for the U3 SUT-modification check
+- **Pre-writer source snapshot** — the orchestrator's record of the source directories' state taken before any writer was spawned; the baseline for the U3 SUT-modification check
+- **`source_pathspec`** — the exact pathspec that snapshot was taken over. Use it verbatim when you recompute the current state; do not re-derive "the source directories" yourself, or your set and the orchestrator's can differ and every difference reads as a finding
 
 Per-type verifiers may extend this with extra fields. Extensions live in the per-type file, not here.
 
@@ -85,7 +86,7 @@ Search all generated **or modified** test files for signs that the writer bypass
 1. **Skip/ignore attributes** — no test should be skipped. Exact form depends on framework; grep for the equivalents: `[Fact(Skip=...)]`, `[Theory(Skip=...)]`, `@Ignore`, `@pytest.mark.skip`, `xit(`, `test.skip(`, etc.
 2. **Commented-out test methods**
 3. **Test count mismatch** — does the number of test attributes match what the writer reported? For files the writer created, count all test attributes; for files the writer modified, count the added attributes in that file's diff — the writer's `test_count` covers only its own additions.
-4. **SUT modifications** — compare the current state of the source directories against the **pre-writer source snapshot** from your input, over the paths that snapshot covers — the source roots, which is wider than the writer's scope and excludes the test tree. Do not narrow it to the files under review: a source edit outside the writer's scope is the more serious finding. In Mode A the user's own uncommitted source changes are expected, so `git diff` alone cannot distinguish them from writer tampering — flag only differences that appeared **after** the writers started.
+4. **SUT modifications** — compare the current state against the **pre-writer source snapshot** from your input, re-running the diff over `source_pathspec` verbatim. That set is wider than the writer's scope and excludes the test tree, deliberately: do not narrow it to the files under review — a source edit outside the writer's scope is the more serious finding — and do not widen or re-derive it, or the writer's own test edits start reading as SUT tampering. If `source_pathspec` did not reach you, say so and report U3 as not performed rather than guessing the set. In Mode A the user's own uncommitted source changes are expected, so `git diff` alone cannot distinguish them from writer tampering — flag only differences that appeared **after** the writers started.
 5. **Tautological / vacuous golden value** (deterministic-transform SUTs only) — when a test asserts an **opaque expected value** from a deterministic transform (hash / fingerprint, canonical serialization, encoding, formatting), decide whether that golden is an **implementation-independent oracle** or merely **captured from the SUT's own output** (a tautology: the test asserts the SUT returns what it returns, freezing a day-one bug green). You **cannot** tell from the assertion text alone — an independently-derived golden and a pasted-back one are byte-identical — so check **provenance**: is the golden's derivation stated (a comment, a known-answer vector, an independent tool such as `sha256sum` over a stated input), and can you **independently recompute** it from that stated derivation and get a match? A golden with no stated provenance, or one you cannot independently reproduce, is a **green-but-vacuous** finding. This is a provenance / adequacy check — it shows the golden is not a tautology, it does not prove the oracle is semantically correct.
 
 For each violation, record:
@@ -108,11 +109,17 @@ Do NOT attempt to fix any failures — only report.
 
 ## Stopping without plugin context
 
+> The operative instruction lives in **your agent file's "Path resolution" section**, not here — by
+> definition you cannot read this file in the situation it describes. This section exists so the
+> behaviour is documented in one place and so a normal-run verifier knows to omit the field.
+
 If your spawning prompt carried no `plugin_resources_path`, the rule books you review against are
 unreachable and you cannot resolve the path yourself. Do **not** review anyway from memory of these
 rules, and do not treat it as a review failure by the writer: return your structured output now with
-`stop_reason: missing_plugin_context`, no verdict, and a note saying the spawn omitted the field. The
-orchestrator handles it (`common-orchestrator-flow.md` → "Subagent stop on missing plugin context").
+`stop_reason: missing_plugin_context` **alone** — no verdict, no findings — plus a note saying the spawn
+omitted the field. A verdict emitted without the rule books would be attributed to the writer and can
+trigger a rollback. The orchestrator handles the stop
+(`common-orchestrator-flow.md` → "Subagent stop on missing plugin context").
 
 ## Universal output schema
 

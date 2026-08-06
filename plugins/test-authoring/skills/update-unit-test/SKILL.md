@@ -151,7 +151,7 @@ Record, per modified file, that the pre-change baseline is `git show HEAD:<file>
 
 ## Step 5 — Execute Changes
 
-Split the action record's actions and execute **sequentially** (update/delete first, then add). Before spawning the first execution agent (5a or 5b), record the **pre-writer source snapshot** per `<PLUGIN_TEMPLATES>/rules/common-orchestrator-flow.md` → "Pre-writer source snapshot" — the add-verifier needs it as the baseline for its SUT-modification check.
+Split the action record's actions and execute **sequentially** (update/delete first, then add). Before spawning the first execution agent (5a or 5b), record the **pre-writer source snapshot** per `<PLUGIN_TEMPLATES>/rules/common-orchestrator-flow.md` → "Pre-writer source snapshot" — the add-verifier needs it as the baseline for its SUT-modification check, and pass the pathspec you used alongside it as `source_pathspec` so they re-run the diff over the same set.
 
 ### Step 5a — Update and Delete (fresh-spawn Phase 2)
 

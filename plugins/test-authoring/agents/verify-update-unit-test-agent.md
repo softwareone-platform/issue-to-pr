@@ -146,6 +146,11 @@ test_run_verification:
 ## Output
 
 ```
+stop_reason: missing_plugin_context   # protocol stop only (see "Path resolution"): emit this ALONE,
+                                      # with no overall_verdict and no verification_summary — a FAIL here
+                                      # would read as the writer's fault and can trigger a rollback.
+                                      # Omit the field entirely on a normal run; everything below is then required.
+
 test_type: unit
 
 verification_summary:
