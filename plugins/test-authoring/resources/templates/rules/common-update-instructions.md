@@ -83,7 +83,7 @@ Follow `.claude/rules/tests/sut-analysis.md` and the pointers in `.claude/rules/
 
 ### Step A2 — Locate and read existing tests
 
-Follow the **learn from sibling tests** procedure in `.claude/conventions/tests/{type}-test-conventions.md`.
+Follow the **learn from sibling tests** procedure in `.claude/rules/tests/common-writer-instructions.md` → "Sibling learning" — the same dimensions apply here. (`.claude/conventions/tests/{type}-test-conventions.md` restates them as a checklist on the rare repo that has one; the Slim default generates it on neither path.)
 
 For each source file:
 
@@ -145,7 +145,7 @@ source_file: <path>
 test_file: <path> (or "none")
 
 sibling_conventions:
-  (use format from .claude/conventions/tests/{type}-test-conventions.md)
+  (one line per observed dimension, per common-writer-instructions.md → "Sibling learning")
 
 test_audit:
 - method: <TestMethodName>

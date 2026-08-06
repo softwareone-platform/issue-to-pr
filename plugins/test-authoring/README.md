@@ -129,7 +129,7 @@ and the constraint in the matching rule book — never both
 
 | File | Template | Purpose |
 |---|---|---|
-| `test-rules.md` | [resources/templates/rules/test-rules.md](resources/templates/rules/test-rules.md) | Mandatory project-wide rules: fix rules (never weaken/skip/delete-failing), build/test verification |
+| `test-rules.md` | [resources/templates/rules/test-rules.md](resources/templates/rules/test-rules.md) | Fix rules (never weaken/skip/delete-failing) and build/test verification. **Not** a conventions list — conventions come from the sibling |
 | `test-writer-rules.md` | [resources/templates/rules/test-writer-rules.md](resources/templates/rules/test-writer-rules.md) | What to test (happy path, validation, exceptions, edges) and what not to do |
 | `fix-protocol.md` | [resources/templates/rules/fix-protocol.md](resources/templates/rules/fix-protocol.md) | Verifier fix protocol; circuit breaker (3 global / 2 per-issue) |
 | `sut-analysis.md` | [resources/templates/rules/sut-analysis.md](resources/templates/rules/sut-analysis.md) | SUT analysis procedure; runtime resolution flow for external / internal package source |

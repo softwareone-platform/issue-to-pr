@@ -53,7 +53,14 @@ The orchestrator already holds every field of this block in working state (pre_f
 
 The block is written in add-flow terms; map the equivalents for other writers. **Update writers** (the verify-update single-fix-attempt path): `pre_fetch` comes from the Phase 1 audit, `previously_produced` maps from the execute output contract (`changes_applied` and `deleted_tests_record` → files_modified, `build_status` → last_build_status). Fields with no equivalent are omitted — the writer treats the prompt as authoritative.
 
-### Circuit breaker (CRITICAL)
+### Protocol stops do not count
+
+A writer that returns early with a `stop_reason` — `no_convention_source` or `missing_framework_source`
+(see `common-orchestrator-flow.md`) — has not failed a fix attempt. It wrote nothing, so there is nothing
+to have got wrong. **Do not increment any counter below for such a return**, and do not route it through
+the fix protocol at all: it has its own handler.
+
+## Circuit breaker (CRITICAL)
 
 Two independent counters prevent infinite loops. **Either counter reaching its limit triggers a stop.**
 

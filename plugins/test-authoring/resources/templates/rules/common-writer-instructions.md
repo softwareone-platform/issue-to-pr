@@ -39,7 +39,7 @@ Per-type writers may add focused identification items (integration identifies en
 
 ## Locate and learn from sibling tests (CRITICAL)
 
-Follow the procedure in `.claude/conventions/tests/{type}-test-conventions.md`:
+Follow the procedure in `.claude/conventions/tests/{type}-test-conventions.md` **when that file exists**; under the Slim default it is generated on neither path, so the normal case is to read the same dimensions off the nearest sibling:
 
 - Use the **source → test path mapping** (or test project mapping for integration-like) to find corresponding test files.
 - Apply the **sibling convention checklist** and **learn-from-sibling procedure** to adopt the exact style.
@@ -50,7 +50,7 @@ When context from different sources conflicts, follow the **context priority** a
 
 ## Style rules (inherit from sibling)
 
-Style is **not fixed globally** — adopt whatever the sibling tests use. See `.claude/conventions/tests/{type}-test-conventions.md` for the sibling convention checklist fields (what to observe, not what values to use).
+Style is **not fixed globally** — adopt whatever the sibling tests use. The dimensions worth observing are: test framework and attributes, mocking library and approach, assertion library and style, fixture/setup pattern, test and file naming, AAA comment usage, and how the SUT is constructed. (`.claude/conventions/tests/{type}-test-conventions.md` lists the same set as a checklist on the rare repo that has one; the Slim default does not generate it.)
 
 Follow:
 
@@ -76,8 +76,10 @@ written. Neither is a failure; both are protocol steps the orchestrator handles.
 - **Missing framework source** — per `.claude/rules/tests/sut-analysis.md` → Runtime resolution flow.
   Name the package and the path you tried in `issues:`.
 
-In both cases report the scope you could not cover. Do not partially write, do not guess, and do not
-run the build — there is nothing to build.
+In both cases: report the scope you could not cover, write **no** files at all (not even a partial one),
+and set `build_status: not_run (<reason>)` — there is nothing to build. Name the stop in your output as
+`stop_reason: no_convention_source` or `stop_reason: missing_framework_source` so the orchestrator routes
+to the right handler without having to parse your prose; omit the field entirely on a normal run.
 
 ## Build and test verification
 
@@ -123,7 +125,7 @@ files_analysed:
 
 sibling_tests_referenced:
 - <path>
-  <convention spec fields per .claude/conventions/tests/{type}-test-conventions.md>
+  <one line per observed dimension — the set listed under "Sibling learning" above>
 
 files_created:
 - <path>
@@ -146,7 +148,7 @@ spec_vs_impl_divergence:
   note: <why you tested what you tested>
 (or "none")
 
-build_status: success | failed (<errors>)
+build_status: success | failed (<errors>) | not_run (<reason>)
 ```
 
 Per-type writers add fields — integration adds `test_project`. Those are declared in the per-type file.

@@ -38,11 +38,11 @@ Per-type verifiers run these five checks (U1, U2, U2b, U3, U4) in order before a
 
 The writer reports which conventions it adopted. You MUST NOT blindly trust this — **read 1-2 sibling test files** from the provided paths to independently verify the claim.
 
-Check against the sibling convention checklist in the applicable `.claude/conventions/tests/{test-type}-test-conventions.md` for the test type under review.
+Check against the sibling convention checklist in the applicable `.claude/conventions/tests/{test-type}-test-conventions.md` **when that file exists** — the Slim default generates it on neither path, so the normal case is to take the checklist's dimensions from the sibling the writer worked from.
 
 If the writer's reported spec does not match the actual sibling, use **what you observe in the sibling** as the source of truth — not what the writer claimed.
 
-If the writer reported `No sibling tests found`, there is no oracle to spot-check against — and under the current policy the writer should have **reported the gap and written nothing** rather than inventing conventions. So the check inverts: confirm the writer did stop. Tests written anyway, with no sibling and no convention doc, are a violation to report, not output to grade.
+If the writer reported `No sibling tests found`, there is no oracle to spot-check against. A writer that stopped correctly produces no files, so the orchestrator never spawns you for that scope — if you are running at all, the writer wrote tests it had nothing to learn from. Report that as a violation rather than grading the tests against conventions you would have to invent yourself.
 
 ### U2. Convention compliance check (report only)
 
@@ -144,7 +144,7 @@ spec_vs_impl_divergence:
 - <path>: SUT does <source behaviour> vs task/spec expected <expected> — writer_flagged: yes | no
 (or "none")
 
-build_status: success | failed (<errors>)
+build_status: success | failed (<errors>) | not_run (<reason>)
 
 test_results:
 - <TestName>: passed | failed (<reason>) | env_failure (<reason>)

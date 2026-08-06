@@ -33,8 +33,9 @@ Some repos map internal package names to sibling checkout folders by a stable pr
 
 **What to record for each detected internal package**:
 - Package name
-- Expected local source path
-- Verification status
+- Install model that located it (workspace / solution member, link or editable install, vendored, registry-only)
+- Local source path implied by that install model — registry-only packages have none
+- Verification status: 🟩 the path exists, 🟨 expected but absent on this machine
 
 **Verification procedure**: for each expected local path, use the Glob tool to check whether the directory exists at bootstrap time. Record:
 - 🟩 — path exists

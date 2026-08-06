@@ -73,12 +73,14 @@ This guards against the observed degradation where a subagent, seeing the answer
 ## Writer stop on missing framework source
 
 A writer that hits the "Runtime resolution flow" in `.claude/rules/tests/sut-analysis.md` cannot wait for user input:
-it returns its structured output early, naming the missing package and the attempted path in `issues:`,
-typically with no tests written for the affected scope.
+it returns its structured output early with `stop_reason: missing_framework_source`, naming the missing
+package and the attempted path in `issues:`, and no tests written for the affected scope.
 When a writer output contains such an entry, do NOT proceed to the build check or verifier for that writer's scope. Instead:
 
-1. Present the two options from `sut-analysis.md` to the user:
+1. Present the options from `sut-analysis.md` to the user:
    **Option A** — provide the correct local source path; **Option B** — proceed without local source, inferring behaviour.
+   When the writer reported `registry-only — no local path to try`, **drop Option A**: step 1 already established
+   the package resolves only into the package cache, so asking for a path wastes the user's turn.
 2. **Fresh re-spawn the writer** with its original inputs plus the user's choice in the prompt —
    there is no resume of the stopped instance.
 3. If the user declines both options, mark the affected scope 🟥 unresolved in the summary.
@@ -88,8 +90,9 @@ This stop is a protocol step, not a failure — it does not count toward any fix
 ## Writer stop on no convention source
 
 A writer that finds neither a sibling test nor a convention file
-(`.claude/rules/tests/test-writer-rules.md` → Fallback Chain) also returns early:
-no tests written, and an `issues:` entry naming the directories it searched.
+(`.claude/rules/tests/test-writer-rules.md` → Fallback Chain) also returns early, with
+`stop_reason: no_convention_source`: no tests written, `build_status: not_run`, and an
+`issues:` entry naming the directories it searched.
 This is the expected outcome for a brand-new test project, not a failure — the plugin
 deliberately does not author the first test of a project from a language default.
 
@@ -102,6 +105,10 @@ for that writer's scope, and do NOT count it toward any fix circuit breaker. Ins
    every later run has a sibling to follow.
 3. **Fresh re-spawn** only if the user takes Option A; there is no resume of the stopped instance.
 4. Mark the affected scope 🟥 unresolved in the summary if the user takes neither.
+
+When several writers in one run stop this way — the normal case for a batch caller like `scan-test-gaps`
+against a repo with no tests — **merge them into a single question** listing every affected scope, not one
+prompt per writer.
 
 ## Multi-agent build check
 

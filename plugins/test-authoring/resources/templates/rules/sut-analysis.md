@@ -26,10 +26,14 @@ When reading a source file (SUT) before generating or auditing tests, perform al
 ### Known internal packages
 
 {{KNOWN_PACKAGES_TABLE}}
-<!-- Bootstrap (shared-tier2 subagent) fills this with the packages Step 1.2.1 actually detected in THIS repo:
-package name, the install model that located it, the resolved local source path, and 🟩 / 🟨 verification status.
-Do NOT assume a name-to-folder naming convention — record only paths Step 1.2.1 verified by globbing.
-If Step 1.2.1 detected none, emit the empty form: a single row reading "(none detected — add entries here)". -->
+<!-- Bootstrap (shared-tier2 subagent) fills this from the packages Step 1.2.1 detected in THIS repo, as a table with
+exactly these columns — Package | Install model | Local source path | Status — followed by the status legend:
+  🟩 — path verified to exist at analysis time
+  🟨 — path expected but absent on this machine (informational; the resolution flow below handles it)
+Record a 🟨 row rather than dropping the package: an expected-but-absent path is exactly what the writer needs to
+know. Never infer a path from a name-to-folder naming convention — every path here comes from the install model
+Step 1.2.1 identified. If none were detected, keep the header row and add one row reading
+"(none detected — add entries here)". -->
 
 ### Runtime resolution flow
 

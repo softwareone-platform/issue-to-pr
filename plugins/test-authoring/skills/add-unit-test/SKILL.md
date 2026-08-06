@@ -30,7 +30,7 @@ Resolve `common-orchestrator-flow.md` the same way: fast path reads `.claude/rul
 **Orchestrator reading list (context discipline).** Load into the main context only what this orchestrator itself needs, when it needs it:
 
 - **Now**: `common-orchestrator-flow.md` (previous paragraph).
-- **At the step that uses it**: Step 1 → `.claude/shared/tests/scope-resolution.md`. Step 2 → `.claude/conventions/tests/project-architecture.md` + `.claude/conventions/tests/unit-test-conventions.md` (cacheless: optional — sibling-first). Step 4, only when it runs → `.claude/rules/tests/test-rules.md` (cacheless: skip the read — use the session-detected `build_test_command`). First verifier finding or attributable build failure → `.claude/rules/tests/fix-protocol.md`. A writer stopping on missing framework source → `.claude/rules/tests/sut-analysis.md` → "Runtime resolution flow".
+- **At the step that uses it**: Step 1 → `.claude/shared/tests/scope-resolution.md`. Step 2 → `.claude/conventions/tests/project-architecture.md` + `.claude/conventions/tests/unit-test-conventions.md` (cacheless: optional — sibling-first). Step 4, only when it runs → `.claude/rules/tests/test-rules.md` (cacheless: skip the read — use the session-detected `build_test_command`). First verifier finding or attributable build failure → `.claude/rules/tests/fix-protocol.md`. A writer stopping on missing framework source → `.claude/rules/tests/sut-analysis.md` → "Runtime resolution flow". A writer stopping on no convention source → `.claude/rules/tests/common-orchestrator-flow.md` → "Writer stop on no convention source".
 - **Never**: `common-writer-instructions.md`, `common-verifier-checks.md`, `test-writer-rules.md`, and the other flow's rule book (`common-update-instructions.md`). They are subagent rule books — the writers/verifiers read them in their own isolated contexts; preloading them here only bloats the main context.
 
 
@@ -53,7 +53,7 @@ Per `.claude/rules/tests/common-orchestrator-flow.md` → "Pre-fetch context (ad
 
 1. For each source file, find the corresponding test directory using `.claude/conventions/tests/unit-test-conventions.md` and `.claude/conventions/tests/project-architecture.md`.
 2. If sibling test files exist in the mapped directory, read them and extract the convention spec. If none exist there, widen once — the nearest test files in the same test project (parent directory or adjacent feature folder) — and label them in the writer prompt as `nearest sibling (not exact mirror)` so the writer weighs them below an exact-mirror sibling.
-3. If no siblings are found at all, omit the sibling fields from the Step 3 template and state instead: `No sibling tests found — derive conventions from .claude/conventions/tests/unit-test-conventions.md`` — but under the Slim default that file is not generated on **either** path, so expect it to be absent, say so, and let the writer report the gap rather than substituting a baseline. Never invent a sibling path to satisfy the template.
+3. If no siblings are found at all, omit the sibling fields from the Step 3 template and state instead: `No sibling tests found and no convention source — apply test-writer-rules.md → Fallback Chain`. Under the Slim default `{type}-test-conventions.md` is generated on neither path, so do not point the writer at it. Never invent a sibling path to satisfy the template.
 4. Pass this context to the writer.
 
 ## Step 3 — Delegate to Agent
