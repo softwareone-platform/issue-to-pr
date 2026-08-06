@@ -1,12 +1,12 @@
 # setup-test-context
 
-The `setup-test-context` skill is the **optional** profiler that caches this repo's **cross-layer test map** for the rest of the `test-authoring` plugin. It analyses the repository's language, test frameworks, project structure, and test conventions, then writes two files under `.claude/conventions/tests/` — `project-architecture.md` and, when the analysis found one, `common-verification-patterns.md` — plus a provenance `README.md` under `.claude/shared/tests/`. Those are the parts a single sibling test cannot reconstruct. Every add/update/scan skill runs **with or without** them.
+The `setup-test-context` skill is the **optional** profiler that caches this repo's **cross-layer test map** for the rest of the `test-authoring` plugin. It analyses the repository's language, test frameworks, project structure, and test conventions, then writes one or two files under `.claude/conventions/tests/` — `project-architecture.md` and, when the analysis found one, `common-verification-patterns.md`. Those are the parts a single sibling test cannot reconstruct, and they are the only thing it writes. Every add/update/scan skill runs **with or without** them.
 
 Beyond those three files it writes nothing. The rule books those skills obey live in the plugin at `resources/templates/{rules,shared}/` and are read from there at runtime; nothing copies them into a repo, so there is no second copy to fall out of date. Per-type (`unit` / `integration`) conventions are not cached either — writers derive those from the nearest sibling, which is more current than any cache could be.
 
-It is re-runnable, and re-running **is** the refresh: managed files are generated artifacts, not user documents. The skill keeps **no state between runs** — no manifest, no recorded hashes, no per-file version. It knows only the fixed set of paths the current version writes: an existing file at one of those paths is backed up into the run's backup folder and rewritten, and anything else under the managed directories is reported and left untouched. All proposed changes are presented as a single atomic confirmation gate — the user accepts or rejects everything.
+It is re-runnable, and re-running **is** the refresh: managed files are generated artifacts, not user documents. The skill keeps **no state between runs** — no manifest, no recorded hashes, no per-file version. It knows only the fixed set of paths the current version writes: an existing file at one of those paths is **overwritten with no undo**, and anything else under the managed directories is reported and left untouched. One confirmation gate lists both sets before anything is written — that gate is where a hand-edit is protected, so copy one out there or answer No.
 
-Unlike the runtime test skills (add/update/scan), this skill spawns **no subagents** during its own execution — everything runs linearly (Analyse → Present → Backup → Generate → Verify) within the orchestrator process. Consequently there is **no circuit breaker** or fix-loop machinery here.
+Unlike the runtime test skills (add/update/scan), this skill spawns **no subagents** during its own execution — everything runs linearly (Analyse → Present → Generate → Verify) within the orchestrator process. Consequently there is **no circuit breaker** or fix-loop machinery here.
 
 ---
 
@@ -28,14 +28,14 @@ After upgrading the plugin, the reliable move is to delete and regenerate rather
 rm -rf .claude/conventions/tests .claude/rules/tests .claude/shared/tests
 ```
 
-The current version writes into the first (both conventions files) and the third (the provenance
-`README.md`, and nothing else); the second holds only what older versions left — rule-book copies, `scope-resolution.md`, and the `.setup-manifest.json` dotfile — and
-clearing them is the point. Then run the skill: with every target path fresh, no backup folder is
-created and nothing is reported as unmanaged.
+Only the first is still written to. The other two hold what older versions left — rule-book copies,
+`scope-resolution.md`, a `README.md`, and the `.setup-manifest.json` dotfile — and clearing them is the
+point. Then run the skill: nothing is reported as unmanaged.
 
-Overwriting in place also works and is safer if you have hand-edits worth keeping — the previous copy
-goes into `.claude/backup/setup-<timestamp>/` — but it leaves any file the current version no longer
-writes sitting on disk, because the skill will not delete what it cannot prove it wrote.
+Overwriting in place also works, but it leaves any file the current version no longer writes sitting on
+disk, because the skill will not delete what it cannot prove it wrote. It is also not safer for a
+hand-edit: there is no backup. Copy the edit out first — the confirmation gate tells you which files
+are about to be overwritten.
 
 ---
 
@@ -46,8 +46,9 @@ writes sitting on disk, because the skill will not delete what it cannot prove i
 ```
 
 No arguments. The skill always analyses the entire repository. To remove what it wrote, delete
-`.claude/{conventions,shared}/tests/`, plus any kept `.claude/backup/setup-*/` folder and the three
-lines it added to the repo's `.gitignore`.
+`.claude/conventions/tests/` and the line it added to the repo's `.gitignore`. An upgraded repo may
+also hold `.claude/rules/tests/`, `.claude/shared/tests/` and `.claude/backup/` from earlier
+versions — safe to delete too.
 
 ---
 
@@ -56,10 +57,9 @@ lines it added to the repo's `.gitignore`.
 | Phase | Action |
 |-------|--------|
 | 1. Analyse | Read CLAUDE.md hints, detect language/frameworks, map project structure, learn test conventions, identify architectural patterns, classify test projects |
-| 2. Present | Show analysis summary, test-project table, files to create/overwrite, unmanaged files that will be left alone, git working-tree state; ask for atomic confirmation |
-| 3. Backup | Create timestamped `.claude/backup/setup-{timestamp}/` (skipped when every target is fresh); **kept** on success whenever anything was overwritten, with its path reported — deleted only when the run wrote nothing but new files |
-| 4. Generate | Write the cross-layer conventions (`project-architecture.md`, and `common-verification-patterns.md` when one was detected) directly from the analysis, then the README. No templates are filled and no rule book is copied. Per-type `{type}-test-conventions.md` are **not** generated — sibling-derived at runtime |
-| 5. Verify | Confirm all written files exist; grep for unresolved placeholders and leaked HTML comments; cross-check agent-referenced paths; rollback on failure |
+| 2. Present | Show analysis summary, test-project table, files to create/overwrite (**overwrite has no undo** — copy out a hand-edit here), unmanaged files that will be left alone, git working-tree state; ask for confirmation |
+| 3. Generate | Write the cross-layer conventions (`project-architecture.md`, and `common-verification-patterns.md` when one was detected) directly from the analysis. No templates are filled and no rule book is copied. Per-type `{type}-test-conventions.md` are **not** generated — sibling-derived at runtime |
+| 4. Verify | Confirm the written files exist and their frontmatter closes; grep for unresolved placeholders and leaked HTML comments; on failure, report loudly and stop — the file stays on disk and wrong, and re-running is the fix |
 
 ---
 
@@ -85,32 +85,24 @@ flowchart TB
         B4[Atomic confirmation gate]
         B1 --> B2 --> B3 --> B4
     end
-    subgraph P3["Phase 3 — Backup"]
-        direction LR
-        C1[Create timestamped backup folder]
-        C2[Copy existing target files]
-        C1 --> C2
-    end
-    subgraph P4["Phase 4 — Generate"]
+    subgraph P3["Phase 3 — Generate"]
         direction LR
         D1[Write project-architecture.md]
         D2[Write common-verification-patterns.md - if detected]
-        D3[Write shared/tests/README.md]
-        D1 --> D2 --> D3
+        D1 --> D2
     end
-    subgraph P5["Phase 5 — Verify"]
+    subgraph P4["Phase 4 — Verify"]
         direction LR
-        E1[Confirm files exist]
+        E1[Confirm files exist and frontmatter closes]
         E2[Grep for unresolved placeholders and leaked HTML comments]
-        E3[Cross-check agent-referenced paths]
-        E4{Verification passed?}
-        E5[Rollback from backup]
-        E6[Done]
-        E1 --> E2 --> E3 --> E4
-        E4 -- No --> E5
-        E4 -- Yes --> E6
+        E3{Verification passed?}
+        E4[Report loudly and stop - file stays on disk and wrong]
+        E5[Done]
+        E1 --> E2 --> E3
+        E3 -- No --> E4
+        E3 -- Yes --> E5
     end
-    P1 --> P2 --> P3 --> P4 --> P5
+    P1 --> P2 --> P3 --> P4
 ```
 
 ---
@@ -132,11 +124,11 @@ For each path the skill plans to write:
 | State | Condition | Action |
 |---|---|---|
 | **fresh** | path does not exist | write new file |
-| **existing** | path exists | back up into the run's backup folder, then overwrite |
+| **existing** | path exists | overwrite — no undo, so the confirmation gate is where you intervene |
 
 Both are listed in the confirmation block. There is no pristine / user-modified distinction and no
-per-file prompt — both needed recorded hashes, and the skill records none. Every existing file is
-backed up before it is touched, so the untouched case and the hand-edited case get the same treatment.
+per-file prompt — both needed recorded hashes, and the skill records none, so the untouched case and
+the hand-edited case get the same treatment.
 
 A file under a managed directory that is **not** among this run's write targets is reported and left
 alone — never deleted. Without recorded state, a retired template's leftover and a file you wrote
@@ -146,7 +138,7 @@ is to commit a hand-edit before re-running.
 ### Re-run, refresh & legacy per-type conventions
 
 Re-running setup **is** the refresh: both conventions files are re-generated from the current repo
-state, with the previous copy in the backup folder. Nothing signals *when* a re-run is
+state, and the previous content is gone. Nothing signals *when* a re-run is
 due — the analysis-derived cross-layer map (`project-architecture.md` / `common-*`) goes stale as the
 repo evolves, and only you know that has happened.
 
@@ -161,17 +153,13 @@ deleted — they all fall under the report-and-leave-alone rule above. Harmless 
 the manifest any more, and siblings are the authoritative source for per-type conventions, so a stale
 per-type doc is overridden rather than obeyed. Delete them by hand if you want them gone.
 
-### Backup strategy
-
-Setup does not rely on git for rollback (`.claude/` may be gitignored or uncommitted). It creates a timestamped folder at `.claude/backup/setup-{timestamp}/` mirroring the target directory structure and copies every file that will be overwritten before any write begins. On success the folder is **kept** whenever anything was overwritten, and its path reported — the skill cannot tell which of those files you had edited, so this is your only route back. It is deleted only when the run wrote nothing but new files. On verification failure, files are restored from it.
-
 ### Placeholder substitution
 
 Setup fills no templates — the rule books under `<plugin-root>/resources/templates/` carry no placeholders and are read as-is. The only substitution left is in the **generated** conventions' frontmatter: `{{SRC_GLOB}}` and `{{TEST_GLOB}}` resolve to what Step 1.3 observed. No value is ever filled from a shipped language baseline.
 
 ### No test-agent delegation during setup
 
-Setup spawns **no subagents at all**. It writes its two or three files itself — the analysis they come from is already in the orchestrator's context, so a subagent would copy that context rather than save it, and two files offer no parallelism to win. It also never delegates to the plugin's test writer, update, or verifier agents. Consequently no circuit breaker, no fix loop, no `fix_invocation` routing. Verification is mechanical (file existence, placeholder grep, agent cross-reference) rather than an independent agent review.
+Setup spawns **no subagents at all**. It writes its two or three files itself — the analysis they come from is already in the orchestrator's context, so a subagent would copy that context rather than save it, and two files offer no parallelism to win. It also never delegates to the plugin's test writer, update, or verifier agents. Consequently no circuit breaker, no fix loop, no `fix_invocation` routing. Verification is mechanical (file existence, frontmatter, placeholder grep) rather than an independent agent review.
 
 ### Status icons
 
@@ -185,12 +173,11 @@ All diagrams use GitHub fenced code blocks tagged `mermaid` (not Azure DevOps `:
 
 ## Generated output
 
-Setup-test-context writes 2–3 files per consumer repo. The set does not vary by test type — only the conditional `common-verification-patterns.md` moves the count:
+Setup-test-context writes 1–2 files per consumer repo, both in one directory. The set does not vary by test type — only the conditional `common-verification-patterns.md` moves the count:
 
 | Category | Files | Source |
 |---|---|---|
 | Conventions (`.claude/conventions/tests/`) | `project-architecture.md`, plus the conditional `common-verification-patterns.md`. Per-type conventions are **not** written — writers derive them from the nearest sibling at runtime | generated from analysis |
-| Shared (`.claude/shared/tests/`) | `README.md` | generated: what was written, by which plugin version, when |
 
 **Not written per-repo** (lives in plugin):
 - the 9 rule books — at `<plugin-root>/resources/templates/{rules,shared}/`, read directly by skills and agents

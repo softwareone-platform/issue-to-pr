@@ -59,7 +59,7 @@ The architecture is **orchestrator → writer → verifier**:
 `setup-test-context` is an **optional accelerator**, not a prerequisite. Every test workflow works with or without it:
 - **Rule books are never copied.** Every skill and agent reads `resources/templates/{rules,shared}/` from the plugin, in both cases below. A skill resolves that root once in Step -1 and passes it to every subagent (a subagent cannot resolve it itself); if it cannot be resolved, the skill stops rather than running unruled.
 - **Without setup**: conventions are discovered from the nearest sibling tests at runtime.
-- **With setup** (run once in the consumer repo): the cross-layer map is cached at `.claude/conventions/tests/{project-architecture,common-verification-patterns}.md`, plus a provenance `README.md` at `.claude/shared/tests/`. Nothing else is written per-repo.
+- **With setup** (run once in the consumer repo): the cross-layer map is cached at `.claude/conventions/tests/{project-architecture,common-verification-patterns}.md`. Nothing else is written per-repo — no rule books, no README, no manifest, and no backup: an overwrite has no undo, and the confirmation gate is the protection.
 
 Distinction that matters when editing content: **rules are non-negotiable**; **conventions are descriptive patterns** that observed sibling tests can override. `resources/templates/rules/` = strict, and shipped; the per-repo `.claude/conventions/tests/` files setup generates = descriptive, and generated. There is no conventions *template* dir, and after the rule books stopped being copied there is no template *filling* either — the shipped files carry no placeholders and every convention file is written from analysis.
 

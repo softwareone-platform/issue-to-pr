@@ -45,7 +45,7 @@ When observation yields nothing, the correct output is a **report**, not an infe
 ---
 
 Keep every generated frontmatter block closing within the first 20 lines — Step 4's verification reads only that bounded window,
-and a later closing `---` would be mis-read as invalid frontmatter (false rollback).
+and a later closing `---` would be mis-read as invalid frontmatter (a false verification failure).
 
 ---
 

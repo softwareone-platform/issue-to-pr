@@ -36,21 +36,19 @@ plugins/test-authoring/
     └── shared/{readme-*.md}                # cross-cutting concept primers
 ```
 
-**Plugin-bundled vs per-repo**: everything under `plugins/test-authoring/` — skills, agents, rule books, static assets — ships in the plugin and is read from there, so a plugin upgrade reaches every consumer at once. The only per-repo files are the conventions `setup-test-context` generates from analysis (no template exists for them: they exist precisely because they cannot be shipped) plus the `README.md` it writes beside them under `.claude/shared/tests/`, which records what was generated and by which plugin version.
+**Plugin-bundled vs per-repo**: everything under `plugins/test-authoring/` — skills, agents, rule books, static assets — ships in the plugin and is read from there, so a plugin upgrade reaches every consumer at once. The only per-repo files are the one or two conventions `setup-test-context` generates from analysis — no template exists for them, because they exist precisely for what cannot be shipped.
 
 ---
 
 ## What setup-test-context writes per-repo
 
-When `/test-authoring:setup-test-context` runs in a consumer repo it writes two or three files, all generated from the analysis — no template is copied or filled.
+When `/test-authoring:setup-test-context` runs in a consumer repo it writes one or two files, both generated from the analysis — no template is copied or filled, and nothing is written outside this one directory.
 
 ```
 .claude/
-├── conventions/tests/                  # repo-specific patterns, learned from the codebase
-│   ├── project-architecture.md         # source/test layout, naming, mirroring, shared test project
-│   └── common-verification-patterns.md # only if a cross-layer pattern was detected
-└── shared/tests/
-    └── README.md                       # what was generated, by which plugin version, when
+└── conventions/tests/                  # repo-specific patterns, learned from the codebase
+    ├── project-architecture.md         # source/test layout, naming, mirroring, shared test project
+    └── common-verification-patterns.md # only if a cross-layer pattern was detected
 ```
 
 Per-type `{type}-test-conventions.md` are **not** written — writers read the nearest sibling instead, which is always more current than a cache.
@@ -132,7 +130,7 @@ and the constraint in the matching rule book — never both
 
 ## Per-repo conventions (descriptive, learned from code)
 
-Repo-specific patterns derived from actual codebase analysis — the only per-repo *content* (the `README.md` beside them records provenance, not conventions). Writer agents use these as context; sibling tests still take priority at runtime.
+Repo-specific patterns derived from actual codebase analysis — the only thing written per-repo. Writer agents use these as context; sibling tests still take priority at runtime.
 
 | File | Source | Purpose |
 |---|---|---|
@@ -148,7 +146,7 @@ Repo-specific patterns derived from actual codebase analysis — the only per-re
 `setup-test-context` keeps **no state between runs** — no manifest, no recorded hashes, no per-file
 `schema_version`. It knows only the fixed set of paths the current plugin version writes.
 
-- An existing file at one of those paths is backed up into the run's backup folder and rewritten.
+- An existing file at one of those paths is rewritten, with no undo — the confirmation gate lists it first, which is where you copy out a hand-edit.
 - Anything else under `.claude/{conventions,rules,shared}/tests/` is reported and left untouched —
   without recorded state, a retired template's leftover and a file you wrote by hand look identical.
 - Nothing detects staleness on a consumer's behalf. A template change reaches a repo when someone
