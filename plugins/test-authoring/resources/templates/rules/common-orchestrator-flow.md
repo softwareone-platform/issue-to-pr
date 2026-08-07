@@ -38,7 +38,9 @@ Follow the procedure in `../shared/scope-resolution.md`.
 Before spawning writer agents, pre-fetch sibling context to reduce agent exploration time:
 
 1. For each source file, find the corresponding test directory: from the sibling tests that mirror it, and from the directory structure in `.claude/conventions/tests/project-architecture.md` when a prior setup cached it.
-2. If sibling test files exist, read them and extract the **convention spec** — the field set is the dimension list in `common-writer-instructions.md` → "Style rules (inherit from sibling)", and the values come from the sibling itself.
+2. If sibling test files exist, read them and extract the **convention spec** — one line per dimension, values taken from the sibling itself. The dimensions: test framework and attributes, mocking library and approach, assertion library and style, fixture/setup pattern, test and file naming, AAA comment usage, and how the SUT is constructed.
+
+   That list is inlined here on purpose. The authoritative copy lives in `common-writer-instructions.md` → "Style rules (inherit from sibling)", which is the **writer's** rule book and sits on your Step -1 **Never** list — you must not open it, so it cannot define anything you are required to produce. Duplication is the cheaper error here: seven words against loading a whole rule book into the main context. Your spec is an acceleration hint anyway — the writer re-derives it against its own copy and the sibling wins on any disagreement, so the two drifting apart degrades a hint, not a rule.
 3. Pass this context to the writer so it does NOT need to discover conventions itself.
 
 ## Writer delegation
