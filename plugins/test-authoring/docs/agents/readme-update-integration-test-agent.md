@@ -48,14 +48,14 @@ sequenceDiagram
 | Field | Required | Description |
 |-------|:--------:|-------------|
 | Source file path(s) | Yes | One or more `src/` paths to audit integration tests for |
-| Target test project | Yes | Which test project to search (`Api/`, `Worker/`, `Infrastructure/`, or sync project). The orchestrator determines this from the test project mapping (`.claude/conventions/tests/integration-test-conventions.md`). |
+| Target test project | Yes | Which test project to search (`Api/`, `Worker/`, `Infrastructure/`, or sync project). The orchestrator infers it from the sibling tests that mirror the source area and passes it in. |
 | Endpoint / method focus | No | Narrow the audit to specific endpoints or methods within the source file |
 | Sibling context | No | Pre-identified sibling test files and their conventions |
 | Convention spec | No | Pre-fetched sibling convention summary including **auth policy** detected from the controller's `[Authorize]` attribute |
 
 ### Phase 1 Output
 
-Structured block containing: `test_project`, `test_files` (plural -- integration tests span multiple files), `sibling_conventions` (using the format from `.claude/conventions/tests/integration-test-conventions.md` (sibling-derived at runtime; or cached by a full setup-test-context run)), `test_audit` (per-test classification), `missing_coverage`, `auth_policy_findings`, and `pre_change_test_results`.
+Structured block containing: `test_project`, `test_files` (plural -- integration tests span multiple files), `sibling_conventions` (one line per dimension, per the plugin's `rules/common-writer-instructions.md` → "Style rules (inherit from sibling)"), `test_audit` (per-test classification), `missing_coverage`, `auth_policy_findings`, and `pre_change_test_results`.
 
 Key differences from the unit-test agent output:
 
@@ -90,8 +90,8 @@ Phase 1 is strictly read-only. The agent must not create, modify, or delete any 
 | Step | Action | Details |
 |------|--------|---------|
 | A1 | **Understand the SUT** | Follow the [SUT Analysis Procedure](../../resources/templates/rules/sut-analysis.md). Additionally identify integration-specific context: API endpoints (routes, HTTP methods, request/response types), MediatR command/query handlers, worker operations and their lifecycle, or sync consumers and the events they handle. |
-| A2 | **Determine test project** | Use the test project mapping (`.claude/conventions/tests/integration-test-conventions.md`) to confirm which test project the source maps to. If the orchestrator specified a target test project, use that. |
-| A3 | **Locate and read existing tests** | Search the feature directory in the mapped test project. Integration tests are often split across **multiple files** (e.g., `Basic.cs` covers standard CRUD, `Create.cs` covers custom create, `{Action}.cs` covers action endpoints, `{Feature}Helper.cs` provides shared builders). Read **every test method** across all files. Record sibling conventions using the integration test checklist (`.claude/conventions/tests/integration-test-conventions.md`). |
+| A2 | **Determine test project** | If the orchestrator specified a target test project, use that — it is authoritative. Otherwise infer it from the sibling tests that mirror the source area; there is no per-repo mapping file to consult. |
+| A3 | **Locate and read existing tests** | Search the feature directory in the mapped test project. Integration tests are often split across **multiple files** (e.g., `Basic.cs` covers standard CRUD, `Create.cs` covers custom create, `{Action}.cs` covers action endpoints, `{Feature}Helper.cs` provides shared builders). Read **every test method** across all files. Record sibling conventions against the dimension list in the plugin's `rules/common-writer-instructions.md`. |
 | A4 | **Classify each test** | Compare each test against the current SUT and assign one of five statuses plus a confidence level for non-valid items. Use **endpoint + HTTP method** as the classification key (see below). |
 | A5 | **Identify missing coverage** | Compare the SUT's endpoints/methods against all test files. List every endpoint or method with no integration test coverage at all. Also flag auth policy drift (see below). |
 | A6 | **Run existing tests** | Execute `dotnet test --filter "FullyQualifiedName~ClassName"` and record each test's result: `passed`, `failed (<reason>)`, or `env_failure (<reason>)`. |
@@ -147,7 +147,7 @@ For the full anti-gaming decision table and verifier-side checks, see [readme-sh
 
 ### Test project mapping
 
-The orchestrator determines the test project before spawning this agent and passes it as input. The mapping follows `.claude/conventions/tests/integration-test-conventions.md` (sibling-derived at runtime; or cached by a full setup-test-context run).
+The orchestrator determines the test project before spawning this agent and passes it as input. It infers the mapping from the sibling tests that mirror the source area; nothing generates a per-repo mapping file.
 
 **The mapping is repo-specific — this plugin does not prescribe one.** The orchestrator locates the existing integration test project whose tests mirror the source area; where a repo separates concerns such as API endpoints, worker operations, infrastructure, or event consumers across several projects, each source file resolves to the project that already covers its area.
 
@@ -194,7 +194,7 @@ Method-level `[Authorize]` attributes may override the class-level policy for sp
 
 ### Sibling convention inheritance
 
-The agent identifies and adopts the exact conventions used by the nearest sibling test files. It never introduces a different pattern. The full checklist and learning procedure are documented in `.claude/conventions/tests/integration-test-conventions.md` (sibling-derived at runtime; or cached by a full setup-test-context run).
+The agent identifies and adopts the exact conventions used by the nearest sibling test files. It never introduces a different pattern. The dimension list lives in the plugin's `rules/common-writer-instructions.md` → "Style rules (inherit from sibling)"; the **values** come from the sibling itself. No per-type conventions file is generated or read.
 
 Key conventions that vary across test areas:
 

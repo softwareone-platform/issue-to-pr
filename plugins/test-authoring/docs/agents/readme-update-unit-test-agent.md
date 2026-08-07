@@ -151,7 +151,7 @@ Phase 1 is strictly read-only. The agent must not create, modify, or delete any 
 | Step | Action | Details |
 |------|--------|---------|
 | A1 | **Understand the SUT** | Follow the [SUT Analysis Procedure](../../resources/templates/rules/sut-analysis.md): read the source, check framework base classes, verify `[InternalsVisibleTo]`, note recent changes. |
-| A2 | **Locate existing tests** | Use the source-to-test path mapping (`.claude/conventions/tests/unit-test-conventions.md`) to find `*Tests.cs` files. Read every test method. Record sibling conventions (mocking library, fixture helper, base class, naming pattern, AAA comments, SUT construction). |
+| A2 | **Locate existing tests** | Mirror the source path into the test project to find `*Tests.cs` files — derived from the sibling tests, and from `project-architecture.md` when a prior setup cached it. Read every test method. Record sibling conventions (mocking library, fixture helper, base class, naming pattern, AAA comments, SUT construction). |
 | A3 | **Classify each test** | Compare each test against the current SUT and assign one of five statuses (see below) plus a confidence level for non-valid items. |
 | A4 | **Identify missing coverage** | List SUT public/internal methods with no test at all. Exclude trivial getters/setters and methods that have an outdated/wrong test (those are update candidates, not gaps). |
 | A5 | **Run existing tests** | Execute `dotnet test --filter "FullyQualifiedName~ClassName"` and record each test's pass/fail baseline. This baseline is used later by the verifier to detect silent deletions. |
@@ -218,7 +218,7 @@ The agent detects the layout by scanning the test directory and works within whi
 
 ### Sibling convention inheritance
 
-The agent identifies and adopts the exact mocking library, fixture helper, base class, naming pattern, AAA comment style, and SUT construction approach used by the nearest sibling test files. It never introduces a different library or pattern. The full checklist and learning procedure are documented in `.claude/conventions/tests/unit-test-conventions.md` (sibling-derived at runtime; or cached by a full setup-test-context run).
+The agent identifies and adopts the exact mocking library, fixture helper, base class, naming pattern, AAA comment style, and SUT construction approach used by the nearest sibling test files. It never introduces a different library or pattern. The dimension list lives in the plugin's `rules/common-writer-instructions.md` → "Style rules (inherit from sibling)"; the **values** come from the sibling itself. No per-type conventions file is generated or read.
 
 Key conventions that vary across the codebase:
 
