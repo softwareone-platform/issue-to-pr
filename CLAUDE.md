@@ -71,6 +71,14 @@ Distinction that matters when editing content: **rules are non-negotiable**; **c
 
 - **Editing a skill/agent**: edit the `.md`, then in a consumer session run `/reload-plugins` to pick it up. There is nothing to build.
 - **Releasing a version bump**: update the version in **both** the plugin's `.claude-plugin/plugin.json` **and** the corresponding entry in `.claude-plugin/marketplace.json` — they must stay in sync. `marketplace.json` is the registry consumers read.
+- **Before pushing, derive which plugins need a bump from the diff — do not recall it.** The cache is keyed by version, so a changed plugin at an unchanged version reaches nobody, and the push looks successful. A late commit touching a *different* plugin than the earlier ones is how this slips (it has, once). Run:
+  ```bash
+  for n in adversarial-review pr-lifecycle test-authoring issue-to-pr-pipeline; do
+    printf '%-22s changed=%s version=%s
+' "$n"       "$(git diff --name-only origin/main HEAD -- plugins/$n | wc -l)"       "$(grep -o '"version": "[^"]*"' plugins/$n/.claude-plugin/plugin.json)"
+  done
+  ```
+  Any plugin with `changed>0` whose version equals the one already on `origin/main` is the bug.
 - **Adding a skill**: create `plugins/<plugin>/skills/<skill>/SKILL.md` with `name` + `description` frontmatter; add `evals/evals.json` if it warrants evals.
 - **Adding a plugin hook**: no plugin ships one today. If you add one it belongs at `plugins/<plugin>/hooks/hooks.json` — a **plugin-root** directory, not inside `.claude-plugin/` and not under `resources/` — and `/reload-plugins` picks it up. Getting the location wrong fails silently: the hook simply never loads.
 - **Changing the step registry**: `plugins/issue-to-pr-pipeline/resources/resolve-issue-steps.json` is canonical, but `parse_session.py`'s `_DEFAULT_STEPS` is an embedded fallback copy that **must stay in the same order** — the dashboard does index arithmetic over it. Removing a step id also needs a redirect in `resolve-issue/SKILL.md`'s State reconcile, so a run whose `state.md` still names it resumes cleanly.
