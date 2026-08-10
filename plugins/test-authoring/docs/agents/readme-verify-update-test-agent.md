@@ -37,11 +37,15 @@ The verifier is a **single-pass** agent. It runs six checks in sequence, collect
 | Input | Source | Description |
 |---|---|---|
 | **Audit output** | Update agent (Phase 1) | Pre-change test list with pass/fail status for every method |
-| **Action record** | Orchestrator (Step 4) | Per-test entries with `audit_status`, `action` (each action derived from audit status) |
-| **git HEAD pre-change baseline** | Orchestrator (Step 4.5) | `git show HEAD:<file>` committed state, confirmed tracked & clean before Phase 2 |
-| **Execution results** | Update agent (Phase 2) | Files modified, tests updated/deleted, build status (self-reported) |
+| **Action record** | Orchestrator (Step 4) | Per-test entries with `audit_status`, `action` (each action derived from audit status). Also decides whether the verifier is spawned at all, and for which files — never the writer's report of what it executed |
+| **Execution results** | Update agent (Phase 2) | Every writer's Phase 2 output whole, one labelled set per source class: `changes_applied` (per method, `action: updated \| deleted`), the test file paths, `build_status`, `test_results`, `issues` (all self-reported). Step 5 reads `changes_applied`, so a summarised or single-writer hand-off strips what it needs |
+| **git HEAD pre-change baseline** | Orchestrator (Step 4.5) | `git show HEAD:<file>` committed state for every file the action record names -- not only the ones reported as modified, or a writer that did nothing leaves nothing to diff |
 | **Test type** | Orchestrator | `unit` or `integration` -- determines build/test commands |
 | **Test project** | Orchestrator | Path to the test project under change |
+| **Raw Phase 1 audit outputs** | Orchestrator (Step 2) | The audit records behind the action record -- the baseline for Step 1's transcription cross-check |
+| **Consent-proceeded files** | Orchestrator (Step 4.5) | Files found untracked/dirty and proceeded on with explicit consent; their `HEAD` baseline is not faithful |
+| **Step 5b add-writer outputs** | Orchestrator (Step 5b) | `files_created` / `files_modified` / `test_count`, when add writers also ran -- needed by Step 6's count arithmetic and by Step 5's per-method attribution |
+| **Skipped files** | Orchestrator (Step 4.5) | Files the user declined -- a separate list from the consent-proceeded one. Step 5 treats a planned action with no visible change as a violation, and this list is the only thing that distinguishes "the user said no" from "the writer dropped it silently" |
 
 ### Output structure
 
@@ -62,8 +66,10 @@ Every deleted test must have a corresponding action record entry with `action: d
 3. **Independently verify** by diffing the committed baseline against the current file to catch deletions the writer failed to self-report:
 
    ```bash
-   diff <(git show HEAD:tests/.../TestFile.cs) tests/.../TestFile.cs
+   git diff HEAD -- tests/.../TestFile.cs
    ```
+
+   The portable form. `diff <(git show HEAD:<file>) <file>` is equivalent only in a POSIX shell -- its process substitution is a syntax error in PowerShell.
 
 **VIOLATION** if a deleted test has no `action: delete` entry, or its `audit_status` is anything other than `wrong` or `duplicated` (e.g. `valid`, `outdated-major`, or absent).
 
@@ -102,20 +108,25 @@ Detect cases where a previously-failing test was silently removed to fake a pass
 
 Steps 1-4 are all negative checks -- they ask whether something was done wrongly. None asks whether anything was done at all, so an execution agent that reports success and changes nothing passes all four. This step closes that by pairing the claim against the diff in both directions, and it is the mirror of Step 2: a `valid` method must be unchanged, a method reported as updated must be changed.
 
-1. **Reported → evidence.** Every `changes_applied` entry with `action: updated` must show a real difference in that method against the `git show HEAD:<file>` baseline (whitespace-only does not count); every `action: deleted` entry must be absent from the current file.
-2. **Planned → accounted for.** Every action record entry planned as `update` or `delete` must be visible either in the diff or in the writer's `issues` as a declined change. Declining a planned change is legitimate; declining it silently is not. This direction is judged against the diff rather than the report's completeness, so a fix round that lists only its own edits does not make earlier work read as dropped.
+Every method that appears in `changes_applied` or is planned in the action record lands in exactly one of three sets, and each set has its own verdict rule. Evidence is attributed **per method inside its own hunk**, never at file grain — the Step 5b add writer may have written to the same file. Renames were already paired to their baseline names before Step 1, so a renamed method reads as changed here and not as an unjustified deletion in Steps 1 / 4.
 
-Findings on consent-proceeded files are reported as `baseline_unreliable` notes rather than violations, because `git show HEAD` is not a faithful baseline for them in either direction.
+1. **Reported and planned** — a reported `updated` method must differ from the baseline (whitespace-only does not count); a reported `deleted` method must be absent. Either failing is a violation, as is a reported update that turns out to be a deletion.
+2. **Reported but not planned** — a violation **against the report, not the file**: E3 forbade touching the method, so the finding is that the writer's account is untrue and the remedy is not to make the change. Step 2 cannot cover this, because Step 2 only checks that `valid` methods are *unchanged* — which a false report of updating one leaves green.
+3. **Planned but not reported** — a violation **unless a named exemption applies**: the file is in the skipped-files list (the user declined it at Step 4.5), the writer's `issues` records an E1 stop, the entry was evidenced in a carried-forward first round of a `fix_invocation`, or the entry is out of this verifier's scope. Without the exemption this is a planned action dropped in silence, the failure the whole check exists to catch.
 
-**VIOLATION** if a reported update left the method unchanged, a reported deletion left it present, or a planned action appears in neither the execution results nor the writer's `issues`.
+A file whose baseline cannot be obtained is `not_performed`, and that is **a violation of the check, not a pass** — the absence of verification is never evidence of work. Rows on consent-proceeded files degrade to `baseline_unreliable` notes for the `updated` and `planned-only` cases, because `HEAD` is not their pre-change state and `unchanged` therefore proves nothing in either direction; the `deleted` rows stay live, since whether a method is present *now* is observable without a faithful baseline.
+
+The verifier's own verdict is read row by row — every row `OK` or `note` — with no counter arithmetic to evaluate.
 
 ### Step 6 -- Test Count Cross-check
 
 The final test count must match expectations.
 
 ```
-expected = pre_change_count - planned_deletions + planned_additions
+expected = pre_change_count - planned_deletions + added_by_step_5b
 ```
+
+`planned_deletions` are the action record's `action: delete` entries, not the deletions the writer reported — keying it on the report would make the check tautological, and a planned deletion that never happened is exactly what it should surface. `added_by_step_5b` comes from the add-writer outputs, and is `0` when Step 5b did not run.
 
 Count `[Fact]` and `[Theory]` attributes in the post-change file and compare. Any mismatch is a red flag for unauthorized additions or removals outside the action record.
 

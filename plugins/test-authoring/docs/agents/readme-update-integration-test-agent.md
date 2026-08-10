@@ -215,7 +215,7 @@ After Phase 2 completes, the orchestrator spawns a [`test-authoring:verify-updat
 - Every deletion is justified by an `action: delete` entry whose `audit_status` is `wrong` or `duplicated` (outdated-major is rewritten, never deleted).
 - No valid test was deleted or modified.
 - No previously-failing test was silently removed.
-- Every reported update or deletion actually shows up in the diff, and every planned one was either applied or declined in writing.
+- Every reported update or deletion actually shows up in the diff, every planned one was either performed or covered by a named exemption, and nothing outside the action record was touched.
 - Test counts are consistent (pre-count minus deletions plus additions equals actual count).
 
 The verifier is strictly read-only and diffs the `git show HEAD:<file>` baseline against the post-execute state. For integration tests, the verifier must check **all affected test files** (not just one), since changes may span `Basic.cs`, `Create.cs`, and action files.

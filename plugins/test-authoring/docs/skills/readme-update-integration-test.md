@@ -86,7 +86,7 @@ See [Git Rollback](../shared/readme-shared-update-patterns.md#git-based-rollback
 
 ### Anti-gaming
 
-The verifier independently checks that no test was silently deleted, no valid test was modified, no failing test was removed to make the suite pass, and no `[Skip]` attributes or assertion weakening were introduced. Violations are presented to the user, not auto-fixed.
+The verifier independently checks that no test was silently deleted, no valid test was modified, no failing test was removed to make the suite pass, and no `[Skip]` attributes or assertion weakening were introduced. It also checks the one thing the others cannot — that the work happened at all: a method the writer reported it updated must actually differ from the committed baseline, and a method it reported deleted must actually be gone. Violations are presented to the user, not auto-fixed.
 
 See [Anti-Gaming](../shared/readme-shared-update-patterns.md#anti-gaming) for the full decision table and prohibited actions.
 

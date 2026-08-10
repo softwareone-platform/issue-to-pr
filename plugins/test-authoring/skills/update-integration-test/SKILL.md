@@ -175,7 +175,7 @@ git status --porcelain -- <test-file>
 - **Tracked and clean** (no output) → proceed. `git show HEAD:<test-file>` is the faithful pre-change baseline the verifier diffs against, and `git restore <test-file>` undoes the change.
 - **Untracked, or has uncommitted modifications** (any porcelain output) → warn the user: this file has no reliable committed baseline, so an automatic update cannot be safely diffed or restored. Ask whether to proceed for that file or skip it; proceed only on explicit confirmation.
 
-Record, per modified file, that the pre-change baseline is `git show HEAD:<file>` — this is what the verifier uses in Step 6a. Also record which files were proceeded on explicit consent despite being untracked/dirty: that list goes to the verifier in Step 6a, because HEAD is not a reliable baseline for them.
+Record, per modified file, that the pre-change baseline is `git show HEAD:<file>` — this is what the verifier uses in Step 6a. Record **two separate lists**, both of which go to the verifier in Step 6a and mean different things there: the files **proceeded on** by explicit consent despite being untracked/dirty (HEAD is not a reliable baseline for those), and the files the user chose to **skip** (their planned actions were legitimately never performed — without this list the verifier reads them as work dropped in silence). Do not merge the two.
 
 ## Step 5 — Execute Changes
 
@@ -250,23 +250,24 @@ If multiple agents were spawned across 5a and 5b, run a final build of **each af
 
 ### Step 6a — Verify Updates and Deletions
 
-Spawn **one** `test-authoring:verify-update-integration-test-agent` per affected test project (a single spawn when only one project was touched). Pass, scoped to that project:
+Spawn **one** `test-authoring:verify-update-integration-test-agent` per test project **named in the action record** — not per project the writer reported modifying. The two differ exactly when a writer did nothing: deriving the spawn set from what changed would leave an inert writer's project unverified, which is the failure Step 5 exists to catch. Pass, scoped to that project:
 1. Pre-change state (including env_failures)
-2. Action record (audit_status + action per item)
-3. Execution results — pass the writer's Phase 2 output **whole**, including `changes_applied` and `issues`; the verifier's Step 5 pairs those two against the diff to catch a reported action that never happened, and a summarised hand-off strips exactly the fields it needs
-4. Pre-change baseline: `git show HEAD:<file>` for each modified file (no `.bak`)
+2. Action record (audit_status + action per item), **scoped to this project** — an unscoped record makes another project's planned actions read as dropped here
+3. Execution results — pass **every** Phase 2 writer's output whole for this project, one labelled set per (source, project) pair, including `changes_applied`, `test_files` and `issues`. The verifier's Step 5 pairs `changes_applied` against the diff and needs `test_files` to resolve each method to a file, so a summarised or single-writer hand-off strips exactly what it reads. On **re-verification after a fix round**, carry the original Phase 2 output forward alongside the fix writer's output — the `fix_invocation` contract returns `files_modified`, not `changes_applied`. Scope input 2's action record down to this project before passing it, or Step 5 reads another project's planned actions as unreconciled here
+4. Pre-change baseline: `git show HEAD:<file>` for **each file the action record names**, not only the ones the writer reported modifying — a file with planned actions and no reported change is precisely the case Step 5 must diff, and omitting it leaves the verifier nothing to check
 5. Test type: `integration`
 6. Test project path
 7. Raw Phase 1 audit outputs (retained in Step 2) — so the verifier can cross-check that the action record faithfully transcribes each audit classification
 8. Consent-proceeded files from Step 4.5 (untracked/dirty at check time) — their HEAD baseline is unreliable; the verifier treats diff-based findings on them as advisory, not violations
 9. Step 5b add-writer outputs (`files_created` / `files_modified` / `test_count`), when Step 5b ran — the add writer may insert tests into the SAME files 6a inspects, and without these the verifier's test-count cross-check reads the additions as out-of-record changes
-10. **Plugin context** (always): `plugin_resources_path` + the `build_test_command` for this project — so the verifier reads its rule books from the plugin and runs the build/test via the detected command (it cannot resolve either itself)
+10. Skipped files from Step 4.5 (the ones the user declined, **not** the consent-proceeded list in 8) — Step 5's `planned-only` set treats a planned action with no visible change as a violation, and this list is the only thing that distinguishes "the user said no" from "the writer dropped it silently"
+11. **Plugin context** (always): `plugin_resources_path` + the `build_test_command` for this project — so the verifier reads its rule books from the plugin and runs the build/test via the detected command (it cannot resolve either itself)
 
 ### Step 6b — Verify Added Tests
 
 If Step 5b produced new tests, spawn **one** `test-authoring:verify-add-integration-test-agent`. Read-only. Pass the inputs per `<PLUGIN_TEMPLATES>/rules/common-orchestrator-flow.md` → "Verifier spawn": the Step 5b writer outputs (including `files_modified`), the original task, and the pre-writer source snapshot (plus `plugin_resources_path` + the project's `build_test_command`, per the governing note).
 
-6a and 6b can run **in parallel**. Skip 6a if no update/delete actions were executed; skip 6b if no add actions were executed.
+6a and 6b can run **in parallel**. Skip 6a only when the **action record** holds no `update` / `delete` entry for that project; skip 6b if no add actions were executed. **Decide 6a from the record, never from what the writer reported it executed** — an execution agent that did nothing and reported nothing would otherwise suppress the one check (6a's Step 5) that catches exactly that, and the run would report success. A record with planned actions and an execution report showing none is precisely a case 6a must see.
 
 ### Step 6c — Handle Add-Verifier Findings
 
@@ -299,9 +300,11 @@ Render as a single markdown table per verifier agent. Use only icons from `<plug
 | Valid test protection | 🟩 | 0 | No valid tests were modified or removed |
 | Test results | 🟩 | 0 | All tests pass (🟨 env_failures noted separately) |
 | Anti-gaming | 🟩 | 0 | No failed test was deleted to make the suite pass |
-| Claimed actions | 🟩 | 0 | Every reported update / deletion is visible in the diff; no planned action was dropped silently |
-| Test count | 🟩 | 0 | Expected count matches actual |
+| Claimed actions | 🟩 | 0 | `<evidenced>/<reported>` reported updates and `<confirmed>/<reported>` deletions verified in the diff |
+| Test count | 🟩 | 0 | Expected `<N>` = actual `<N>` |
 | **Overall verdict** | **🟩** | **0** | — |
+
+Fill the Details cells from the verifier's own counters — never from this template's wording, which would assert a verification that may not have run. **Add a 🟨 row whenever `rows_note_baseline_unreliable` is non-zero**, naming the methods: those rows are notes rather than violations, so without a row they disappear behind a green 0 on a check that was degraded. **If `baseline_obtained: NO`, say so and name the files** — the verifier counts an unobtainable baseline as a violation, so this cannot render green.
 
 **Add verification (`test-authoring:verify-add-integration-test-agent`)** (only if Step 5b ran)
 
@@ -315,10 +318,12 @@ Render as a single markdown table per verifier agent. Use only icons from `<plug
 
 ### Rollback on Failure
 
-If either verify agent reports **any violations**:
+If either verify agent reports **any violations**, or a `test_count_check` mismatch (which is a FAIL and carries its own named violation):
 1. Present violations prominently, naming the specific deletions / rewrites at fault.
 2. Offer rollback via git — for each affected tracked file, `git restore <file>` returns it to the committed state. (Files flagged untracked/dirty in Step 4.5 were proceeded on with explicit consent; advise the user to inspect those manually.)
 3. Do not auto-restore without the user's go-ahead — they may prefer to keep some changes and fix forward.
+
+**`claimed_action_verification` violations take a different remedy.** They say the writer's account of its own work does not match the file — so for a reported-but-unmade change the file already matches `HEAD` and `git restore` is a no-op. Present the named methods and let the user decide whether to re-run the skill for them; do **not** route these to a writer via `fix_invocation`, whose contract covers build and test failures, not a false self-report.
 
 Note: do NOT rollback on env_failures alone — those are not the writer's fault.
 
