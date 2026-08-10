@@ -47,7 +47,9 @@ The `description` field is **load-bearing**: it is how Claude decides when to au
 
 ## Subagents (test-authoring)
 
-Only `test-authoring` ships subagents, in a flat `agents/` dir with bare-name files (e.g. `add-unit-test-agent.md`). Frontmatter carries `name` (bare), `description`, and `model`. At runtime Claude Code applies the plugin namespace, so they are spawned as `Agent(subagent_type="test-authoring:<agent-name>")`.
+Only `test-authoring` ships subagents, in a flat `agents/` dir with bare-name files (e.g. `add-unit-test-agent.md`). Frontmatter carries `name` (bare) and `description` — **and deliberately no `model:`**. At runtime Claude Code applies the plugin namespace, so they are spawned as `Agent(subagent_type="test-authoring:<agent-name>")`.
+
+**Do not add `model:` to an agent's frontmatter.** It overrides the model the user chose for their session, and this is a publicly-installed plugin: picking the cost/quality trade-off is the consumer's call, not ours. The predecessor plugin (`swo/mpt-test-skills`) pinned `model: sonnet` on all 12 of its agents — that was an internal plugin, and it is not the precedent to follow here. Its absence is a decision, not an oversight; if cost guidance is wanted, put a measured figure in the README and let the consumer choose.
 
 The architecture is **orchestrator → writer → verifier**:
 - A skill body is the *orchestrator* (top-level caller). It resolves scope, delegates to writer agents, spawns read-only verifier agents, and runs the fix→verify loop.
@@ -96,6 +98,25 @@ Each `evals/evals.json` pairs prompts with an `expected_output` and a list of `a
 3. **The prompts do not match this repo.** They name a C#/.NET billing domain (`BillingService.CreateInvoice`, `POST /invoices`, `InvoiceConsumer`). Run here, the model greps, finds nothing, and correctly declines — so every positive is a false miss. Running them needs a fixture repo in that domain, or prompts rewritten to this repo's own subject matter.
 
 A fourth, milder caveat: the runner counts the **first** `tool_use`, so any exploratory `Glob`/`Grep` before the skill is selected reads as not-triggered. A skill whose own first step is "locate the artifact" (e.g. `review-plan-risk`) will look like a miss even when it behaves correctly.
+
+## Measuring anything (tools we build to check our own work)
+
+**A measurement tool gets checked harder than the thing it measures.** Its output carries the authority of "this was measured", so a wrong number does not just fail — it launders a false conclusion into a decision. Several instruments built here were wrong on their first version and three of those shipped: the dashboard's token count reads one of four `usage` fields and double-counts the rest; the skill-eval runner reported a clean 19/19 + 21/21 split that was `select.select` failing on Windows; `resolve-issue/SKILL.md`'s cost anchor is ~4.3× too high. (That is not a base rate — an instrument that was right first time leaves no debugging trace, so it cannot enter the denominator. It says only that the failure is common enough to need a process rather than care.)
+
+Three rules, in order:
+
+1. **Every check needs a known-answer case that makes it fail.** A check that has only ever been run against good input has not been tested.
+2. **Mutation-test the check set**: delete any one check and the known-answer set must go red. A check that can be deleted without turning the suite red does not exist. This is not hypothetical — an audit tool here passed 4/4 with two of its five checks stubbed out. (A companion example once cited here — "a self-check case had frozen a bug in place" — was withdrawn: on inspection the case was pinning *correct* semantics, and "fixing" it would have weakened the only check that catches a leaked read.)
+3. **No result is quotable until 1 and 2 hold.** State the limit instead ("the tool has not been validated"), the same voiced-limit discipline the review skills use.
+
+**Reading Claude Code transcripts — two traps that have already bitten.** Each is verified in this repo, do not re-derive them:
+
+- **`usage` is repeated, tool calls are not.** One API response is written as several `assistant` records — one per content block — and *every* record repeats the same `message.usage`. Summing usage per record inflates it (measured on one session: output 2.71×, `cache_read` 2.34×, `input_tokens` 3.55×). Deduplicate on `message.id`. Tool calls are the sound basis for comparison and token sums are not — `tool_use` blocks are written once each, so counts do not inherit the inflation. **But "ids are unique" is not an invariant**: across the whole corpus 73 ids appear more than once, all but one of them across different files. **Pair a `tool_use` to its `tool_result` on `(source file, id)`, never on `id` alone**, and do not restate either figure as a fixed number — the corpus grows.
+- **A whole session expires together, and a resume reprieves all of it.** Cleanup keys on the **top-level session file's `mtime`**, default **30 days** (`~/.claude/.last-cleanup` records the last run), and it removes the session **together with its `subagents/` directory** — subagent files are not separately retained. Touching a session resets its mtime and spares the entire bundle, so **file age is not evidence of the retention rule**. Evidence (2026-08-07): subagent mtimes cluster at 0–30 days, then a completely empty band from 31 to 43 days, then 14 `agent-*.jsonl` at 44–45 days whose two parent sessions were resumed 3.2 days ago; 0 orphans across 32 subagent directories, in a corpus 129+ days old. **Read that evidence with its limit:** no top-level session older than 30 days survives anywhere, so "zero orphans" is consistent both with "the directory is deleted with its parent" and with "those sessions simply had no subagents". The empty 31–43 band is the load-bearing part; the deletion mechanism itself is inferred, not observed. Plan any transcript-based audit against **30 days from the session's last activity**.
+
+  This one question has now been answered wrongly three times, each way: first a cliff "found" by scanning `find -mtime +28` (a filtered subset cannot establish where a distribution ends — it manufactures the edge it reports); then an over-correction declaring the question unknowable when ten minutes of measurement settles it; then a backwards model built by reading subagent mtimes as exemption instead of as reprieve. **`mtime` is last-append, not creation — it bounds retention but says nothing about content age**, and a resumed session carries months-old records under a recent mtime.
+
+Beyond that: `input_tokens` counts only the cache-miss delta once prompt caching is on, so it is not "the input size"; and a per-step window contains whatever the human did during it (one measured step window spent ~47 minutes on an unrelated ticket), so per-step figures are upper bounds on pipeline work, never measurements of it.
 
 ## resolve-issue-dashboard
 
