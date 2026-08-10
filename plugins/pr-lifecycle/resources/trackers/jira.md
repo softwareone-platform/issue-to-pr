@@ -17,7 +17,10 @@ are **orthogonal** — Jira can back a PR on either platform.
   Never reuse one casing for both.
 - Two or more *different* ticket keys → ask which, rather than silently taking
   the first.
-- No key found → use `ad-hoc <summary>` in the title and omit the Jira link line.
+- No key found → omit the Jira link line, and title it however this repo titles
+  ticket-less PRs (Step 3's learned convention). `ad-hoc <summary>` is the
+  fallback only when that history yielded nothing; a plain `<summary>` is the
+  safer default, since `ad-hoc` is one team's marker rather than a general form.
 
 ## Ticket link
 

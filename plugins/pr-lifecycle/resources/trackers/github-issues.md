@@ -22,7 +22,10 @@ are **orthogonal**, though GitHub Issues is most natural on a GitHub remote
   date (`hotfix-2024`, `sprint-42`, `backup-20240703`). If the branch has no clearly
   issue-shaped ref, or more than one candidate, **ask rather than guess** — a wrong
   `#<n>` auto-links to an unrelated issue or PR (GitHub shares one number series).
-- No issue number found → use `ad-hoc <summary>` in the title and omit the link.
+- No issue number found → omit the link, and title it however this repo titles
+  ticket-less PRs (Step 3's learned convention). `ad-hoc <summary>` is the
+  fallback only when that history yielded nothing; a plain `<summary>` is the
+  safer default, since `ad-hoc` is one team's marker rather than a general form.
 
 ## Ticket link
 

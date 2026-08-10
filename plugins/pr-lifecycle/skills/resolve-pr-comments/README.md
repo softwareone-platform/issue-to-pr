@@ -35,7 +35,7 @@ flowchart TD
 - Respects the reviewer — triages and drafts, never auto-dismisses a comment; a likely false positive gets a drafted explanation, not a unilateral dismissal.
 - Bots (SonarCloud) — not replied to and not hand-resolved; the pushed fix triggers a CI re-run that closes the tool's own stale comments.
 - Thread status — never closes a human reviewer's thread without explicit approval; bot threads are left to CI.
-- Fix commits — follow the repo's own convention: prefixed with the source branch's ticket id if one is clearly present (a Jira key, or an issue number on a GitHub remote), else a plain summary; ≤50 chars, English, never `Co-Authored-By`; only the changes made for the comments are committed.
+- Fix commits — follow the repo's own convention, **read off its own history** (`git log --format=%s` for the subject shape and length, `git log --format=%b` for whether it uses a `Co-Authored-By` trailer) rather than assumed. A ticket prefix is used only if the history uses one, in the form the history uses. Where there is no history to learn from, the fallback is a plain summary, ≤50 chars, English, no trailer. Only the changes made for the comments are committed.
 - Tests — a fix needing tests is handed off to `test-authoring`, not written here.
 
 ## Design notes

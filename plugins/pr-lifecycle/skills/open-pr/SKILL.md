@@ -60,14 +60,17 @@ Run these before drafting anything, because each is a common first-run blocker:
 
 Identify the caller from `git config user.email` (preferred) and `user.name`, then read their recent merged PRs in this repo: `git log <target> --author="<email or name>"` (try both forms; treat it as "no history" only when both return nothing). From the last several, infer **title casing** and **description layout** (sectioned vs a flat bullet list) by majority — newest by commit date breaks a tie, a single prior PR is used directly. Announce the outcome (`learned from K of your past PRs` or `no matching history -> using default`), so a silent wrong guess is impossible.
 
-Learning adjusts **presentation only** (casing, section wording, sectioned-vs-flat). It must never drop or reorder the **mandatory content** below — the ticket link, summary, and bullets; the diagram in item 4 is optional, and the provenance footer in item 5 is off by default, but **when the provenance footer is opted in** learning must keep it last and never drop it. Do not bias the learning to this repository if it is single-author — the convention that matters is the caller's, in whatever repo the skill runs in.
+Learning covers **how this repo and this caller write things**, not just typography: title casing, description layout (sectioned vs a flat bullet list), **and the title's ticket-prefix shape** — bracketed (`[acme-123] …`), bare (`acme-123 …`), a Conventional Commits type (`fix(scope): …`), or no prefix at all. Read the shape off the same history; if the observed PRs carry no ticket prefix, **do not add one**. The defaults below are what to use when there is no history to learn from, never a format to impose on a repo that visibly does something else.
+
+Learning must never drop or reorder the **mandatory content** below — the ticket link, summary, and bullets; the diagram in item 4 is optional, and the provenance footer in item 5 is off by default, but **when the provenance footer is opted in** learning must keep it last and never drop it. Do not bias the learning to this repository if it is single-author — the convention that matters is the caller's, in whatever repo the skill runs in.
 
 ### Default format (the fallback; the caller's learned convention overrides presentation)
 
 **Title:** derive the ticket id and its casing from the **tracker adapter**:
 - **Jira tracker:** `[acme-xxxxx] <concise one-line summary>` — the bracketed, lowercased key (the adapter also yields the uppercase form for the URL).
 - **GitHub Issues tracker:** `#<n> <concise one-line summary>` — the `#<n>` reference in place of the bracket form.
-- No ticket found means use `ad-hoc <summary>` and omit the ticket line. Two or more *different* ticket ids means ask which, rather than silently taking the first.
+- No ticket found: omit the ticket line, and title it the way this repo titles ticket-less PRs. `ad-hoc <summary>` is the fallback **only when the history in Step 3 gave you nothing to copy** — it is one team's marker, not a convention to introduce into a repo that has never used it. A plain `<summary>` is the safer default.
+- Two or more *different* ticket ids means ask which, rather than silently taking the first.
 
 **Description (standard PR):**
 1. **Ticket link** — built by the **tracker adapter**: for Jira, `https://<jira_base_url>/browse/<KEY>` (uppercase key); for GitHub Issues, `#<n>` (GitHub auto-links a same-repo issue). This is the **first line** so the platform auto-links it; omit the whole line only when there is no ticket.
@@ -81,7 +84,7 @@ Learning adjusts **presentation only** (casing, section wording, sectioned-vs-fl
 - Description is the ticket link, then `cherry pick from <PR-link>` where the **backend adapter** supplies the PR-link syntax (Azure DevOps `!<pr_number>`, GitHub `#<pr_number>` — both render as a link to that PR), then — **only when provenance is opted in (Step 3, item 5)** — the AI-provenance footer (`---` + `🤖 _Drafted with Claude Code._`). No summary block, bullets, or diagram — the real review happened on the original PR.
 - Ask the user for (or accept as input) the **source PR number** it was cherry-picked from, and reuse that PR's one-line summary for `<summary>`. A backport learns only the title casing, not the description layout.
 
-**On every path (including the backport):** the title and description are in **English**. Do **not** add a git `Co-Authored-By` trailer — that is forbidden team-wide and is a commit concern, not a PR-description one. The AI-provenance footer and the `ai-assisted` label are a different thing and are **off by default** — added only on the explicit opt-in described in Step 3 (footer) and applied in Step 4 (label) — and are never the forbidden trailer.
+**On every path (including the backport):** the title and description are in **English**. Do **not** add a git `Co-Authored-By` trailer of your own — it is a commit concern, not a PR-description one, and whether this repo wants one is the repo's call, observable from its own history (`git log -n 50 --format=%b | grep -c '^Co-Authored-By'`) rather than something this skill decides. Default to not adding it; if the repo's commits routinely carry it, follow that instead of overriding it. The AI-provenance footer and the `ai-assisted` label are a different thing and are **off by default** — added only on the explicit opt-in described in Step 3 (footer) and applied in Step 4 (label) — and are never the forbidden trailer.
 
 ## Step 4 — Present, confirm, create
 
