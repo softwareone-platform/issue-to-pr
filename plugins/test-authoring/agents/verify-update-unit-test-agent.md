@@ -163,9 +163,9 @@ Judge three sets. Every method in `changes_applied` (input 3) or planned in the 
 2. **Reported but not planned** — in `changes_applied`, but the record rates it `valid` / `action: none`, plans it as `action: add` (E3 bars the update writer from those), or does not list it at all. **VIOLATION against the report, never against the file.** E3 forbade touching it, so the finding is that the writer's report is untrue and the remedy is *not* to make the change. Do not defer this to Step 2: Step 2 only checks that `valid` methods are **unchanged**, which a false report of updating one leaves green — so nothing else catches it.
 3. **Planned but not reported** — the record plans `update` / `delete` and the method is absent from `changes_applied`, whether or not the diff shows a change. (A diff-visible change here means the work happened but went unreported: a note, per the verdict table, not a violation.) Otherwise **VIOLATION**, with four exemptions, each of which you must be able to point at:
    - the file is listed in `skipped_files` (input 10) — the user declined it at Step 4.5;
-   - the writer's `issues` records an E1 stop for that file (external modification found before it wrote);
+   - the writer's `issues` records an E1 stop for that file — **and that claim survives its own test**: an E1 stop asserts the file already differed from `HEAD` before Phase 2 wrote anything, so if the file is now *identical* to `HEAD` no external modification ever happened and the claim is false. A false E1 stop is a VIOLATION, not an exemption. This is the one exemption the party under review can write for itself, so it is the one that must be checked rather than accepted;
    - this is a re-verification of a `fix_invocation` round, and the entry was evidenced in the carried-forward first-round output;
-   - the entry names a file outside this verifier's scope.
+   - the entry names a file outside this verifier's scope — grounded in the test project path you were given (input 6), never in your own reading of what looks relevant. This is the other exemption you could grant yourself, so cite the path that puts the file outside scope.
 
    Name the exemption or raise the violation. An unexemptable entry here is a planned action dropped in silence — the failure this whole check exists to catch, and the one shape no other check sees.
 
@@ -254,6 +254,7 @@ verification_summary:
     rows_ok: <N>
     rows_violation: <N>
     rows_note_baseline_unreliable: <N>
+    rows_note_exempted: <N>          # settled by a named exemption — see Step 5's precedence rule
     violations: [...] (or "none")
 
   test_count_check:
@@ -275,7 +276,7 @@ issues:
 
 - **PASS**: every check has zero violations. For Step 5 that means **every row's verdict is `OK` or `note`** — read the verdict table, row by row; there is no count to reconcile and no arithmetic to evaluate.
 - **FAIL**: any check has at least one violation, including a `test_count_check` mismatch and including a Step 5 row that could not be performed.
-- **State `baseline_obtained` and `rows_note_baseline_unreliable` even when nothing degraded.** A check that ran and a check that could not run must never emit the same summary.
+- **State `baseline_obtained` and every `rows_*` counter even when it is zero.** A check that ran and a check that could not run must never emit the same summary. `rows_total` must equal `rows_ok + rows_violation + rows_note_baseline_unreliable + rows_note_exempted`; if it does not, a row has no disposition and you have not finished.
 
 ## Routing
 
