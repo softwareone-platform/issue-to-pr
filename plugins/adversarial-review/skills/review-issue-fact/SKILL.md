@@ -59,23 +59,26 @@ Enumerate before verifying, as its own pass — judging while enumerating lets t
 
 **Rate each claim's centrality** — `load-bearing` (a claim a fix would depend on: the root cause, the existence of the failing path) or `incidental`. Centrality decides how the verdict rolls up: an incidental claim being wrong does not sink the issue, a load-bearing one does.
 
-Retain the per-claim verdicts and their cited locations internally — the Step 3 verifier's containment check needs them. Few claims is a valid outcome; do not pad.
+**Centrality is about what a fix would depend on, never about whether you could check it here.** A claim can be central and unverifiable in the same breath — the root cause sits in a sibling repo that is not on disk, or the behaviour is runtime-only. Rate those `load-bearing` anyway and let the *verdict* carry `needs-info`: downgrading them to `incidental` because the oracle was out of reach turns "our evidence was unavailable" into "this issue is thin", and sends the human to fix the wrong thing.
 
-**(c) Count the `load-bearing` claims before leaving this step, and state the number** — `load-bearing claims: <N>`. **Zero is a finding about the issue, not a quiet pass:** it means nothing in the issue was checkable against the code, so there is no diagnosis to confirm and Step 4's rollup has nothing to roll up. Record it here rather than only at Step 4 — when the issue yielded no claims at all, Step 3 reaches no verdict and so spawns no verifier, and nothing between here and the rollup would notice. Carry the count into Step 4, which converges it under its own precondition.
+Retain the per-claim verdicts and their cited locations internally — the Step 3 verifier's containment check needs them. Few claims is a valid outcome; do not pad. **Zero claims rated `load-bearing` is also a valid outcome, and Step 4 treats it as a finding rather than a pass** — no padding is required to avoid it.
 
 ## Step 3 — Verify the verdict (independent, adversarial, bidirectional)
 
-A fact-checker that grades its own verdict inherits the bias that produced it. So whenever any verdict was reached, spawn a single fresh agent to challenge the verdict batch.
+A fact-checker that grades its own verdict inherits the bias that produced it. So whenever any verdict was reached, spawn a single fresh agent to challenge the batch — both the verdicts and the centrality ratings behind them. (No verdict reached means the issue yielded no claims at all: there is nothing to challenge, and Step 4's empty case is what handles that run.)
 
 Spawn it with the `Agent` tool, **read-only**, with an **adversarial prompt** — it did not reach these verdicts, and its job is to falsify them, not bless them. Its skepticism is **bidirectional**, because the two ways to be wrong have opposite costs:
 
 - For each **`confirmed`** claim — try to refute it. A false confirm sends the whole expensive pipeline down a misdiagnosed path.
 - For each **`refuted`** claim — try to salvage it. A false refute kills a valid issue that deserved a fix.
 - For each **`needs-info`** claim — check whether it is genuinely unassessable, or whether the oracle was in fact reachable and the verdict was just lazy.
+- **For the Centrality column, not only the verdicts** — because centrality decides whether the rollup applies at all, and a wrong rating there is the cheapest way for this skill to reach the wrong recommendation. Challenge both directions: an `incidental` rating on a claim a fix would plainly depend on, and a `load-bearing` rating on one nothing would. Watch for the specific error of rating a claim `incidental` because its evidence was out of reach — `static-only` or a cross-repo seam bears on the *verdict*, never on centrality.
+
+A challenged **centrality** rating is routed like an objective contradiction, not like a judgement: the main flow corrects that one rating and it is re-checked by the same single fresh spawn that re-checks a corrected verdict — inside that existing budget, not a second one. If the re-check still disagrees, keep the rating the verifier argued for, because a claim wrongly marked `incidental` disappears from the rollup entirely while one wrongly marked `load-bearing` only costs an extra look. **A centrality challenge never sets `disputed`** — that value says a *verdict* is unsafe to act on, and using it here would make a claim the verifier just rescued unable to reach PROCEED. Record the correction in the Step 4 output instead.
 
 **Anti-circularity:** the verifier must re-derive evidence independently, walking from the claim and the codebase — not merely re-reading the `file:line` the verdict cited, which would be using the verdict to prove itself. An inline prompt to a fresh general agent is enough — no dedicated agent file. If a fresh agent cannot be spawned (this skill is itself running inside a subagent, which cannot spawn subagents), do not silently skip and do not self-verify: record the verdict as `not-verified` (`verdict not independently verified`) in the table and stop — a voiced limit.
 
-Give it the issue (the claims under test), the codebase (the oracle), the enumerated claims with their cited locations, and the per-claim verdicts.
+Give it the issue (the claims under test), the codebase (the oracle), the enumerated claims with their cited locations, the per-claim verdicts, and **each claim's centrality rating with the count of `load-bearing` ones** — it cannot challenge a rating it was never shown, and that count is what decides whether the rollup applies at all.
 
 It reports two kinds of finding, routed differently:
 
@@ -86,7 +89,15 @@ A verifier pass means "survived an adversarial read", not "proven true". The res
 
 ## Step 4 — Report the verdict table and recommendation
 
-The deliverable is a single table, one row per claim — every column a closed set so each row fills deterministically:
+The deliverable is a single table, one row per claim — every column a closed set so each row fills deterministically — preceded by one line that survives into the written artifact:
+
+```
+load-bearing claims: <N>
+```
+
+Always this line, always the count, on every run — **counted from the Centrality column of the table below, never carried in from Step 2**, because a number lost in transit must not read as "not zero". It is what separates the two kinds of RESOLVE for anyone reading the artifact later — an empty load-bearing set versus a load-bearing claim sitting at `needs-info` — and it is what makes "was the set genuinely empty?" answerable at all after the fact. If Step 3 corrected a centrality rating, add one line per correction underneath (`re-rated <ClaimID>: incidental → load-bearing, <reason>`), so a recommendation that changed on a rating change is visible rather than inferred.
+
+**A table with zero rows is a valid deliverable**: emit the header row and the count line, never an omitted table, so "the issue yielded no claims" cannot be mistaken for "the skill stopped early".
 
 | Claim ID | Claim | Centrality | Verdict | Evidence | Verifier |
 
@@ -95,17 +106,17 @@ The deliverable is a single table, one row per claim — every column a closed s
 - **Evidence** — a `file:line`, `static-only` (runtime behaviour not verifiable by reading), or `seam <repo>` (cross-repo, not on disk).
 - **Verifier** — `survived` (could not be overturned), `corrected` (the verdict was mechanically wrong and the Verdict column shows the corrected value), `disputed` (verifier raised a hand; lives only here, never in Verdict), or `not-verified` (no fresh agent could be spawned).
 
-**First, the empty case — it converges here and never reaches the rules below.** If Step 2(c) counted **zero** `load-bearing` claims, the overall verdict is **`needs-info` → recommend RESOLVE**. The rollup rules below do not apply to it: each quantifies over the load-bearing claims and is vacuously true on an empty set, so "all load-bearing claims confirmed" would otherwise return PROCEED for an issue with nothing checkable in it — the pipeline's most expensive wrong turn, taken on its thinnest possible input. Name which of the two cases holds, because what is missing differs:
+**Count the `load-bearing` rows of the table above, here, from the Centrality column in front of you.** Never carry this number in from Step 2, and never read a missing number as "not zero" — the table is the only source.
 
-- **No claims in the table at all** — ask for the concrete failure path, the repro steps, or the suspected root cause: something a reader could test against the code.
-- **Claims exist but every one was rated `incidental`** — list them and say why none is load-bearing. **If any one of them actually is load-bearing, that is a mis-rating in Step 2, not a thin issue** — correct the rating and roll up again rather than reporting RESOLVE.
+Then roll up. **Read `disputed` and `not-verified` on a load-bearing claim as `needs-info` throughout**: neither a verdict the verifier questioned nor one no independent agent ever read is safe to act on. The rules are ordered; take the first that matches:
 
-Otherwise — at least one load-bearing claim exists — state the **overall verdict and recommendation**, rolled up from the load-bearing claims (read the final Verdict, and treat any load-bearing claim whose Verifier is `disputed` as `needs-info`, because a disputed verdict is not safe to act on):
+- **Zero load-bearing claims** → overall **`needs-info` → recommend RESOLVE**. This rule exists because the three below all quantify over the load-bearing claims and are therefore *vacuously true* on an empty set — without it, "all load-bearing claims confirmed" returns PROCEED for an issue with no claim a fix could depend on. Say in the verdict what is missing, and distinguish the two things it can mean: the issue offered nothing testable (ask for the failure path, the repro steps, or a suspected root cause), or its central claims were all `static-only` / `seam <repo>` — in which case **say plainly that the issue may be sound and only the evidence is out of reach here**, and ask which repo to check out or which runtime check to run. Never report the second as a thin ticket.
+- Any load-bearing claim **`refuted`** → overall **`refuted` → recommend HALT**: do not plan a fix until the diagnosis is corrected. Name the claim and why.
+- All load-bearing claims **`confirmed`**, each with Verifier `survived` or `corrected` → overall **`confirmed` → recommend PROCEED** to planning.
+- Otherwise → overall **`needs-info` → recommend RESOLVE**: name exactly what is missing — which repo, which runtime check, which clarification, or which verdict is disputed or unverified.
 
-- Any load-bearing claim **`refuted`** (and not disputed) → overall **`refuted` → recommend HALT**: do not plan a fix until the diagnosis is corrected. Name the claim and why.
-- All load-bearing claims **`confirmed`** (and not disputed) → overall **`confirmed` → recommend PROCEED** to planning.
-- Otherwise (a load-bearing claim is `needs-info`, or any load-bearing claim is disputed) → overall **`needs-info` → recommend RESOLVE**: name exactly what is missing — which repo, which runtime check, which clarification, or which verdict is disputed.
+Everything after this rollup still applies on every path, including the zero-claim one: the degradation voicing and the `fact-check.md` write below both happen, and they matter most exactly there, because a degraded oracle is a common reason the count came out zero. Whatever this step asks the human for is **text in the verdict, never a blocking question** — this skill holds no gate and runs unattended inside the orchestrator.
 
 The recommendation is **advisory, not a hard gate.** Standalone, it tells the human where the diagnosis stands; inside the orchestrator, it is the artifact the next phase reads — the human still decides at the existing plan-approval gate. State every degradation prominently where it applies — `Jira anchor not available`, `seam with <repo> not assessed`, `static-only`, `not-verified` — so reduced assurance is always visible, never silently assumed.
 
-When the run has a ticket or resolve context (a Jira key was the source, or a `.claude/resolve/<ticket>/` directory exists), write the verdict to `.claude/resolve/<ticket>/fact-check.md` so the orchestrator can pick it up; otherwise just print it. Keep this optional — the skill stands alone and must not depend on an orchestrator that may not exist yet.
+When the run has a ticket or resolve context (a Jira key was the source, or a `.claude/resolve/<ticket>/` directory exists), write the verdict to `.claude/resolve/<ticket>/fact-check.md` so the orchestrator can pick it up; otherwise just print it. **Lower-case the ticket in that path** (`acme-123`, not `ACME-123`) — the orchestrator normalises it that way, and on a case-sensitive filesystem a capitalised directory is a file it will never find. Write the whole verdict, including the `load-bearing claims:` line above: the empty case is the one worth not losing, and a run that stopped there still owes this file. What stays conditional is only **whether there is a resolve context to write into** — never whether a run that reached a verdict bothers to write it. Standalone, with no such context, print the same verdict instead; the skill must not depend on an orchestrator that may not exist yet.
