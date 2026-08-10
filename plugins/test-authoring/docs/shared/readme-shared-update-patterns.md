@@ -243,6 +243,7 @@ Implemented by the per-type `verify-update-<type>-test-agent` pair ([unit](../..
 | **Audit-justified deletion** | Every deleted test has a matching entry in the action record with `action: delete` whose `audit_status` is `wrong` or `duplicated` (outdated-major is rewritten, never deleted) |
 | **Valid-test protection** | No test classified `valid` in the audit was deleted or had its content modified (diff against `git show HEAD`) |
 | **Anti-deletion gaming** | No previously-failing test was silently removed to make the suite pass (see decision table below) |
+| **Claimed actions happened** | Every reported `updated` method actually differs from `git show HEAD` (whitespace-only does not count) and every reported `deleted` method is actually gone; every planned `update` / `delete` appears in the execution results or in the writer's `issues` with a reason. The one positive check — the other four ask whether something was done wrongly, this one asks whether anything was done |
 | **Test count cross-check** | `actual_count == pre_count - deleted + added`; any drift is a red flag for unauthorized additions or removals |
 | **Build failure classification** | Distinguish pre-existing failures (not caused by the agent) from newly introduced failures (must be reported as violations) |
 

@@ -4,7 +4,8 @@ description: >
   Subagent that verifies unit test updates performed by test-authoring:update-unit-test-agent.
   Strictly read-only — reports violations but never modifies files. Checks deletion justification
   by audit status, valid test preservation (content integrity via git diff against HEAD), test pass
-  status, and anti-deletion gaming.
+  status, anti-deletion gaming, and that every reported update or deletion is actually present in
+  the diff (a reported action with an empty diff is a violation, not a pass).
   Called by update-unit-test skill after execution agents complete.
 ---
 
@@ -33,7 +34,7 @@ You are a verification agent for unit test updates in the project under test (re
 You will receive a prompt containing:
 1. **Pre-change state** — list of test methods that existed before changes and their pass/fail status
 2. **Action record** — the planned actions (update, delete, add, none) and the `audit_status` that justifies each (there is no user-confirmation gate)
-3. **Execution results** — what the execution agent actually did (files modified, tests updated/deleted, build status)
+3. **Execution results** — the execution agent's full Phase 2 output: `changes_applied` (per method, with `action: updated | deleted`), `tests_updated` / `tests_deleted`, `deleted_tests_record`, `build_status`, `test_results`, and `issues`. Step 5 pairs `changes_applied` and `issues` against the diff, so a report missing either field is itself a finding — say so rather than treating the absent field as empty
 4. **Pre-change baseline** — `git show HEAD:<file>` for each modified file (the committed state the orchestrator's Step 4.5 confirmed was clean)
 5. **Test type** — `unit`
 6. **Test project** — the test project path
@@ -140,7 +141,34 @@ test_run_verification:
 | No | wrong / duplicated | OK — removal justified by audit |
 | No | any other status, or no delete entry | VIOLATION — passing test removed without justification |
 
-## Step 5 — Cross-check Test Count
+## Step 5 — Verify Claimed Actions Actually Happened
+
+> **Check: every action the writer planned or reported is visible in the diff.**
+
+Steps 1-4 all ask "was something done wrongly?" — none of them asks "was anything done at all", so an execution agent that reports success and changes nothing passes every one of them. This step is the mirror of Step 2: there, an `audit_status: valid` method must be **unchanged**; here, a method the writer reports it updated must be **changed**. Same `diff <(git show HEAD:<file>) <file>`, opposite expectation.
+
+Run both directions — a report can overstate what was done, and a planned action can be dropped without ever being reported:
+
+1. **Reported → evidence.** For each `changes_applied` entry in the execution results (input 3):
+   - `action: updated` — that method's body, signature, or attributes must differ from the baseline. A whitespace-only or formatting-only difference counts as **unchanged**, exactly as in Step 2. A rename is a signature change, so a method the writer renamed reads as `changed`, not as missing.
+   - `action: deleted` — that method must be absent from the current file.
+2. **Planned → accounted for.** For each action record entry (input 2) whose `action` is `update` or `delete`, the change must either be **visible in the diff**, or be declined in the writer's `issues` with a stated reason. Neither means it was dropped silently — the writer may legitimately decline a planned change, but not without saying so. Judge this against the diff, not against the report's completeness: a partial execution report (a fix round listing only its own edits) leaves earlier work visible in the diff, and that counts as accounted for.
+
+For **consent-proceeded files** (input 8) the baseline is unfaithful in both directions, so report these findings as `baseline_unreliable` notes rather than violations, per the IMPORTANT note above.
+
+### Result
+
+```
+claimed_action_verification:
+- method: <TestMethodName>
+  claimed: updated | deleted | planned-only
+  evidence: changed | unchanged | absent | still-present | declined-in-issues
+  verdict: OK | VIOLATION | baseline_unreliable
+```
+
+**VIOLATION** if: a method reported `updated` is unchanged (or differs only in whitespace), a method reported `deleted` is still present, or a planned `update` / `delete` is visible neither in the diff nor in the writer's `issues` as a declined change.
+
+## Step 6 — Cross-check Test Count
 
 1. Count test attributes in the test file(s) after changes.
 2. Calculate expected count: `(pre-change count) - (deleted) + (added)`, where `added` comes from the Step 5b add-writer outputs (input 9) for tests inserted into these files — `0` when Step 5b did not run or wrote only to other files.
@@ -182,6 +210,15 @@ verification_summary:
     all_legitimate: yes | NO
     violations: [...] (or "none")
 
+  claimed_action_verification:
+    reported_updates: <N>
+    evidenced_in_diff: <N>
+    reported_deletions: <N>
+    confirmed_absent: <N>
+    planned_but_unaccounted: <N>
+    baseline_unreliable: <N>
+    violations: [...] (or "none")
+
   test_count_check:
     expected: <N>
     actual: <N>
@@ -194,7 +231,7 @@ verification_summary:
 
 ### Verdict Rules
 
-- **PASS**: All five checks pass and test count matches. Zero violations.
+- **PASS**: All six checks pass with zero violations, and the test count matches.
 - **FAIL**: Any check has at least one violation, or test count does not match.
 
 ## Routing

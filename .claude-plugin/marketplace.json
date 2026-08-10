@@ -8,7 +8,7 @@
     {
       "name": "adversarial-review",
       "description": "Adversarial review skills: review-issue-fact (issue), review-plan-risk (design), review-code-risk (implementation)",
-      "version": "1.5.0",
+      "version": "1.5.1",
       "source": "./plugins/adversarial-review"
     },
     {
@@ -20,7 +20,7 @@
     {
       "name": "test-authoring",
       "description": "Test authoring plugin: scan-test-gaps, add/update test workflows, optional setup-test-context profiler; rules are read from the plugin, not copied per-repo",
-      "version": "0.17.1",
+      "version": "0.17.2",
       "source": "./plugins/test-authoring"
     },
     {

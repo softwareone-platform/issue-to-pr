@@ -1,8 +1,8 @@
 # verify-update-\<type\>-test-agent pattern
 
-This doc describes the **per-type** `verify-update-<type>-test-agent` pattern — one agent per supported test type (`test-authoring:verify-update-unit-test-agent`, `test-authoring:verify-update-integration-test-agent`). The agents share the same five-step flow (below); type-specific extensions live in each per-type file — unit writers focus on deletion confirmations and build/run, integration adds `env_failure` distinction.
+This doc describes the **per-type** `verify-update-<type>-test-agent` pattern — one agent per supported test type (`test-authoring:verify-update-unit-test-agent`, `test-authoring:verify-update-integration-test-agent`). The agents share the same six-step flow (below); type-specific extensions live in each per-type file — unit writers focus on deletion confirmations and build/run, integration adds `env_failure` distinction.
 
-The `verify-update-<type>-test-agent` is a strictly **read-only** verification subagent spawned by the `update-<type>-test` orchestrator after the matching `update-<type>-test-agent` completes Phase 2 execution. Its purpose is to independently verify that deletions are justified by audit status, valid tests were preserved unmodified, all tests pass, and no anti-deletion gaming occurred. The verifier uses the `git show HEAD:<file>` committed state as its pre-change baseline. It never modifies any file -- it reports a structured pass/fail verdict to the orchestrator, which decides whether to offer rollback or proceed.
+The `verify-update-<type>-test-agent` is a strictly **read-only** verification subagent spawned by the `update-<type>-test` orchestrator after the matching `update-<type>-test-agent` completes Phase 2 execution. Its purpose is to independently verify that deletions are justified by audit status, valid tests were preserved unmodified, all tests pass, no anti-deletion gaming occurred, and every action the writer reported or the record planned is actually visible in the diff. The verifier uses the `git show HEAD:<file>` committed state as its pre-change baseline. It never modifies any file -- it reports a structured pass/fail verdict to the orchestrator, which decides whether to offer rollback or proceed.
 
 Template sources: [`test-authoring:verify-update-unit-test-agent.md`](../../agents/verify-update-unit-test-agent.md), [`test-authoring:verify-update-integration-test-agent.md`](../../agents/verify-update-integration-test-agent.md). Shared role boundary and output schema live in [`common-verifier-checks.md`](../../resources/templates/rules/common-verifier-checks.md).
 
@@ -17,7 +17,8 @@ flowchart TD
     C --> D["Step 2: Valid Tests Preserved"]
     D --> E["Step 3: All Tests Pass"]
     E --> F["Step 4: Anti-Deletion Gaming Check"]
-    F --> G["Step 5: Test Count Cross-check"]
+    F --> F2["Step 5: Claimed Actions Happened"]
+    F2 --> G["Step 6: Test Count Cross-check"]
     G --> H{"Any violations?"}
     H -- No --> I["Return PASS verdict"]
     H -- Yes --> J["Return FAIL verdict<br/>with violation list"]
@@ -25,7 +26,7 @@ flowchart TD
     J --> K
 ```
 
-The verifier is a **single-pass** agent. It runs five checks in sequence, collects all findings, and returns a structured report. It is never resumed across rounds — a fresh instance is spawned for each verification round (including [re-verification](../shared/readme-shared-orchestration.md#re-verification) after fix rounds). Writer agents now follow the same fresh-spawn pattern for fix invocations and update-flow Phase 2 — see [readme-shared-orchestration.md#fix-protocol](../shared/readme-shared-orchestration.md#fix-protocol) and [readme-shared-update-patterns.md#two-phase-lifecycle](../shared/readme-shared-update-patterns.md#two-phase-lifecycle).
+The verifier is a **single-pass** agent. It runs six checks in sequence, collects all findings, and returns a structured report. It is never resumed across rounds — a fresh instance is spawned for each verification round (including [re-verification](../shared/readme-shared-orchestration.md#re-verification) after fix rounds). Writer agents now follow the same fresh-spawn pattern for fix invocations and update-flow Phase 2 — see [readme-shared-orchestration.md#fix-protocol](../shared/readme-shared-orchestration.md#fix-protocol) and [readme-shared-update-patterns.md#two-phase-lifecycle](../shared/readme-shared-update-patterns.md#two-phase-lifecycle).
 
 ---
 
@@ -44,13 +45,13 @@ The verifier is a **single-pass** agent. It runs five checks in sequence, collec
 
 ### Output structure
 
-The verifier returns a `verification_summary` with five sections (one per check), each containing a verdict and any violations, plus an overall verdict. PASS requires all five checks to pass with zero violations. Any single violation flips the overall verdict to FAIL.
+The verifier returns a `verification_summary` with six sections (one per check), each containing a verdict and any violations, plus an overall verdict. PASS requires all six checks to pass with zero violations. Any single violation flips the overall verdict to FAIL.
 
 ---
 
 ## Verification Checks
 
-All five checks always run -- the verifier does **not** short-circuit on the first violation, so the orchestrator receives a complete picture.
+All six checks always run -- the verifier does **not** short-circuit on the first violation, so the orchestrator receives a complete picture.
 
 ### Step 1 -- Audit-Justified Deletions
 
@@ -97,7 +98,18 @@ Detect cases where a previously-failing test was silently removed to fake a pass
 
 **VIOLATION** if a failing test disappeared without an audit-justified `action: delete` entry.
 
-### Step 5 -- Test Count Cross-check
+### Step 5 -- Claimed Actions Actually Happened
+
+Steps 1-4 are all negative checks -- they ask whether something was done wrongly. None asks whether anything was done at all, so an execution agent that reports success and changes nothing passes all four. This step closes that by pairing the claim against the diff in both directions, and it is the mirror of Step 2: a `valid` method must be unchanged, a method reported as updated must be changed.
+
+1. **Reported → evidence.** Every `changes_applied` entry with `action: updated` must show a real difference in that method against the `git show HEAD:<file>` baseline (whitespace-only does not count); every `action: deleted` entry must be absent from the current file.
+2. **Planned → accounted for.** Every action record entry planned as `update` or `delete` must be visible either in the diff or in the writer's `issues` as a declined change. Declining a planned change is legitimate; declining it silently is not. This direction is judged against the diff rather than the report's completeness, so a fix round that lists only its own edits does not make earlier work read as dropped.
+
+Findings on consent-proceeded files are reported as `baseline_unreliable` notes rather than violations, because `git show HEAD` is not a faithful baseline for them in either direction.
+
+**VIOLATION** if a reported update left the method unchanged, a reported deletion left it present, or a planned action appears in neither the execution results nor the writer's `issues`.
+
+### Step 6 -- Test Count Cross-check
 
 The final test count must match expectations.
 

@@ -253,7 +253,7 @@ If multiple agents were spawned across 5a and 5b, run a final build of **each af
 Spawn **one** `test-authoring:verify-update-integration-test-agent` per affected test project (a single spawn when only one project was touched). Pass, scoped to that project:
 1. Pre-change state (including env_failures)
 2. Action record (audit_status + action per item)
-3. Execution results
+3. Execution results — pass the writer's Phase 2 output **whole**, including `changes_applied` and `issues`; the verifier's Step 5 pairs those two against the diff to catch a reported action that never happened, and a summarised hand-off strips exactly the fields it needs
 4. Pre-change baseline: `git show HEAD:<file>` for each modified file (no `.bak`)
 5. Test type: `integration`
 6. Test project path
@@ -299,6 +299,8 @@ Render as a single markdown table per verifier agent. Use only icons from `<plug
 | Valid test protection | 🟩 | 0 | No valid tests were modified or removed |
 | Test results | 🟩 | 0 | All tests pass (🟨 env_failures noted separately) |
 | Anti-gaming | 🟩 | 0 | No failed test was deleted to make the suite pass |
+| Claimed actions | 🟩 | 0 | Every reported update / deletion is visible in the diff; no planned action was dropped silently |
+| Test count | 🟩 | 0 | Expected count matches actual |
 | **Overall verdict** | **🟩** | **0** | — |
 
 **Add verification (`test-authoring:verify-add-integration-test-agent`)** (only if Step 5b ran)

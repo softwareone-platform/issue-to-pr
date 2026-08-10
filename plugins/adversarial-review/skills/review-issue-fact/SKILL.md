@@ -61,6 +61,8 @@ Enumerate before verifying, as its own pass — judging while enumerating lets t
 
 Retain the per-claim verdicts and their cited locations internally — the Step 3 verifier's containment check needs them. Few claims is a valid outcome; do not pad.
 
+**(c) Count the `load-bearing` claims before leaving this step, and state the number** — `load-bearing claims: <N>`. **Zero is a finding about the issue, not a quiet pass:** it means nothing in the issue was checkable against the code, so there is no diagnosis to confirm and Step 4's rollup has nothing to roll up. Record it here rather than only at Step 4 — when the issue yielded no claims at all, Step 3 reaches no verdict and so spawns no verifier, and nothing between here and the rollup would notice. Carry the count into Step 4, which converges it under its own precondition.
+
 ## Step 3 — Verify the verdict (independent, adversarial, bidirectional)
 
 A fact-checker that grades its own verdict inherits the bias that produced it. So whenever any verdict was reached, spawn a single fresh agent to challenge the verdict batch.
@@ -93,7 +95,12 @@ The deliverable is a single table, one row per claim — every column a closed s
 - **Evidence** — a `file:line`, `static-only` (runtime behaviour not verifiable by reading), or `seam <repo>` (cross-repo, not on disk).
 - **Verifier** — `survived` (could not be overturned), `corrected` (the verdict was mechanically wrong and the Verdict column shows the corrected value), `disputed` (verifier raised a hand; lives only here, never in Verdict), or `not-verified` (no fresh agent could be spawned).
 
-Then state the **overall verdict and recommendation**, rolled up from the load-bearing claims (read the final Verdict, and treat any load-bearing claim whose Verifier is `disputed` as `needs-info`, because a disputed verdict is not safe to act on):
+**First, the empty case — it converges here and never reaches the rules below.** If Step 2(c) counted **zero** `load-bearing` claims, the overall verdict is **`needs-info` → recommend RESOLVE**. The rollup rules below do not apply to it: each quantifies over the load-bearing claims and is vacuously true on an empty set, so "all load-bearing claims confirmed" would otherwise return PROCEED for an issue with nothing checkable in it — the pipeline's most expensive wrong turn, taken on its thinnest possible input. Name which of the two cases holds, because what is missing differs:
+
+- **No claims in the table at all** — ask for the concrete failure path, the repro steps, or the suspected root cause: something a reader could test against the code.
+- **Claims exist but every one was rated `incidental`** — list them and say why none is load-bearing. **If any one of them actually is load-bearing, that is a mis-rating in Step 2, not a thin issue** — correct the rating and roll up again rather than reporting RESOLVE.
+
+Otherwise — at least one load-bearing claim exists — state the **overall verdict and recommendation**, rolled up from the load-bearing claims (read the final Verdict, and treat any load-bearing claim whose Verifier is `disputed` as `needs-info`, because a disputed verdict is not safe to act on):
 
 - Any load-bearing claim **`refuted`** (and not disputed) → overall **`refuted` → recommend HALT**: do not plan a fix until the diagnosis is corrected. Name the claim and why.
 - All load-bearing claims **`confirmed`** (and not disputed) → overall **`confirmed` → recommend PROCEED** to planning.

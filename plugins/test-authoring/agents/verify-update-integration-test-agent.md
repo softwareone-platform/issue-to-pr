@@ -4,7 +4,9 @@ description: >
   Subagent that verifies integration test updates performed by test-authoring:update-integration-test-agent.
   Strictly read-only — reports violations but never modifies files. Checks deletion justification
   by audit status, valid test preservation (content integrity via git diff against HEAD), test pass
-  status (with env_failure distinction), and anti-deletion gaming.
+  status (with env_failure distinction), anti-deletion gaming, and that every reported update or
+  deletion is actually present in the diff (a reported action with an empty diff is a violation,
+  not a pass).
   Called by update-integration-test skill after execution agents complete.
 ---
 
@@ -33,7 +35,7 @@ You are a verification agent for integration test updates in the project under t
 You will receive a prompt containing:
 1. **Pre-change state** — list of test methods that existed before and their pass/fail (or env_failure) status
 2. **Action record** — the planned actions (update, delete, add, none) and the `audit_status` that justifies each (there is no user-confirmation gate)
-3. **Execution results** — what the execution agent actually did
+3. **Execution results** — the execution agent's full Phase 2 output: `changes_applied` (per method, with `action: updated | deleted`), `tests_updated` / `tests_deleted`, `deleted_tests_record`, `build_status`, `test_results`, and `issues`. Step 5 pairs `changes_applied` and `issues` against the diff, so a report missing either field is itself a finding — say so rather than treating the absent field as empty
 4. **Pre-change baseline** — `git show HEAD:<file>` for each modified file (the committed state the orchestrator's Step 4.5 confirmed was clean)
 5. **Test type** — `integration`
 6. **Test project** — the integration test project path
@@ -115,7 +117,27 @@ Same procedure as `test-authoring:verify-update-unit-test-agent` Step 4 — for 
 | No | wrong / duplicated | OK — removal justified by audit |
 | No | any other status, or no delete entry | VIOLATION — passing test removed without justification |
 
-## Step 5 — Cross-check Test Count
+## Step 5 — Verify Claimed Actions Actually Happened
+
+> **Check: every action the writer planned or reported is visible in the diff.**
+
+Same procedure as `test-authoring:verify-update-unit-test-agent` Step 5, and for the same reason — Steps 1-4 all ask "was something done wrongly?", none of them asks "was anything done at all", so an execution agent that reports success and changes nothing passes every one of them. Run both directions against the `git show HEAD:<file>` baseline: every `changes_applied` entry reporting `action: updated` must show a real difference in that method (whitespace-only does not count, exactly as in Step 2; a rename is a signature change and counts as changed) and every `action: deleted` entry must be absent from the current file; and every action record entry planned as `update` or `delete` must be visible either in the diff or in the writer's `issues` as a declined change — judge it against the diff rather than the report's completeness, so a fix round listing only its own edits does not make earlier work read as dropped. Report findings on **consent-proceeded files** (input 8) as `baseline_unreliable` notes rather than violations.
+
+Integration adds one nuance: **an `env_failure` result does not excuse a missing diff.** This check is about the edit, not the run — a method reported as updated whose content is identical to the baseline is a violation whether or not its test could execute.
+
+### Result
+
+```
+claimed_action_verification:
+- method: <TestMethodName>
+  claimed: updated | deleted | planned-only
+  evidence: changed | unchanged | absent | still-present | declined-in-issues
+  verdict: OK | VIOLATION | baseline_unreliable
+```
+
+**VIOLATION** if a method reported `updated` is unchanged (or differs only in whitespace), a method reported `deleted` is still present, or a planned `update` / `delete` is visible neither in the diff nor in the writer's `issues` as a declined change.
+
+## Step 6 — Cross-check Test Count
 
 1. Count test attributes in the test file(s) after changes.
 2. Calculate expected: `(pre-change count) - (deleted) + (added)`, where `added` comes from the Step 5b add-writer outputs (input 9) for tests inserted into these files — `0` when Step 5b did not run or wrote only to other files.
@@ -158,6 +180,15 @@ verification_summary:
     all_legitimate: yes | NO
     violations: [...] (or "none")
 
+  claimed_action_verification:
+    reported_updates: <N>
+    evidenced_in_diff: <N>
+    reported_deletions: <N>
+    confirmed_absent: <N>
+    planned_but_unaccounted: <N>
+    baseline_unreliable: <N>
+    violations: [...] (or "none")
+
   test_count_check:
     expected: <N>
     actual: <N>
@@ -170,7 +201,7 @@ verification_summary:
 
 ### Verdict Rules
 
-- **PASS**: All five checks pass and test count matches.
+- **PASS**: All six checks pass with zero violations, and the test count matches.
 - **FAIL**: Any check has at least one violation, or the test count does not match.
 
 ## Routing
