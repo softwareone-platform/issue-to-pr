@@ -231,6 +231,7 @@ test_file: <path>
 
 changes_applied:
 - method: <TestMethodName>
+  file: <path — the test file this method lives in, and it MUST be one the action record names>
   action: updated | deleted
   result: passed | failed (<reason>) | env_failure (<reason>)
   notes: <brief description of what changed>

@@ -118,6 +118,7 @@ test_file: <path>
 
 changes_applied:
   - method: <TestMethodName>
+    file: <path — must be one the action record names>
     action: updated | deleted
     result: passed | failed (<reason>)
     notes: <brief description of what changed>

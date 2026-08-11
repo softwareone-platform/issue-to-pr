@@ -38,7 +38,7 @@ The verifier is a **single-pass** agent. It runs six checks in sequence, collect
 |---|---|---|
 | **Audit output** | Update agent (Phase 1) | Pre-change test list with pass/fail status for every method |
 | **Action record** | Orchestrator (Step 4) | Per-test entries with `audit_status`, `action` (each action derived from audit status). Also decides whether the verifier is spawned at all, and for which files — never the writer's report of what it executed |
-| **Execution results** | Update agent (Phase 2) | Every writer's Phase 2 output whole, one labelled set per source class: `changes_applied` (per method, `action: updated \| deleted`), the test file paths, `build_status`, `test_results`, `issues` (all self-reported). Step 5 reads `changes_applied`, so a summarised or single-writer hand-off strips what it needs |
+| **Execution results** | Update agent (Phase 2) | Every writer's Phase 2 output whole, one labelled set per source class: `changes_applied` (per method, `file:` plus `action: updated \| deleted`), the test file paths, `build_status`, `test_results`, `issues` (all self-reported). Step 5 reads `changes_applied`, so a summarised or single-writer hand-off strips what it needs |
 | **git HEAD pre-change baseline** | Orchestrator (Step 4.5) | `git show HEAD:<file>` committed state for every file the action record names -- not only the ones reported as modified, or a writer that did nothing leaves nothing to diff |
 | **Test type** | Orchestrator | `unit` or `integration` -- determines build/test commands |
 | **Test project** | Orchestrator | Path to the test project under change |
@@ -108,16 +108,20 @@ Detect cases where a previously-failing test was silently removed to fake a pass
 
 Steps 1-4 are all negative checks -- they ask whether something was done wrongly. None asks whether anything was done at all. This step asks that question, but only where the evidence cannot be supplied by the party under review.
 
-**The agent file is authoritative for this step, not this document.** An earlier design classified every method into three sets, gave each set a verdict rule, and carried four named exemptions. It was replaced: three of the four exemptions drew their evidence from the writer's own output, and two independent readers defeated the whole arrangement with a single sentence of writer text containing no false value. What ships now is narrower.
+**The agent file is authoritative for this step, not this document.** It has been narrowed twice, and both narrowings deleted machinery rather than adding it:
 
-**Two verdicts, and nothing else is a finding:**
+- The **first** design classified every method into three sets, gave each set a verdict rule, and carried four named exemptions. Three of those exemptions drew their evidence from the writer's own output, and two independent readers defeated the arrangement with a single sentence of writer text containing no false value.
+- The **second** kept two verdicts, one of which compared the file to `HEAD`. That one was dropped: its precondition ("the file was confirmed tracked and clean at Step 4.5") is not an input the verifier receives, its grain was undefined, and an empty `git diff` cannot be told apart from a pathspec that never matched.
 
-1. **Reported `deleted`, but the method is still in the file.** Presence is read from the current file, so it needs no baseline and holds on a dirty or untracked file.
-2. **Reported `updated`, but the file is byte-identical to `HEAD` — and that file was confirmed tracked and clean at Step 4.5.** On any other file this is reported as `baseline_unusable`, never judged: `HEAD` is not that file's pre-change state, so `unchanged` proves nothing either way.
+**What ships now is one judgement — presence — read in both directions, plus one file rule:**
 
-There are **no exemptions and no precedence rule**. Everything else Step 5 observes — a method reported but not planned, a planned action nobody reported, an `updated` row on an unusable baseline — is emitted as an explicit report and is *not* a violation.
+1. **Reported `deleted`, but the method is still in the file** (including under a new name — a rename is not a deletion).
+2. **Reported `updated`, but the method is absent** — a deletion wearing an update's label, which is how it would otherwise slip past Step 1's justification check.
+3. **A `changes_applied` row naming a file the action record does not name** — E3 forbade touching it.
 
-**What that costs, stated plainly because the agent file states it too.** The step shows that something changed, never that the right thing changed. It cannot see a run whose audit planned nothing. And it cannot see a writer that claimed nothing: both verdicts key on a claim, so a writer that does no work and reports none triggers neither — measured on 2026-08-11, that run returns `overall_verdict: PASS` with `violation_count: 0`, and Step 6's count matches because it excludes unreported planned deletions from its subtraction. The orchestrator is expected to surface the `planned_not_reported` observation for the human, because no automated check covers it.
+None of these consults `HEAD`, so all three hold on dirty, untracked, and consent-proceeded files alike. Step 5 has no degraded mode. There are **no exemptions and no precedence rule**; everything else it observes — a planned action nobody reported, a reported action the record planned differently, an `action` value outside the two the contract allows — is an explicit report and is *not* a violation.
+
+**What that costs, stated plainly because the agent file states it too.** It checks existence, never content: a method reported `updated` and left byte-for-byte untouched passes. It reads only the files the record names. It cannot see a run whose audit planned nothing. And it cannot see a writer that claimed nothing — every verdict keys on a claim, so a writer that does no work and reports none triggers none of them; measured on 2026-08-11 against the shipped predecessor, that run returned `overall_verdict: PASS` with `violation_count: 0`, and Step 6's count matched because it excludes unreported planned deletions from its subtraction. The orchestrator is expected to surface the `planned_not_reported` observation for the human, because no automated check covers it.
 
 The verifier's own verdict is read row by row from the agent file's verdict table; the `rows_*` counters are reported but are never the basis of the verdict.
 

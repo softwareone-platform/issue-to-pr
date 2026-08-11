@@ -306,7 +306,7 @@ Fill the Details cells from the verifier's own counters — `rows_total`, `rows_
 
 Two 🟨 rows, because Step 5 demotes both of these to observations and a green `0` would otherwise be the only thing the human sees:
 
-- **`baseline_unusable` is non-empty** — name the files and say they could not be judged. These are *not* violations (`HEAD` is not their pre-change state), which is exactly why they need a row of their own.
+- **`action_mismatch` or `unknown_action_values` is non-empty** — name the methods, the action the record planned, and the action the writer reported. These are *not* violations (both sides of the comparison are the writer's own documents), which is exactly why they need a row of their own.
 - **`planned_not_reported` is non-empty** — name the methods and the action each was planned as. **This is the signal that planned work may simply not have happened**, and after Step 5 no automated check covers it: Step 5 forbids a violation there, and Step 6 excludes those deletions from its count. Say plainly that the run cannot distinguish a legitimate decline from a dropped action, and leave the judgement with the human.
 
 **Add verification (`test-authoring:verify-add-unit-test-agent`)** (only if Step 5b ran)
