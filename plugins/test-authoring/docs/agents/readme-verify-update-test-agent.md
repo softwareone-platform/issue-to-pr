@@ -104,7 +104,7 @@ Detect cases where a previously-failing test was silently removed to fake a pass
 
 **VIOLATION** if a failing test disappeared without an audit-justified `action: delete` entry.
 
-### Step 5 -- Claimed Actions Actually Happened
+### Step 5 -- The File Agrees With the Claim
 
 Steps 1-4 are all negative checks -- they ask whether something was done wrongly. None asks whether anything was done at all. This step asks that question, but only where the evidence cannot be supplied by the party under review.
 

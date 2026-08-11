@@ -298,7 +298,7 @@ Render as a single markdown table per verifier agent. Use only icons from `<plug
 | Valid test protection | 🟩 | 0 | No valid tests were modified or removed |
 | Test results | 🟩 | 0 | All tests pass |
 | Anti-gaming | 🟩 | 0 | No failed test was deleted to make the suite pass |
-| Claimed actions | 🟩 | 0 | `<rows_violation>` of `<rows_total>` claim rows were violations, `<rows_report>` could not be judged |
+| Claim vs file (existence only) | 🟩 | 0 | `<rows_violation>` of `<rows_total>` claim rows were violations, `<rows_report>` could not be judged |
 | Test count | 🟩 | 0 | Expected `<N>` = actual `<N>` |
 | **Overall verdict** | **🟩** | **0** | — |
 

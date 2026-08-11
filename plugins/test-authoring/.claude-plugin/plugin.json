@@ -1,5 +1,5 @@
 {
   "name": "test-authoring",
   "description": "Test authoring plugin: scan-test-gaps, add/update {unit,integration} tests, and the optional setup-test-context repo profiler. Rules ship with the plugin and are read from it, so nothing is copied into your repo.",
-  "version": "0.18.2"
+  "version": "0.18.3"
 }

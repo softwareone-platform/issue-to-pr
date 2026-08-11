@@ -128,7 +128,7 @@ Same procedure as `test-authoring:verify-update-unit-test-agent` Step 4 — for 
 | No | wrong / duplicated | OK — removal justified by audit |
 | No | any other status, or no delete entry | VIOLATION — passing test removed without justification |
 
-## Step 5 — Verify Claimed Actions Actually Happened
+## Step 5 — Verify the File Agrees With the Claim
 
 > **Check: does the file agree with the writer about whether each method it claims to have acted on still exists. Nothing else here is a verdict.**
 
