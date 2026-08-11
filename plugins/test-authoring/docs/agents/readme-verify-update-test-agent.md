@@ -106,17 +106,20 @@ Detect cases where a previously-failing test was silently removed to fake a pass
 
 ### Step 5 -- Claimed Actions Actually Happened
 
-Steps 1-4 are all negative checks -- they ask whether something was done wrongly. None asks whether anything was done at all, so an execution agent that reports success and changes nothing passes all four. This step closes that by pairing the claim against the diff in both directions, and it is the mirror of Step 2: a `valid` method must be unchanged, a method reported as updated must be changed.
+Steps 1-4 are all negative checks -- they ask whether something was done wrongly. None asks whether anything was done at all. This step asks that question, but only where the evidence cannot be supplied by the party under review.
 
-Every method that appears in `changes_applied` or is planned in the action record lands in exactly one of three sets, and each set has its own verdict rule. Evidence is attributed **per method inside its own hunk**, never at file grain — the Step 5b add writer may have written to the same file. Renames were already paired to their baseline names before Step 1, so a renamed method reads as changed here and not as an unjustified deletion in Steps 1 / 4.
+**The agent file is authoritative for this step, not this document.** An earlier design classified every method into three sets, gave each set a verdict rule, and carried four named exemptions. It was replaced: three of the four exemptions drew their evidence from the writer's own output, and two independent readers defeated the whole arrangement with a single sentence of writer text containing no false value. What ships now is narrower.
 
-1. **Reported and planned** — a reported `updated` method must differ from the baseline (whitespace-only does not count); a reported `deleted` method must be absent. Either failing is a violation, as is a reported update that turns out to be a deletion.
-2. **Reported but not planned** — a violation **against the report, not the file**: E3 forbade touching the method, so the finding is that the writer's account is untrue and the remedy is not to make the change. Step 2 cannot cover this, because Step 2 only checks that `valid` methods are *unchanged* — which a false report of updating one leaves green.
-3. **Planned but not reported** — a violation **unless a named exemption applies**: the file is in the skipped-files list (the user declined it at Step 4.5), the writer's `issues` records an E1 stop, the entry was evidenced in a carried-forward first round of a `fix_invocation`, or the entry is out of this verifier's scope. Without the exemption this is a planned action dropped in silence, the failure the whole check exists to catch.
+**Two verdicts, and nothing else is a finding:**
 
-A file whose baseline cannot be obtained is `not_performed`, and that is **a violation of the check, not a pass** — the absence of verification is never evidence of work. Rows on consent-proceeded files degrade to `baseline_unreliable` notes for the `updated` and `planned-only` cases, because `HEAD` is not their pre-change state and `unchanged` therefore proves nothing in either direction; the `deleted` rows stay live, since whether a method is present *now* is observable without a faithful baseline.
+1. **Reported `deleted`, but the method is still in the file.** Presence is read from the current file, so it needs no baseline and holds on a dirty or untracked file.
+2. **Reported `updated`, but the file is byte-identical to `HEAD` — and that file was confirmed tracked and clean at Step 4.5.** On any other file this is reported as `baseline_unusable`, never judged: `HEAD` is not that file's pre-change state, so `unchanged` proves nothing either way.
 
-The verifier's own verdict is read row by row — every row `OK` or `note` — with no counter arithmetic to evaluate.
+There are **no exemptions and no precedence rule**. Everything else Step 5 observes — a method reported but not planned, a planned action nobody reported, an `updated` row on an unusable baseline — is emitted as an explicit report and is *not* a violation.
+
+**What that costs, stated plainly because the agent file states it too.** The step shows that something changed, never that the right thing changed. It cannot see a run whose audit planned nothing. And it cannot see a writer that claimed nothing: both verdicts key on a claim, so a writer that does no work and reports none triggers neither — measured on 2026-08-11, that run returns `overall_verdict: PASS` with `violation_count: 0`, and Step 6's count matches because it excludes unreported planned deletions from its subtraction. The orchestrator is expected to surface the `planned_not_reported` observation for the human, because no automated check covers it.
+
+The verifier's own verdict is read row by row from the agent file's verdict table; the `rows_*` counters are reported but are never the basis of the verdict.
 
 ### Step 6 -- Test Count Cross-check
 

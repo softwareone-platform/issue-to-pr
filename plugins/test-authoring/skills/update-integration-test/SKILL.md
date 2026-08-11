@@ -260,14 +260,16 @@ Spawn **one** `test-authoring:verify-update-integration-test-agent` per test pro
 7. Raw Phase 1 audit outputs (retained in Step 2) — so the verifier can cross-check that the action record faithfully transcribes each audit classification
 8. Consent-proceeded files from Step 4.5 (untracked/dirty at check time) — their HEAD baseline is unreliable; the verifier treats diff-based findings on them as advisory, not violations
 9. Step 5b add-writer outputs (`files_created` / `files_modified` / `test_count`), when Step 5b ran — the add writer may insert tests into the SAME files 6a inspects, and without these the verifier's test-count cross-check reads the additions as out-of-record changes
-10. Skipped files from Step 4.5 (the ones the user declined, **not** the consent-proceeded list in 8) — Step 5's `planned-only` set treats a planned action with no visible change as a violation, and this list is the only thing that distinguishes "the user said no" from "the writer dropped it silently"
+10. Skipped files from Step 4.5 (the ones the user declined, **not** the consent-proceeded list in 8) — Step 5 no longer needs this list to avoid a false violation, because a planned action nobody reported is a *report* there rather than a finding. Pass it anyway: it is what makes that report readable, naming which unperformed actions the user themselves declined instead of leaving a bare list of methods
 11. **Plugin context** (always): `plugin_resources_path` + the `build_test_command` for this project — so the verifier reads its rule books from the plugin and runs the build/test via the detected command (it cannot resolve either itself)
 
 ### Step 6b — Verify Added Tests
 
 If Step 5b produced new tests, spawn **one** `test-authoring:verify-add-integration-test-agent`. Read-only. Pass the inputs per `<PLUGIN_TEMPLATES>/rules/common-orchestrator-flow.md` → "Verifier spawn": the Step 5b writer outputs (including `files_modified`), the original task, and the pre-writer source snapshot (plus `plugin_resources_path` + the project's `build_test_command`, per the governing note).
 
-6a and 6b can run **in parallel**. Skip 6a only when the **action record** holds no `update` / `delete` entry for that project; skip 6b if no add actions were executed. **Decide 6a from the record, never from what the writer reported it executed** — an execution agent that did nothing and reported nothing would otherwise suppress the one check (6a's Step 5) that catches exactly that, and the run would report success. A record with planned actions and an execution report showing none is precisely a case 6a must see.
+6a and 6b can run **in parallel**. Skip 6a only when the **action record** holds no `update` / `delete` entry for that project; skip 6b if no add actions were executed. **Decide 6a from the record, never from what the writer reported it executed** — a writer that did nothing and reported nothing would otherwise suppress the verifier entirely, and Steps 1-4 and 6 still run against the file even when Step 5 has no claim to judge.
+
+> **Do not read this as "6a catches the inert writer" — it does not, and this note used to say it did.** Measured on 2026-08-11 against `test-authoring` 0.17.3's unit verifier, whose Step 5 is identical to the integration one: a record planning one update and one deletion, with an execution report claiming no work, returned `overall_verdict: PASS` and `violation_count: 0`. Step 5's two verdicts both key on a *claim*, so an empty report triggers neither, and Step 6 excludes the unreported planned deletion from its subtraction so the count matches. What 6a gives you on such a run is the `planned_not_reported` observation and nothing more. **Surface it — see Step 7 — because after this point no automated check does.**
 
 ### Step 6c — Handle Add-Verifier Findings
 
@@ -300,11 +302,16 @@ Render as a single markdown table per verifier agent. Use only icons from `<plug
 | Valid test protection | 🟩 | 0 | No valid tests were modified or removed |
 | Test results | 🟩 | 0 | All tests pass (🟨 env_failures noted separately) |
 | Anti-gaming | 🟩 | 0 | No failed test was deleted to make the suite pass |
-| Claimed actions | 🟩 | 0 | `<evidenced>/<reported>` reported updates and `<confirmed>/<reported>` deletions verified in the diff |
+| Claimed actions | 🟩 | 0 | `<rows_violation>` of `<rows_total>` claim rows were violations, `<rows_report>` could not be judged |
 | Test count | 🟩 | 0 | Expected `<N>` = actual `<N>` |
 | **Overall verdict** | **🟩** | **0** | — |
 
-Fill the Details cells from the verifier's own counters — never from this template's wording, which would assert a verification that may not have run. **Add a 🟨 row whenever `rows_note_baseline_unreliable` is non-zero**, naming the methods: those rows are notes rather than violations, so without a row they disappear behind a green 0 on a check that was degraded. **If `baseline_obtained: NO`, say so and name the files** — the verifier counts an unobtainable baseline as a violation, so this cannot render green.
+Fill the Details cells from the verifier's own counters — `rows_total`, `rows_violation`, `rows_ok`, `rows_report` — never from this template's wording, which would assert a verification that may not have run. Use the field names the verifier actually emits; a render rule keyed on a name it does not emit never fires, and the row it was meant to add silently never appears.
+
+Two 🟨 rows, because Step 5 demotes both of these to observations and a green `0` would otherwise be the only thing the human sees:
+
+- **`baseline_unusable` is non-empty** — name the files and say they could not be judged. These are *not* violations (`HEAD` is not their pre-change state), which is exactly why they need a row of their own.
+- **`planned_not_reported` is non-empty** — name the methods and the action each was planned as. **This is the signal that planned work may simply not have happened**, and after Step 5 no automated check covers it: Step 5 forbids a violation there, and Step 6 excludes those deletions from its count. Say plainly that the run cannot distinguish a legitimate decline from a dropped action, and leave the judgement with the human.
 
 **Add verification (`test-authoring:verify-add-integration-test-agent`)** (only if Step 5b ran)
 

@@ -238,7 +238,7 @@ After Phase 2 completes, the orchestrator spawns a [`test-authoring:verify-updat
 - Every deletion is justified by an `action: delete` entry whose `audit_status` is `wrong` or `duplicated` (outdated-major is rewritten, never deleted).
 - No valid test was deleted or modified.
 - No previously-failing test was silently removed.
-- Every reported update or deletion actually shows up in the diff, every planned one was either performed or covered by a named exemption, and nothing outside the action record was touched.
+- A reported deletion actually removed the method, and a reported update actually changed a file that was confirmed clean. Those two are the only verdicts — a planned action nobody reported is reported, not judged, so it is the human who decides whether the work was declined or dropped.
 - Test counts are consistent (pre-count minus deletions plus additions equals actual count).
 
 The verifier is strictly read-only and diffs the `git show HEAD:<file>` baseline against the post-execute state.

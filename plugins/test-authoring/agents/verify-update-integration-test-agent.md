@@ -147,10 +147,11 @@ Emit these so nothing is lost, and **state that they are observations, not findi
 - **Reported but not planned** — methods in `changes_applied` that the record does not plan as `update` / `delete`. E3 forbade touching them, so this is worth surfacing — but both sides of the comparison are the same actor's documents, so it is a report of an inconsistency, not proof of one.
 - **`updated` rows on files with an unusable baseline**, per 5a above.
 
-### Two things this step cannot do — say them in the output, do not let the summary imply otherwise
+### Three things this step cannot do — say them in the output, do not let the summary imply otherwise
 
 - **It shows that something changed, never that the right thing changed.** Nothing ties a hunk to the audit's stated reason, so a one-line comment satisfies verdict 2. Whether the change is *correct* is Step 2's and Step 3's business, and on a semantic level nobody's.
 - **It cannot see a run whose audit planned nothing.** The orchestrator decides whether to spawn this verifier from the action record, and the record derives from the same actor's Phase 1 audit — so an audit that classifies every test `valid` suppresses this step entirely, and no check here can detect that. It is an open hole, recorded rather than papered over.
+- **It cannot see a writer that claimed nothing.** Both verdicts key on a claim — verdict 1 on a reported `deleted`, verdict 2 on a reported `updated` — so a writer that performs no work and reports none triggers neither, and every planned action lands in `planned_not_reported`, where 5b forbids a violation. Step 6 does not catch it either: its point 3 excludes exactly those deletions from the subtraction, so the count matches. **Measured on the unit verifier, whose Step 5 is identical to this one, on 2026-08-11: an action record planning one update and one deletion against an untouched, clean, `HEAD`-identical file returned `overall_verdict: PASS`, `violation_count: 0`.** This verifier was not itself in that run, so treat it as inherited evidence, not its own. Say so in `issues:` whenever `planned_not_reported` is non-empty — the human is the only remaining check on it.
 
 ### Result
 
@@ -185,7 +186,11 @@ claimed_action_verification:
 1. Count test attributes in the test file(s) after changes.
 2. Calculate expected: `(pre-change count) - (planned deletions) + (added)`, where **planned deletions are the `action: delete` entries in the action record** — not the deletions the writer reported, which would make this check tautological — and `added` comes from the Step 5b add-writer outputs (input 9) for tests inserted into these files (`0` when Step 5b did not run or wrote only to other files).
 3. **Drop from that `planned deletions` term** any planned deletion Step 5 put in its `planned_not_reported` report — nobody claimed to perform it, so expecting the removal would manufacture a mismatch on a run that may have declined it legitimately. Those deletions are **excluded from the subtraction**, never subtracted a second time; record how many as `excluded_planned_deletions`. **This weakens the count check deliberately** — it can no longer tell a declined deletion from a dropped one, the same limit Step 5b states, and the alternative was a false mismatch on honest work.
-4. Compare. A mismatch means either that tests were added or removed outside the action record, or that a planned deletion never happened without an exemption — Step 5's `planned-only` rows name which methods, so read the two together.
+4. Compare. A mismatch means tests were added or removed outside the action record,
+   or that the Step 5b add-writer count is wrong.
+   **It can no longer mean "a planned deletion never happened"** — point 3 excluded exactly that class,
+   so a dropped deletion now leaves this check green and appears only in Step 5's `planned_not_reported`.
+   Read the two together, and never report a green count here as evidence that the planned work happened.
 
 ## Output
 
@@ -233,14 +238,15 @@ verification_summary:
     reported_not_planned: [...] (or "none")
     planned_not_reported: [...] (or "none")
     baseline_unusable: [...] (or "none")
-    limits: shows that something changed, never that the right thing changed; and cannot
-            see a run whose audit planned nothing (Step 5 states both)
+    limits: shows that something changed, never that the right thing changed. cannot see a run
+            whose audit planned nothing, and cannot see a writer that claimed nothing —
+            both verdicts key on a claim (Step 5 states all three)
 
   test_count_check:
     expected: <N>
     actual: <N>
     match: yes | NO
-    excluded_planned_deletions: <N>  # planned deletions Step 5 could not attribute — see planned_not_reported
+    excluded_planned_deletions: <N>  # planned deletions nobody claimed to perform — see planned_not_reported
     violations: [...] (or "none")    # a mismatch is one violation, named — so it has somewhere to land
 
   overall_verdict: PASS | FAIL
@@ -253,7 +259,7 @@ issues:
 
 ### Verdict Rules
 
-- **PASS**: every check has zero violations. For Step 5 that means **no row carries a `VIOLATION`** — `report` rows do not block, by design (Step 5b says why) — read the verdict table, row by row; there is no count to reconcile and no arithmetic to evaluate.
+- **PASS**: every check has zero violations. For Step 5 that means **no row carries a `VIOLATION`** — `report` rows do not block, by design (Step 5b says why) — so decide it by reading the verdict table row by row, not by comparing counts. The `rows_*` counters are reported, never the basis of the verdict.
 - **FAIL**: any check has at least one violation, including a `test_count_check` mismatch.
 - **State every `rows_*` counter even when it is zero, and always emit the `limits` line.** A check that ran and a check that could not judge a file must never emit the same summary, and a narrowed check must not read as a broad one.
 
