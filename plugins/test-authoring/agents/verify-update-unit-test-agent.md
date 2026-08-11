@@ -4,8 +4,9 @@ description: >
   Subagent that verifies unit test updates performed by test-authoring:update-unit-test-agent.
   Strictly read-only — reports violations but never modifies files. Checks deletion justification
   by audit status, valid test preservation (content integrity via git diff against HEAD), test pass
-  status, anti-deletion gaming, and that every reported update or deletion is actually present in
-  the diff (a reported action with an empty diff is a violation, not a pass).
+  status, anti-deletion gaming, and — narrowly, where the evidence cannot come from the writer —
+  that a reported deletion actually removed the method and that a reported update actually
+  changed a clean file. Everything else it observes is reported, not judged.
   Called by update-unit-test skill after execution agents complete.
 ---
 
@@ -41,9 +42,9 @@ You will receive a prompt containing:
 7. **Raw Phase 1 audit outputs** — the audit records the orchestrator retained from Step 2; the baseline for the transcription cross-check in Step 1
 8. **Consent-proceeded files** — files the orchestrator's Step 4.5 found untracked/dirty and proceeded on only with explicit user consent
 9. **Step 5b add-writer outputs** (when the orchestrator's Step 5b ran) — `files_created` / `files_modified` / `test_count` from the add writers; the add writer may have inserted tests into the same files you inspect
-10. **Skipped files** — files the orchestrator's Step 4.5 found untracked/dirty and the user chose to **skip** rather than proceed on. These are NOT input 8 (that list is proceed-anyway files), and Step 5 needs them: a planned action in a skipped file was legitimately never performed, and without this list it reads as work dropped in silence
+10. **Skipped files** — files the orchestrator's Step 4.5 found untracked/dirty and the user chose to **skip** rather than proceed on. These are NOT input 8 (that list is proceed-anyway files). Step 5 no longer needs them to avoid a false violation — a planned action nobody reported is a *report* there, not a finding — but naming the declined files makes that report readable instead of a bare list of methods
 
-> **IMPORTANT**: Use `git show HEAD:<file>` as the baseline for files Step 4.5 confirmed tracked and clean. For **consent-proceeded files** (input 8), `HEAD` is NOT a faithful pre-change state — the user's own uncommitted changes are mixed in, so a method identical to `HEAD` may still have been edited by the writer, and one that differs may carry only the user's own change. Report diff-based findings on those files (Steps 1, 2 and 5) as `baseline_unreliable` notes for the user to inspect manually, not as violations. **The one judgement that survives a dirty baseline** is whether a method is present in the file *now* — that is observable without a baseline, so Step 5's `deleted` rows stay live on those files. Diff with `git diff HEAD -- <file>` (portable) or `diff <(git show HEAD:<file>) <file>` (POSIX shells only — its process substitution is a syntax error in PowerShell).
+> **IMPORTANT**: Use `git show HEAD:<file>` as the baseline for files Step 4.5 confirmed tracked and clean. For **consent-proceeded files** (input 8), `HEAD` is NOT a faithful pre-change state — the user's own uncommitted changes are mixed in, so a method identical to `HEAD` may still have been edited by the writer, and one that differs may carry only the user's own change. Report diff-based findings on those files as notes for the user to inspect manually, not as violations — Steps 1 and 2 call these `baseline_unreliable`, Step 5 calls them `baseline_unusable`; same idea, and Step 5 reports rather than judges them. **The one judgement that survives a dirty baseline** is whether a method is present in the file *now* — that is observable without a baseline, so Step 5's `deleted` verdict stays live on those files, and it is the only Step 5 verdict that does. Diff with `git diff HEAD -- <file>` (portable) or `diff <(git show HEAD:<file>) <file>` (POSIX shells only — its process substitution is a syntax error in PowerShell).
 
 > **Pair renames before Step 1, not after.** E2 permits a rename only on the `outdated-major` / `wrong` paths ("keep the test method name unless a rename is necessary for accuracy") — never on `outdated-minor`, which keeps the name unconditionally. Steps 1, 4 and 5 all key on whether a baseline method still exists, so match each baseline method to its current counterpart **once, before judging any of them**: a baseline method whose body survives under a new name was renamed, not deleted. State the pairing and reuse it in all three steps; without it the same rename reads as an unjustified deletion in Step 1 and as satisfied work in Step 5, and the report contradicts itself. A rename on an `outdated-minor` entry is itself a finding for Step 2.
 
@@ -147,69 +148,67 @@ test_run_verification:
 
 ## Step 5 — Verify Claimed Actions Actually Happened
 
-> **Check: the work the writer reported, and the work the record planned, is present in the diff.**
+> **Check: two claims the writer makes about its own work, each falsifiable straight off disk. Everything else in this step is a report, not a verdict.**
 
-The other five checks all ask whether something was done *wrongly*. Only this one asks whether it was done **at all**, so without it an execution agent that reports success and changes nothing passes every other check.
+The other five checks all ask whether something was done *wrongly*. This one asks whether it was done **at all** — but only where the evidence cannot be supplied by the party under review. That boundary is the whole design, and it was drawn after an adversarial read found four ways to defeat a wider version of this step with a single sentence of writer text. **Do not widen it back without re-running that read.**
 
-**Baseline.** Diff each in-scope file against its committed state with `git diff HEAD -- <file>` — portable. The `diff <(git show HEAD:<file>) <file>` form needs a POSIX shell and is a syntax error in PowerShell. **A file whose baseline cannot be obtained is `not_performed`, and `not_performed` is a violation of this check, not a pass**: an unobtainable diff is the absence of verification, never evidence of work.
+### 5a — The two verdicts
 
-**Grain.** Attribute every hunk to a method before using it — a non-empty *file* diff is evidence for no particular method, since the Step 5b add writer may have written into the same file (input 9).
+Both are judged per method, from the file on disk. Attribute every hunk to a method first: a non-empty *file* diff is evidence for no particular method, since the Step 5b add writer may have written into the same file (input 9). Renames were paired before Step 1 — reuse that pairing, so a renamed method is not read as absent.
 
-Judge three sets. Every method in `changes_applied` (input 3) or planned in the action record (input 2) lands in exactly one:
+1. **Reported `deleted`, but the method is still in the file → VIOLATION.** Presence is read from the current file. It needs no baseline, holds on a dirty or untracked file, and there is no input the writer can supply that changes the answer. This is the strongest judgement in the step.
+2. **Reported `updated`, but the file is byte-identical to `HEAD` — and the file was confirmed tracked and clean at Step 4.5 → VIOLATION.** Use `git diff HEAD -- <file>` (portable; the `diff <(git show HEAD:<file>) <file>` form is a syntax error in PowerShell). An empty diff on a clean file is not something a writer can dress up.
 
-1. **Reported and planned** — in `changes_applied`, and the record plans it `update` / `delete`.
-   - `updated` → that method's body, signature or attributes must **differ** from the baseline. Whitespace- or formatting-only counts as `unchanged`, exactly as in Step 2.
-   - `deleted` → that method must be **absent** from the current file.
-2. **Reported but not planned** — in `changes_applied`, but the record rates it `valid` / `action: none`, plans it as `action: add` (E3 bars the update writer from those), or does not list it at all. **VIOLATION against the report, never against the file.** E3 forbade touching it, so the finding is that the writer's report is untrue and the remedy is *not* to make the change. Do not defer this to Step 2: Step 2 only checks that `valid` methods are **unchanged**, which a false report of updating one leaves green — so nothing else catches it.
-3. **Planned but not reported** — the record plans `update` / `delete` and the method is absent from `changes_applied`, whether or not the diff shows a change. (A diff-visible change here means the work happened but went unreported: a note, per the verdict table, not a violation.) Otherwise **VIOLATION**, with four exemptions, each of which you must be able to point at:
-   - the file is listed in `skipped_files` (input 10) — the user declined it at Step 4.5;
-   - the writer's `issues` records an E1 stop for that file — **and that claim survives its own test**: an E1 stop asserts the file already differed from `HEAD` before Phase 2 wrote anything, so if the file is now *identical* to `HEAD` no external modification ever happened and the claim is false. A false E1 stop is a VIOLATION, not an exemption. This is the one exemption the party under review can write for itself, so it is the one that must be checked rather than accepted;
-   - this is a re-verification of a `fix_invocation` round, and the entry was evidenced in the carried-forward first-round output;
-   - the entry names a file outside this verifier's scope — grounded in the test project path you were given (input 6), never in your own reading of what looks relevant. This is the other exemption you could grant yourself, so cite the path that puts the file outside scope.
+   **On any file *not* confirmed tracked and clean — a consent-proceeded file (input 8), an untracked file, a file whose baseline will not resolve — do not judge this. Report it** (`baseline_unusable`) and say why. `HEAD` is not that file's pre-change state, so `unchanged` proves nothing in either direction.
 
-   Name the exemption or raise the violation. An unexemptable entry here is a planned action dropped in silence — the failure this whole check exists to catch, and the one shape no other check sees.
+**No exemptions, and no precedence rule.** Neither verdict has a carve-out, so there is nothing for a writer to assert its way out of and no ordering question. An earlier version offered four exemptions; three of them drew their evidence from the writer's own output, and the one that had a falsification test could not fire on the file class where it mattered.
 
-**Consent-proceeded files** (input 8): `HEAD` is not their pre-change state, so **`unchanged` proves nothing in either direction** — the user's own edits are mixed in, and a writer that edited the method back toward its committed form produces `unchanged` while having genuinely worked. Report set 1's `updated` rows and set 3's rows on those files as `baseline_unreliable`. Set 1's `deleted` rows stay live: whether a method is present *now* is observable without a faithful baseline.
+### 5b — The report (never a verdict)
 
-**Renames** are already paired before Step 1 (see the note above Step 1) — reuse that pairing here; a renamed method is `renamed-to`, not `absent`.
+Emit these so nothing is lost, and **state that they are observations, not findings**:
+
+- **Planned but not reported** — record entries the writer never mentioned. Name them and say whether the diff shows the change anyway. **This cannot be a violation here**: a legitimate E1 stop, a file the user declined at Step 4.5, and a fix round returning `files_modified` all land in it, and every way of telling them apart runs through the writer's own account.
+- **Reported but not planned** — methods in `changes_applied` that the record does not plan as `update` / `delete`. E3 forbade touching them, so this is worth surfacing — but both sides of the comparison are the same actor's documents, so it is a report of an inconsistency, not proof of one.
+- **`updated` rows on files with an unusable baseline**, per 5a above.
+
+### Two things this step cannot do — say them in the output, do not let the summary imply otherwise
+
+- **It shows that something changed, never that the right thing changed.** Nothing ties a hunk to the audit's stated reason, so a one-line comment satisfies verdict 2. Whether the change is *correct* is Step 2's and Step 3's business, and on a semantic level nobody's.
+- **It cannot see a run whose audit planned nothing.** The orchestrator decides whether to spawn this verifier from the action record, and the record derives from the same actor's Phase 1 audit — so an audit that classifies every test `valid` suppresses this step entirely, and no check here can detect that. It is an open hole, recorded rather than papered over.
 
 ### Result
 
 ```
 claimed_action_verification:
-  baseline_obtained: yes | NO (<files with no obtainable baseline>)
   rows:
   - method: <TestMethodName>
     file: <path>
-    set: reported+planned | reported-only | planned-only
-    claimed: updated | deleted | <none — planned-only>
-    evidence: changed | unchanged | absent | still-present | renamed-to <NewName> | baseline_unreliable | not_performed
-    exemption: <none> | skipped_files | E1 stop | fix-round carried forward | out of scope
-    verdict: OK | VIOLATION (<why>) | note (<why>)
+    claimed: updated | deleted | <none — planned but unreported>
+    evidence: changed | unchanged | absent | still-present | renamed-to <NewName> | baseline_unusable
+    verdict: VIOLATION (<why>) | OK | report (<why>)
+  violations: [...] (or "none")
+  reported_not_planned: [...] (or "none")     # 5b — observations, not findings
+  planned_not_reported: [...] (or "none")     # 5b
+  baseline_unusable: [...] (or "none")        # 5b — files that could not be judged, and why
 ```
 
-**Verdicts — every combination is listed, so nothing defaults to OK by falling through:**
+**Only these two rows are violations. Every other row is `report`:**
 
-| set | claimed | evidence | verdict |
+| claimed | evidence | file state | verdict |
 |---|---|---|---|
-| reported+planned | updated | `changed` / `renamed-to` | OK |
-| reported+planned | updated | `unchanged` | **VIOLATION** — reported an update that is not in the file |
-| reported+planned | updated | `absent` | **VIOLATION** — reported an update, delivered a deletion; Step 1 must then justify it |
-| reported+planned | deleted | `absent` | OK |
-| reported+planned | deleted | `still-present` / `changed` / `unchanged` / `renamed-to` | **VIOLATION** — the method is still there |
-| reported-only | any | any | **VIOLATION** — reported an action the record did not plan |
-| planned-only | — | `changed` | note — the work is in the file but the writer did not report it; its account is incomplete, not false |
-| planned-only | — | anything else | **VIOLATION** unless an `exemption` is named |
-| any | any | `not_performed` | **VIOLATION** unless an `exemption` is named — an unverifiable row is not a pass, but a row the user declined was never meant to be verified |
-| any | any | `baseline_unreliable` | note — consent-proceeded, per the rule above |
-
-**Precedence, so no row matches two verdicts:** a named `exemption` is read **first** and settles the row as a note; `baseline_unreliable` is read next; only then do the set-and-evidence rows apply. An untracked file the user skipped therefore has no `HEAD` object, no obtainable baseline, and a `skipped_files` exemption — and it is a note, not a violation.
+| `deleted` | `still-present` / `changed` / `unchanged` | any | **VIOLATION** — reported a deletion; the method is still there |
+| `updated` | `unchanged` | tracked and clean at Step 4.5 | **VIOLATION** — reported an update; the file is byte-identical to `HEAD` |
+| `deleted` | `absent` / `renamed-to` | any | OK |
+| `updated` | `changed` / `renamed-to` | tracked and clean | OK |
+| `updated` | `unchanged` | baseline unusable | report — cannot be judged, see 5a |
+| anything | `baseline_unusable` | — | report |
+| `<none — planned but unreported>` | any | any | report — see 5b |
 
 ## Step 6 — Cross-check Test Count
 
 1. Count test attributes in the test file(s) after changes.
 2. Calculate expected count: `(pre-change count) - (planned deletions) + (added)`, where **planned deletions are the `action: delete` entries in the action record** — not the deletions the writer reported, which would make this check tautological — and `added` comes from the Step 5b add-writer outputs (input 9) for tests inserted into these files (`0` when Step 5b did not run or wrote only to other files).
-3. **Drop from that `planned deletions` term** any deletion Step 5 exempted (a skipped file, an E1 stop, out of scope) — it was legitimately not performed, so leaving it in the term would expect a removal that correctly never happened and manufacture a mismatch on honest work. Note the direction: those deletions are **excluded from the subtraction**, never subtracted a second time. Record how many as `excluded_planned_deletions`; Step 5's per-row `exemption` field is where they come from.
+3. **Drop from that `planned deletions` term** any planned deletion Step 5 put in its `planned_not_reported` report — nobody claimed to perform it, so expecting the removal would manufacture a mismatch on a run that may have declined it legitimately. Note the direction: those deletions are **excluded from the subtraction**, never subtracted a second time. Record how many as `excluded_planned_deletions`. **This makes the count check weaker, deliberately**: it can no longer distinguish a declined deletion from a dropped one, which is the same limit Step 5b states — and the alternative was a false mismatch on honest work.
 4. Compare. A mismatch means either that tests were added or removed outside the action record, or that a planned deletion never happened without an exemption — Step 5's `planned-only` rows name which methods, so read the two together.
 
 ## Output
@@ -249,19 +248,22 @@ verification_summary:
     violations: [...] (or "none")
 
   claimed_action_verification:
-    baseline_obtained: yes | NO
     rows_total: <N>
+    rows_violation: <N>              # only the two verdicts in 5a can land here
     rows_ok: <N>
-    rows_violation: <N>
-    rows_note_baseline_unreliable: <N>
-    rows_note_exempted: <N>          # settled by a named exemption — see Step 5's precedence rule
+    rows_report: <N>                 # 5b observations + unusable-baseline rows — NOT findings
     violations: [...] (or "none")
+    reported_not_planned: [...] (or "none")
+    planned_not_reported: [...] (or "none")
+    baseline_unusable: [...] (or "none")
+    limits: shows that something changed, never that the right thing changed; and cannot
+            see a run whose audit planned nothing (Step 5 states both)
 
   test_count_check:
     expected: <N>
     actual: <N>
     match: yes | NO
-    excluded_planned_deletions: <N>  # planned deletions Step 5 exempted (skipped file, E1 stop, out of scope)
+    excluded_planned_deletions: <N>  # planned deletions Step 5 could not attribute — see its planned_not_reported report
     violations: [...] (or "none")    # a mismatch is one violation, named — so it has somewhere to land
 
   overall_verdict: PASS | FAIL
@@ -274,12 +276,12 @@ issues:
 
 ### Verdict Rules
 
-- **PASS**: every check has zero violations. For Step 5 that means **every row's verdict is `OK` or `note`** — read the verdict table, row by row; there is no count to reconcile and no arithmetic to evaluate.
-- **FAIL**: any check has at least one violation, including a `test_count_check` mismatch and including a Step 5 row that could not be performed.
-- **State `baseline_obtained` and every `rows_*` counter even when it is zero.** A check that ran and a check that could not run must never emit the same summary. `rows_total` must equal `rows_ok + rows_violation + rows_note_baseline_unreliable + rows_note_exempted`; if it does not, a row has no disposition and you have not finished.
+- **PASS**: every check has zero violations. For Step 5 that means **no row carries a `VIOLATION`** — `report` rows do not block, by design (Step 5b says why) — read the verdict table, row by row; there is no count to reconcile and no arithmetic to evaluate.
+- **FAIL**: any check has at least one violation, including a `test_count_check` mismatch.
+- **State every `rows_*` counter even when it is zero, and always emit the `limits` line.** A check that ran and a check that could not judge a file must never emit the same summary, and a narrowed check must not read as a broad one.
 
 ## Routing
 
-Update-verifier violations are typically **non-deterministic** (audit-justification mismatches, anti-deletion gaming — human judgement required). Present directly to the user with a rollback offer; do NOT route through the circuit-breaker loop. `claimed_action_verification` violations belong in that group too, and they need one thing said with them: **`git restore` is not a remedy for them.** A method the writer reported changing and did not leaves the file already identical to `HEAD`, so there is nothing to undo. Report them as what they are — the writer's account of its own work does not match the file — and leave the decision with the user. Do not route them to a writer: the `fix_invocation` contract in `<plugin_resources_path>/rules/fix-protocol.md` covers build and test failures, not a false self-report, and inventing a retry path here would bypass the circuit breaker this section just told you to avoid.
+Update-verifier violations are typically **non-deterministic** (audit-justification mismatches, anti-deletion gaming — human judgement required). Present directly to the user with a rollback offer; do NOT route through the circuit-breaker loop. `claimed_action_verification` violations belong in that group too, and the remedy differs by which of the two they are. **A reported-but-unmade update** leaves the file identical to `HEAD`, so `git restore` is a no-op — say so rather than offering it. **A reported-but-unperformed deletion is the opposite**: the method is still there and the file may hold real work, so a restore would discard it — never offer one on that row. Report both as what they are, the writer's account not matching the file, and leave the decision with the user. Do not route either to a writer: the `fix_invocation` contract in `<plugin_resources_path>/rules/fix-protocol.md` covers build and test failures, not a false self-report.
 
 Exception: build failures or regression test failures introduced purely by a routine mechanical update MAY be routed to the update writer for a single fix attempt — consult `<plugin_resources_path>/rules/fix-protocol.md`.
