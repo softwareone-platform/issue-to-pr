@@ -8,7 +8,7 @@ Its distinct question is **intent alignment** — did this change resolve that i
 
 ```mermaid
 flowchart TD
-    T(["/adversarial-review:review-code-risk<br>or trigger phrase"]) --> G{"A committed fix,<br>not a plan / generic review?"}
+    T(["/disconfirm-first:review-code-risk<br>or trigger phrase"]) --> G{"A committed fix,<br>not a plan / generic review?"}
     G -- "no — scope guard" --> STOP(["Stop: wrong skill<br>(review-plan-risk / code-review)"])
     G -- "yes" --> S1["Step 1 — scan the anchor triple:<br>diff + issue + approved plan;<br>pull caller partners one hop;<br>require fix + tests committed"]
 
@@ -58,4 +58,4 @@ Six rules that govern the flow above:
 
 ## Relationship to review-plan-risk
 
-The two are a matched pair, shipped together in `adversarial-review`. `review-plan-risk` runs **before** implementation and edits **design text** (no execution side-effects — `git restore` reverts prose). `review-code-risk` runs **after** implementation and edits **code** — so it requires a committed fix as its baseline, runs build and tests as part of verification, and confines its auto-fixes to the changed files to contain blast radius. Use `review-plan-risk` to harden the plan at the plan-approval gate; use `review-code-risk` to harden the fix at the pre-PR gate.
+The two are a matched pair, shipped together in `disconfirm-first`. `review-plan-risk` runs **before** implementation and edits **design text** (no execution side-effects — `git restore` reverts prose). `review-code-risk` runs **after** implementation and edits **code** — so it requires a committed fix as its baseline, runs build and tests as part of verification, and confines its auto-fixes to the changed files to contain blast radius. Use `review-plan-risk` to harden the plan at the plan-approval gate; use `review-code-risk` to harden the fix at the pre-PR gate.

@@ -30,14 +30,14 @@ plugins/<plugin>/
 
 | Plugin | Contains |
 |---|---|
-| `adversarial-review` | Adversarial review at 3 altitudes: `review-issue-fact` (issue), `review-plan-risk` (plan/design), `review-code-risk` (implemented fix) |
+| `disconfirm-first` | Adversarial review at 3 altitudes: `review-issue-fact` (issue), `review-plan-risk` (plan/design), `review-code-risk` (implemented fix) |
 | `pr-lifecycle` | PR lifecycle (Azure DevOps or GitHub): `open-pr`, `resolve-pr-comments` |
 | `test-authoring` | Test authoring: 6 skills + 8 subagents (see below) |
 | `issue-to-pr-pipeline` | `resolve-issue` (full issue→PR pipeline), `resolve-issue-dashboard`, `resolve-issue-learnings` |
 
 Current versions live in `.claude-plugin/marketplace.json` — do not duplicate them here.
 
-`issue-to-pr-pipeline` declares `dependencies` on `adversarial-review`, `test-authoring`, and `pr-lifecycle` in its `plugin.json` — `resolve-issue` chains those component skills into one pipeline. When changing a component skill's inputs/outputs, check `resolve-issue` still calls it correctly.
+`issue-to-pr-pipeline` declares `dependencies` on `disconfirm-first`, `test-authoring`, and `pr-lifecycle` in its `plugin.json` — `resolve-issue` chains those component skills into one pipeline. When changing a component skill's inputs/outputs, check `resolve-issue` still calls it correctly.
 
 ## Anatomy of a skill
 
@@ -77,7 +77,7 @@ Distinction that matters when editing content: **rules are non-negotiable**; **c
 - **Releasing a version bump**: update the version in **both** the plugin's `.claude-plugin/plugin.json` **and** the corresponding entry in `.claude-plugin/marketplace.json` — they must stay in sync. `marketplace.json` is the registry consumers read.
 - **Before pushing, derive which plugins need a bump from the diff — do not recall it.** The cache is keyed by version, so a changed plugin at an unchanged version reaches nobody, and the push looks successful. A late commit touching a *different* plugin than the earlier ones is how this slips (it has, once). Run:
   ```bash
-  for n in adversarial-review pr-lifecycle test-authoring issue-to-pr-pipeline; do
+  for n in disconfirm-first pr-lifecycle test-authoring issue-to-pr-pipeline; do
     printf '%-22s changed=%s version=%s
 ' "$n"       "$(git diff --name-only origin/main HEAD -- plugins/$n | wc -l)"       "$(grep -o '"version": "[^"]*"' plugins/$n/.claude-plugin/plugin.json)"
   done

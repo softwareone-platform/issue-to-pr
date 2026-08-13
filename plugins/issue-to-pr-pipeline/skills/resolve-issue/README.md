@@ -1,8 +1,8 @@
 # resolve-issue
 
-Drive one ticket through the full issue-to-PR pipeline — fact-check the issue, draft a plan, harden it, implement the fix, write tests, review the fix, open the PR — by invoking the already-built `adversarial-review`, `test-authoring`, and `pr-lifecycle` component skills in order, gated on plan approval and pausing again wherever a decision is yours. It is a **sequencer, not a re-implementation**: each component reads its own input and runs behind its own gates; the orchestrator only owns ordering, the human gates it holds, and the durable handoff artifacts that make the run resumable.
+Drive one ticket through the full issue-to-PR pipeline — fact-check the issue, draft a plan, harden it, implement the fix, write tests, review the fix, open the PR — by invoking the already-built `disconfirm-first`, `test-authoring`, and `pr-lifecycle` component skills in order, gated on plan approval and pausing again wherever a decision is yours. It is a **sequencer, not a re-implementation**: each component reads its own input and runs behind its own gates; the orchestrator only owns ordering, the human gates it holds, and the durable handoff artifacts that make the run resumable.
 
-The entry point of `issue-to-pr-pipeline`. It depends on `adversarial-review`, `test-authoring`, and `pr-lifecycle` (declared in `plugin.json`, auto-installed with this plugin). It runs in the **main conversation loop** — never as a subagent — because the components spawn their own verifier subagents and the gates here are interactive.
+The entry point of `issue-to-pr-pipeline`. It depends on `disconfirm-first`, `test-authoring`, and `pr-lifecycle` (declared in `plugin.json`, auto-installed with this plugin). It runs in the **main conversation loop** — never as a subagent — because the components spawn their own verifier subagents and the gates here are interactive.
 
 ## Process flow
 
@@ -80,7 +80,7 @@ So after approval there is one guaranteed stop — the open-PR confirmation — 
 
 `resolve-issue` does not replace any component — it orchestrates them, and each remains independently invocable for its single-stage use:
 
-- **`adversarial-review`** — `review-issue-fact` (a-fact-check, issue verdict), `review-plan-risk` (a-harden-plan, hardens the plan), `review-code-risk` (b-code-risk, reviews the committed fix).
+- **`disconfirm-first`** — `review-issue-fact` (a-fact-check, issue verdict), `review-plan-risk` (a-harden-plan, hardens the plan), `review-code-risk` (b-code-risk, reviews the committed fix).
 - **`test-authoring`** — `add-*-test` / `update-*-test` (b-write-tests, scoped to the change; `update-*-test` is also invoked at b-security-review to refresh a test that a security fix legitimately made stale). `scan-test-gaps` stays a standalone broad-scan tool, outside this automated flow.
 - **`pr-lifecycle`** — `open-pr` (b-open-pr, opens the PR). `resolve-pr-comments` is Phase C, user-invoked after review.
 - **Built-in Claude Code skills** — `security-review` (b-security-review, security; report-only). This is a harness **built-in** invoked by bare name, not a plugin component — see the prerequisite above on keeping the `security-review` name unshadowed.

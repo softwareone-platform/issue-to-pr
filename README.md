@@ -21,7 +21,7 @@ Alternatively — on older Claude Code (before v2.1.143, where dependency auto-i
 
 ```
 /plugin marketplace add https://github.com/softwareone-platform/issue-to-pr.git
-/plugin install adversarial-review@itpr
+/plugin install disconfirm-first@itpr
 /plugin install pr-lifecycle@itpr
 /plugin install test-authoring@itpr
 /plugin install issue-to-pr-pipeline@itpr
@@ -33,7 +33,7 @@ Then run `/reload-plugins` to activate — it also re-resolves any missing depen
 
 | Plugin | What it gives you |
 |---|---|
-| [`adversarial-review`](#adversarial-review) | Adversarial review at the issue, plan, and code altitudes |
+| [`disconfirm-first`](#disconfirm-first) | Adversarial review at the issue, plan, and code altitudes |
 | [`pr-lifecycle`](#pr-lifecycle) | Pull-request lifecycle (Azure DevOps or GitHub) |
 | [`test-authoring`](#test-authoring) | Test authoring — unit and integration |
 | [`issue-to-pr-pipeline`](#issue-to-pr-pipeline) | Issue-to-PR orchestration (chains the three above) |
@@ -79,7 +79,7 @@ The whole run checkpoints to `.claude/resolve/<ticket>/`, so a fresh session can
 
 ## Skills
 
-### adversarial-review
+### disconfirm-first
 
 Three adversarial reviewers, one per altitude — each pressure-tests a different artifact before it moves downstream.
 
@@ -105,7 +105,7 @@ Test authoring that delegates to writer and verifier subagents (8 in total). The
 
 ### issue-to-pr-pipeline
 
-Issue-to-PR orchestration. Depends on `adversarial-review`, `test-authoring`, and `pr-lifecycle`.
+Issue-to-PR orchestration. Depends on `disconfirm-first`, `test-authoring`, and `pr-lifecycle`.
 
 - **resolve-issue** — Drives one ticket through the full pipeline (see [above](#how-they-fit-together)), gated on plan approval and pausing again wherever a decision is yours; resumable from `.claude/resolve/<ticket>/`.
 - **resolve-issue-dashboard** — A live, read-only dashboard that visualises a run — pipeline step, per-subagent activity, metrics, and the gate it is paused at — by tailing the transcript and `state.md`. Observes only; never drives.

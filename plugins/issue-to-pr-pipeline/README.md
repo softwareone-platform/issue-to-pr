@@ -1,6 +1,6 @@
 # issue-to-pr-pipeline
 
-The orchestration layer of the skill marketplace. It composes the independent component plugins — `adversarial-review`, `test-authoring`, and `pr-lifecycle` — into end-to-end workflows. It ships three skills: `resolve-issue`, the issue-to-PR pipeline; `resolve-issue-dashboard`, a read-only dashboard that visualises a run; and `resolve-issue-learnings`, which harvests the generic learnings captured across runs into honoured conventions.
+The orchestration layer of the skill marketplace. It composes the independent component plugins — `disconfirm-first`, `test-authoring`, and `pr-lifecycle` — into end-to-end workflows. It ships three skills: `resolve-issue`, the issue-to-PR pipeline; `resolve-issue-dashboard`, a read-only dashboard that visualises a run; and `resolve-issue-learnings`, which harvests the generic learnings captured across runs into honoured conventions.
 
 This is the last block of the blocks-first roadmap: the review trio, the test family, and the PR-lifecycle skills were each built and validated standalone first; this plugin wires them together.
 
@@ -11,7 +11,7 @@ This is the last block of the blocks-first roadmap: the review trio, the test fa
 /plugin install issue-to-pr-pipeline@itpr
 ```
 
-Installing `issue-to-pr-pipeline` auto-installs its three dependencies (`adversarial-review`, `test-authoring`, `pr-lifecycle`); dependency auto-install needs Claude Code v2.1.143 or later, and on older versions you install those three explicitly with `/plugin install <name>@itpr`. The security pass delegates to Claude Code's built-in `security-review` — no install needed.
+Installing `issue-to-pr-pipeline` auto-installs its three dependencies (`disconfirm-first`, `test-authoring`, `pr-lifecycle`); dependency auto-install needs Claude Code v2.1.143 or later, and on older versions you install those three explicitly with `/plugin install <name>@itpr`. The security pass delegates to Claude Code's built-in `security-review` — no install needed.
 
 After installing, run `/reload-plugins` to activate.
 
@@ -56,7 +56,7 @@ Run via `/issue-to-pr-pipeline:resolve-issue [ticket]` in the Claude Code prompt
 
 `plugin.json` declares three dependencies, auto-installed with this plugin:
 
-- **`adversarial-review`** — `review-issue-fact` (fact-check the issue), `review-plan-risk` (harden the plan), `review-code-risk` (review the committed fix).
+- **`disconfirm-first`** — `review-issue-fact` (fact-check the issue), `review-plan-risk` (harden the plan), `review-code-risk` (review the committed fix).
 - **`test-authoring`** — `add-*-test` / `update-*-test` (write tests scoped to the change).
 - **`pr-lifecycle`** — `open-pr` (open the PR at the end of the pipeline).
 

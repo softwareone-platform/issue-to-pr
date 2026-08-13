@@ -8,7 +8,7 @@ This is the **verdict sibling** of the review family, and deliberately lighter t
 
 ```mermaid
 flowchart TD
-    T(["/adversarial-review:review-issue-fact<br>or trigger phrase"]) --> G{"An issue to fact-check,<br>not a plan / fix / Jira edit?"}
+    T(["/disconfirm-first:review-issue-fact<br>or trigger phrase"]) --> G{"An issue to fact-check,<br>not a plan / fix / Jira edit?"}
     G -- "no — scope guard" --> STOP(["Stop: wrong skill<br>(review-plan-risk / review-code-risk)"])
     G -- "yes" --> S1["Step 1 — resolve the issue (Jira or text);<br>codebase is the oracle;<br>cross-repo: read on-disk siblings,<br>else needs-info / seam"]
     S1 --> SC["Surface resolved scope<br>(issue, code areas, cross-repo seams)<br>— informational, not a gate (no edits)"]
@@ -48,7 +48,7 @@ Five rules that govern the flow above:
 
 ## Relationship to siblings
 
-The three are a graduated set, shipped together in `adversarial-review`, guarding the issue→PR pipeline at rising altitude:
+The three are a graduated set, shipped together in `disconfirm-first`, guarding the issue→PR pipeline at rising altitude:
 
 - **`review-issue-fact`** (this skill) runs **first**, at the issue, before anything is planned. It reads the issue against the code, produces a *verdict*, and edits nothing — its oracle is the current code, and a `refuted` diagnosis is what stops the pipeline spending anything on a misdiagnosis — by putting the question to the human at that first step, defaulting toward stopping, not by hard-stopping on its own.
 - **`review-plan-risk`** runs **next**, at the plan-approval gate, and edits **design text** (no execution side-effects — `git restore` reverts prose).

@@ -8,7 +8,7 @@ Calibration includes a ground-truth pass: the plan's load-bearing factual premis
 
 ```mermaid
 flowchart TD
-    T(["/adversarial-review:review-plan-risk<br>or trigger phrase"]) --> G{"Design artifact,<br>not code / diff?"}
+    T(["/disconfirm-first:review-plan-risk<br>or trigger phrase"]) --> G{"Design artifact,<br>not code / diff?"}
     G -- "no — scope guard" --> STOP(["Stop: design review only"])
     G -- "yes" --> S1["Step 1 — scan the artifact in full,<br>pull contract partners one hop deep,<br>co-anchor any spawned subagents"]
 
