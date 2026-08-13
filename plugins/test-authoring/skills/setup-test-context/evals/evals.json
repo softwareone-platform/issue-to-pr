@@ -1,0 +1,97 @@
+{
+  "skill_name": "setup-test-context",
+  "evals": [
+    {
+      "id": 0,
+      "prompt": "setup test context",
+      "expected_output": "Skill setup-test-context triggers; analyses the repo, then shows the §2.2 write list labelling every target NEW or OVERWRITE and waits for confirmation before writing anything.",
+      "assertions": [
+        {
+          "text": "skill_triggered: setup-test-context is selected"
+        },
+        {
+          "text": "write_list_shown: every target path is labelled NEW or OVERWRITE before any Write, since there is no backup and no undo"
+        }
+      ]
+    },
+    {
+      "id": 1,
+      "prompt": "initialise test conventions for this repo",
+      "expected_output": "Skill setup-test-context triggers; analyses the repo, then shows the §2.2 write list labelling every target NEW or OVERWRITE and waits for confirmation before writing anything.",
+      "assertions": [
+        {
+          "text": "skill_triggered: setup-test-context is selected"
+        },
+        {
+          "text": "write_list_shown: every target path is labelled NEW or OVERWRITE before any Write, since there is no backup and no undo"
+        }
+      ]
+    },
+    {
+      "id": 2,
+      "prompt": "cache the test conventions so the other test skills don't re-derive them every run",
+      "expected_output": "Skill setup-test-context triggers; analyses the repo, then shows the §2.2 write list labelling every target NEW or OVERWRITE and waits for confirmation before writing anything.",
+      "assertions": [
+        {
+          "text": "skill_triggered: setup-test-context is selected"
+        },
+        {
+          "text": "writes_only_managed_paths: nothing is written outside .claude/conventions/tests/, and common-verification-patterns.md is written only when a qualifying pattern was found"
+        }
+      ]
+    },
+    {
+      "id": 3,
+      "prompt": "refresh the generated test conventions",
+      "expected_output": "Skill setup-test-context triggers; re-analyses the repo and treats the re-run as the refresh, labelling the existing managed files OVERWRITE in the confirmation block before rewriting them.",
+      "assertions": [
+        {
+          "text": "skill_triggered: setup-test-context is selected"
+        },
+        {
+          "text": "overwrite_labelled: existing managed files are labelled OVERWRITE from what is actually on disk, not from the document's example list"
+        }
+      ]
+    },
+    {
+      "id": 4,
+      "prompt": "add unit tests for the invoice service",
+      "expected_output": "Skill setup-test-context does NOT trigger. add-unit-test is the skill for writing tests; setup is an optional accelerator, never a prerequisite.",
+      "assertions": [
+        {
+          "text": "skill_not_triggered: setup-test-context is NOT selected"
+        }
+      ]
+    },
+    {
+      "id": 5,
+      "prompt": "which classes lack tests?",
+      "expected_output": "Skill setup-test-context does NOT trigger. Finding untested code is scan-test-gaps; setup only profiles the repo's test layout.",
+      "assertions": [
+        {
+          "text": "skill_not_triggered: setup-test-context is NOT selected"
+        }
+      ]
+    },
+    {
+      "id": 6,
+      "prompt": "what's the best way to structure a test project?",
+      "expected_output": "Skill setup-test-context does NOT trigger. Either another skill is selected or the model answers conversationally.",
+      "assertions": [
+        {
+          "text": "skill_not_triggered: setup-test-context is NOT selected"
+        }
+      ]
+    },
+    {
+      "id": 7,
+      "prompt": "this test failed, why?",
+      "expected_output": "Skill setup-test-context does NOT trigger. Either another skill is selected or the model answers conversationally.",
+      "assertions": [
+        {
+          "text": "skill_not_triggered: setup-test-context is NOT selected"
+        }
+      ]
+    }
+  ]
+}
