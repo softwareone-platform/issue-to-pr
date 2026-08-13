@@ -9,25 +9,25 @@
     {
       "name": "adversarial-review",
       "description": "Adversarial review skills: review-issue-fact (issue), review-plan-risk (design), review-code-risk (implementation)",
-      "version": "1.5.5",
+      "version": "1.5.6",
       "source": "./plugins/adversarial-review"
     },
     {
       "name": "pr-lifecycle",
       "description": "Team-agnostic PR lifecycle skills (Azure DevOps or GitHub): open-pr, resolve-pr-comments",
-      "version": "0.8.5",
+      "version": "0.8.6",
       "source": "./plugins/pr-lifecycle"
     },
     {
       "name": "test-authoring",
       "description": "Test authoring plugin: scan-test-gaps, add/update test workflows, optional setup-test-context profiler; rules are read from the plugin, not copied per-repo",
-      "version": "0.18.6",
+      "version": "0.18.7",
       "source": "./plugins/test-authoring"
     },
     {
       "name": "issue-to-pr-pipeline",
       "description": "Issue-to-PR orchestration: resolve-issue chains the review, test, and PR-lifecycle skills into one resumable pipeline gated on plan approval, pausing again wherever a decision is yours; resolve-issue-dashboard is a read-only dashboard that visualises a run; resolve-issue-learnings harvests learnings across runs",
-      "version": "0.24.2",
+      "version": "0.24.3",
       "source": "./plugins/issue-to-pr-pipeline"
     }
   ]
