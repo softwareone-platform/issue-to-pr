@@ -20,7 +20,7 @@ flowchart TD
     T(["/pr-lifecycle:open-pr<br>or trigger phrase"]) --> G{"Open a NEW PR?<br>(not review / triage / merge)"}
     G -- "no" --> STOP(["Stop: wrong skill<br>(review / resolve-pr-comments / merge)"])
     G -- "yes" --> S0["Step 0 — detect platform + tracker<br>(Azure DevOps / GitHub; Jira / GitHub Issues)<br>load adapters; ambiguous → ask"]
-    S0 --> S1["Step 1 — detect target<br>master/main; release/* → backport;<br>ambiguous → ask"]
+    S0 --> S1["Step 1 — detect target<br>read origin/HEAD; release/* → backport;<br>ambiguous → ask"]
     S1 --> S2{"Step 2 — preconditions"}
     S2 -- "behind target" --> X1(["stop & report"])
     S2 -- "existing active PR" --> X2(["stop & point to it<br>(no duplicate, no edit)"])

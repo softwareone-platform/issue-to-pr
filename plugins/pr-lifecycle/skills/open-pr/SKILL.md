@@ -7,7 +7,7 @@ description: >
   with a ticket link, a concise summary, and a bulleted what/why.
   Use whenever someone wants to open / raise / put up a PR, finish a branch,
   or send changes for review on Azure DevOps or GitHub, even if they don't say "open-pr".
-  Handles both a standard PR (to master / main) and a backport (to a release/* branch).
+  Handles both a standard PR (to the repo's own default branch) and a backport (to a release/* branch).
   It always shows the title and description for confirmation first
   and never creates the PR without explicit approval.
   Trigger phrases: "open a PR", "raise a PR", "create a pull request",
@@ -44,7 +44,8 @@ Load the matching backend and tracker adapters and run the platform/tracker-spec
 
 ## Step 1 — Detect the target branch
 
-- Default to `master`, else `main`.
+- **Read the repo's own default branch; never assume one.** `git symbolic-ref --short refs/remotes/origin/HEAD` yields `origin/<branch>` — strip the prefix. That ref is written by `git clone`, so a remote built by `git init` + `git fetch` can lack it; then ask the remote directly with `git ls-remote --symref origin HEAD`, which is read-only and changes no local state.
+- Only when neither resolves, fall back to whichever of `main` / `master` the remote actually has — and if **both** exist, ask. A repo part-way through a rename keeps the old one as a stale branch, so choosing silently would base the PR on the wrong target, which also invalidates Step 2's ahead-count and the history Step 3 learns the caller's convention from.
 - If the current branch targets a release line (e.g. `release/2.5`), treat it as a **backport** (see the backport format below).
 - If the correct target is genuinely ambiguous, ask rather than guess.
 
