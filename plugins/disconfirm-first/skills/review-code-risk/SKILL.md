@@ -3,12 +3,10 @@ name: review-code-risk
 description: >
   Adversarially review an IMPLEMENTED FIX — a committed code change (a diff on a branch) —
   against the issue it claims to resolve and the plan it was built from, BEFORE the PR is opened.
-  The implementation-altitude sibling of review-plan-risk: one guards the PLAN, this guards the FIX.
   Its distinct question is intent alignment — does THIS change actually resolve THAT issue, per THAT
   plan, without regressing callers or hiding a band-aid — which generic line-level review does not ask.
   Use this whenever someone has an implemented or committed fix / diff / change and wants it
-  challenged, pressure-tested, red-teamed, or sanity-checked before opening a PR —
-  even if they don't say "review-code-risk".
+  challenged or sanity-checked before opening a PR — even if they don't say "review-code-risk".
   Trigger phrases: "challenge this fix / diff", "does this fix actually resolve the issue",
   "will this change regress anything", "pressure-test / red-team / stress-test this implementation",
   "pre-mortem this diff", "review my fix before I open the PR", "/review-code-risk".

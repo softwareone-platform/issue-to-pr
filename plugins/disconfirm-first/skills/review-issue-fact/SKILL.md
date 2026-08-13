@@ -1,10 +1,9 @@
 ---
 name: review-issue-fact
 description: >
-  Fact-check an ISSUE — a bug report, story, or incident description, given as a Jira link / key
-  (via Atlassian MCP when available) or as plain / markdown text — against the codebase that is
-  its ground truth, BEFORE any fix is planned. The issue-altitude sibling of review-plan-risk and
-  review-code-risk: this guards the ISSUE, one guards the PLAN, one guards the FIX.
+  Fact-check an ISSUE — a bug report, story, or incident description, pasted as plain or markdown
+  text, or given as a Jira link / key — against the codebase that is
+  its ground truth, BEFORE any fix is planned.
   The issue is NOT a source of truth — it may carry a misattributed root cause or plain wrong
   information — so the distinct question is diagnosis alignment:
   do its factual claims hold in THIS code, or is the bug misdiagnosed.

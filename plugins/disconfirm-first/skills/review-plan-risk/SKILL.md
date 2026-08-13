@@ -10,7 +10,6 @@ description: >
   auto-fix the risks rated real — in the plan itself, never its execution —
   and independently verify the fixes before reporting a result table.
   Use this whenever someone wants a plan or design pressure-tested,
-  asks "what could make this fail / where are the holes / what did we miss",
   wants a spec reviewed before building,
   or wants a SKILL.md / workflow definition checked for gaps —
   even if they don't say "pre-mortem".
