@@ -72,8 +72,8 @@ STEP_IDS = [s["id"] for s in STEPS]
 GATE_STEPS = {s["id"] for s in STEPS if s["gate"]}
 GATE_LABELS = {s["id"]: s["label"] for s in STEPS if s["gate"]}
 
-# steps that execute integration tests against the shared host
-# container stack (Podman + SQL + Azurite); two runs here at once contend for it
+# steps that execute integration tests, which typically run against shared local
+# infrastructure (containers, databases, emulators) only one run can hold at a time
 TEST_STEPS = {s["id"] for s in STEPS if s.get("runsTests")}
 
 STATE_FIELDS = [
@@ -354,6 +354,23 @@ class Collector:
         self._labels = {}
         self.tokens_in = 0
         self.tokens_out = 0
+        # cache_read + cache_creation input tokens, kept SEPARATE from tokens_in
+        # rather than folded into it. once prompt caching is on, input_tokens is
+        # only the cache-miss delta, so reporting it alone understates what was
+        # read; but adding the cache figures into one "in" number would overstate
+        # spend, because a cached read is billed at a fraction of a fresh one.
+        # three figures the API actually reported beat one blended guess
+        self.tokens_cached = 0
+        # message ids whose usage has already been counted, keyed (file, id).
+        # one API response is written as SEVERAL records - one per content block -
+        # and every one of them repeats the same message.usage, so accumulating per
+        # record multiplies each total by however many blocks that response held.
+        # that count differs per response, so no single correction ratio exists to
+        # apply afterwards: the repeats have to be dropped as they are read. ids are
+        # NOT unique across files, so the pair is the key, never the id alone. this
+        # also makes the re-read after a truncated / rotated file idempotent, which
+        # the running totals were not
+        self._seen_usage = set()
         # per-record output-token samples (ts + output_tokens), retained so
         # build_model can bucket them into per-step windows. only records that
         # actually produced output are kept; summing per window is
@@ -446,9 +463,22 @@ class Collector:
         for raw in complete.split(b"\n"):
             line = raw.decode("utf-8", "replace").strip()
             if line:
-                self._parse_line(line, agent)
+                self._parse_line(line, agent, path)
 
-    def _parse_line(self, line, agent):
+    def _count_usage_once(self, message_id, path):
+        """True the first time this API response's usage is seen, False for the
+        sibling records that repeat it. A record with no message id cannot be
+        deduplicated, so it is counted: over-counting an unidentifiable record
+        is the lesser error against silently dropping a real one."""
+        if not message_id:
+            return True
+        key = (path, message_id)
+        if key in self._seen_usage:
+            return False
+        self._seen_usage.add(key)
+        return True
+
+    def _parse_line(self, line, agent, path):
         try:
             o = json.loads(line)
         except ValueError:
@@ -477,9 +507,15 @@ class Collector:
         elif parsed_ts and (self._agent_last_ts is None
                             or parsed_ts > self._agent_last_ts):
             self._agent_last_ts = parsed_ts
+        # the dedupe gate has to wrap the per-step samples too, not just the
+        # running totals - a repeated record would otherwise re-inflate whichever
+        # step window it falls in. the content loop below stays OUTSIDE it, because
+        # tool_use blocks are written once each and must all be paired
         usage = msg.get("usage")
-        if usage:
+        if usage and self._count_usage_once(msg.get("id"), path):
             self.tokens_in += usage.get("input_tokens", 0) or 0
+            self.tokens_cached += ((usage.get("cache_read_input_tokens", 0) or 0)
+                                   + (usage.get("cache_creation_input_tokens", 0) or 0))
             out_tok = usage.get("output_tokens", 0) or 0
             self.tokens_out += out_tok
             # keep a per-step-bucketable sample; only assistant turns carry a
@@ -714,7 +750,7 @@ def list_status(next_step):
     return "active"
 
 
-def build_model(state, events, tokens_in, tokens_out, session_meta, ended_ms=None, main_active=False, timings=None, main_seen=False, token_records=None):
+def build_model(state, events, tokens_in, tokens_out, session_meta, ended_ms=None, main_active=False, timings=None, main_seen=False, token_records=None, tokens_cached=0):
     """Assemble the read-only progress model from the cursor plus the parsed
     activity. Pure: no I/O, no clock reads. `ended_ms` is the run's last-progress
     time (state.md mtime) supplied by the caller; defaults to None so the dry-run
@@ -868,7 +904,10 @@ def build_model(state, events, tokens_in, tokens_out, session_meta, ended_ms=Non
             "startedMs": started_ms,
             "endedMs": ended_ms,
             "live": overall in ("running", "paused", "blocked"),
-            "tokens": {"input": tokens_in, "output": tokens_out},
+            # input is the cache-MISS delta only, cached is cache_read plus
+            # cache_creation. kept apart so neither figure has to stand in for the
+            # other - see the Collector's tokens_cached for why blending misleads
+            "tokens": {"input": tokens_in, "cached": tokens_cached, "output": tokens_out},
         },
         "session": session_meta,
     }
@@ -892,7 +931,7 @@ def collect_model(cwd, ticket):
         "projectDir": project_dir,
         "cwd": cwd,
     }
-    events, tokens_in, tokens_out = [], 0, 0
+    events, tokens_in, tokens_out, tokens_cached = [], 0, 0, 0
     main_active = False
     main_seen = False
     token_records = []
@@ -901,11 +940,12 @@ def collect_model(cwd, ticket):
         collector.refresh()
         events = collector.events()
         tokens_in, tokens_out = collector.tokens_in, collector.tokens_out
+        tokens_cached = collector.tokens_cached
         main_active = collector.main_active()
         main_seen = collector.main_seen()
         token_records = collector.token_records()
 
-    return build_model(state, events, tokens_in, tokens_out, session_meta, ended_ms, main_active, timings, main_seen, token_records)
+    return build_model(state, events, tokens_in, tokens_out, session_meta, ended_ms, main_active, timings, main_seen, token_records, tokens_cached)
 
 
 def _pretty_stamp(s):
@@ -1020,9 +1060,9 @@ def list_runs(launch_cwd=None):
 def contention(runs):
     """Cross-run heads-up derived purely from the run list (no extra I/O):
     which discovered runs are parked on a test-executing step. Those steps run
-    integration tests against the shared host container stack
-    (Podman + SQL + Azurite), so two or more on such a step can conflict, race,
-    or starve each other. The status is the coarse next-step value, so a run
+    integration tests, which typically need shared local infrastructure
+    (containers, databases, emulators), so two or more on such a step can
+    conflict, race, or starve each other. The status is the coarse next-step value, so a run
     parked at the step counts even if its session is momentarily idle - this is
     a 'positioned to collide' reminder, not a claim that tests run right now.
     Read-only: it only reports; staggering is the human's call in the terminal."""

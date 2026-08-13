@@ -21,6 +21,9 @@
     --blocked: #e24b4a;
     --amber: #fbbf24;
     --tok-in: #a78bfa;
+    /* cached sits on the input axis but weighs less, so it is a duller in-hue
+       rather than a colour of its own */
+    --tok-cached: #9d8fc4;
     --tok-out: #f472b6;
     --mono: ui-monospace, SFMono-Regular, "Cascadia Mono", Consolas, monospace;
     --sans: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
@@ -167,6 +170,7 @@
   .statdock .sg .sk { font-size: 8px; letter-spacing: 0.2em; text-transform: uppercase; color: var(--text-tertiary); font-family: var(--mono); }
   .statdock .sg .sv { font-family: var(--mono); font-size: 15px; color: var(--text-primary); font-variant-numeric: tabular-nums; }
   .statdock .sg .sv .in { color: var(--tok-in); }
+  .statdock .sg .sv .cch { color: var(--tok-cached); }
   .statdock .sg .sv .out { color: var(--tok-out); }
   .statdock .sg .sv .tg { font-size: 9px; letter-spacing: 0.12em; color: var(--text-tertiary); }
 
@@ -573,9 +577,13 @@ function updateCore(m) {
   var dock = document.getElementById("statdock");
   if (dock) {
     var tin = (met.tokens && met.tokens.input) || 0, tout = (met.tokens && met.tokens.output) || 0;
+    // "in" is the cache-MISS delta the API reports, so cached is shown beside it
+    // rather than folded in - one blended input number would read as spend it isn't
+    var tcached = (met.tokens && met.tokens.cached) || 0;
     dock.innerHTML =
       "<div class='sg'><div class='sk'>Tokens</div>"
         + "<div class='sv'><span class='in'>" + fmtNum(tin) + "</span> <span class='tg'>in</span></div>"
+        + "<div class='sv'><span class='cch'>" + fmtNum(tcached) + "</span> <span class='tg'>cached</span></div>"
         + "<div class='sv'><span class='out'>" + fmtNum(tout) + "</span> <span class='tg'>out</span></div></div>"
       + "<div class='sg'><div class='sk'>Tools</div><div class='sv'>" + fmtNum(met.toolCalls) + "</div></div>";
   }
@@ -738,16 +746,18 @@ function selectRun(id) {
   fetch("/select?run=" + encodeURIComponent(id)).catch(function () {});
 }
 
-// global heads-up: 2+ runs parked on a test step share the host's Podman / SQL /
-// Azurite, so they can collide. Read-only - the dashboard only warns.
+// global heads-up: 2+ runs parked on a test step contend for whatever shared
+// infrastructure the repo's integration tests need, so they can collide.
+// Read-only - the dashboard only warns.
 function renderContention(c) {
   var el = document.getElementById("contention");
   if (c && c.count >= 2) {
     el.classList.add("show");
     document.getElementById("contention-text").innerHTML =
       "<b>" + c.count + " runs</b> are positioned at a test step. These steps run "
-      + "integration tests against the shared Podman, SQL, and Azurite, so running them together can "
-      + "conflict, race, or starve each other &mdash; stagger them rather than letting both test at once.";
+      + "integration tests, which usually need shared local infrastructure &mdash; containers, "
+      + "databases, emulators &mdash; so running them together can "
+      + "conflict, race, or starve each other. Stagger them rather than letting both test at once.";
     document.getElementById("contention-runs").innerHTML = (c.runs || []).map(function (r) {
       return "<span class='wr'>" + esc(r.repo) + " &middot; " + esc(r.ticket || "?") + " @ " + esc(r.step) + "</span>";
     }).join("");

@@ -392,6 +392,73 @@ def test_step_activity():
     check("build_model activity attached", fc["activity"]["tokensOut"], 100)
 
 
+# ----- token accounting: one API response counted once ------------------------
+
+def _usage(mid, inp=0, out=0, cread=0, ccreate=0, ts="2026-07-13T00:00:00Z", block="text"):
+    """An assistant record carrying usage. Claude Code writes one record PER
+    CONTENT BLOCK and repeats the same message.usage on every one, so several of
+    these sharing a message id is the normal shape, not a malformed transcript."""
+    msg = {"stop_reason": "tool_use", "content": [{"type": block}],
+           "usage": {"input_tokens": inp, "output_tokens": out,
+                     "cache_read_input_tokens": cread,
+                     "cache_creation_input_tokens": ccreate}}
+    if mid is not None:
+        msg["id"] = mid
+    return {"type": "assistant", "timestamp": ts, "message": msg}
+
+
+def test_token_totals():
+    # the defect this pins: three records of ONE response, each repeating its
+    # usage, so a per-record sum counts it three times. remove the dedupe and
+    # every check in this block goes red
+    c = _collector([_usage("msg_a", inp=100, out=40, cread=900, ccreate=10)] * 3)
+    check("repeated usage counted once (in)", c.tokens_in, 100)
+    check("repeated usage counted once (out)", c.tokens_out, 40)
+    check("repeated usage counted once (cached)", c.tokens_cached, 910)
+    # the per-step samples ride the same gate, or a step window re-inflates
+    check("per-step sample deduped", len(c.token_records()), 1)
+
+    # distinct responses still sum
+    c2 = _collector([_usage("msg_a", inp=10, out=1, cread=5),
+                     _usage("msg_b", inp=20, out=2, cread=7),
+                     _usage("msg_b", inp=20, out=2, cread=7)])
+    check("distinct ids sum", (c2.tokens_in, c2.tokens_out, c2.tokens_cached), (30, 3, 12))
+
+    # a record with no message id cannot be deduplicated, so it is counted -
+    # over-counting an unidentifiable record beats dropping a real one
+    c3 = _collector([_usage(None, inp=5, out=5), _usage(None, inp=5, out=5)])
+    check("id-less records both counted", (c3.tokens_in, c3.tokens_out), (10, 10))
+
+    # ids are NOT unique across files, so the key is the pair: the same id in a
+    # subagent transcript is a different response and must still be counted
+    c4 = _collector_with_agent([_usage("msg_dup", inp=100, out=10)],
+                               [_usage("msg_dup", inp=100, out=10)])
+    check("same id in another file still counts", (c4.tokens_in, c4.tokens_out), (200, 20))
+
+    # cache_creation and cache_read both land in cached; absent fields are 0
+    c5 = _collector([{"type": "assistant", "timestamp": "2026-07-13T00:00:00Z",
+                      "message": {"id": "m", "stop_reason": "end_turn",
+                                  "content": [{"type": "text"}],
+                                  "usage": {"input_tokens": 7}}}])
+    check("missing cache fields default 0", (c5.tokens_in, c5.tokens_cached), (7, 0))
+
+    # tool_use pairing must survive the gate: the blocks are written once each, so
+    # a duplicate-usage record still contributes its own tool event
+    dup_tool = [_usage("msg_t", out=5, block="text"),
+                _usage("msg_t", out=5, block="text")]
+    dup_tool[1]["message"]["content"] = [{"type": "tool_use", "id": "t1", "name": "Bash",
+                                          "input": {"command": "ls"}}]
+    c6 = _collector(dup_tool)
+    check("duplicate-usage record still yields its tool event", len(c6.events()), 1)
+    check("tool event's usage not double counted", c6.tokens_out, 5)
+
+    # build_model surfaces cached alongside input/output
+    m = ps.build_model({"next-step": "a-draft-plan", "ticket": "acme-1"}, [], 11, 22,
+                       {"cwd": "."}, None, False, None, False, None, 33)
+    check("model exposes cached", m["metrics"]["tokens"],
+          {"input": 11, "cached": 33, "output": 22})
+
+
 # ----- find_live_session: ticket-aware session selection (R3) -----------------
 
 def test_session_selection():
@@ -420,7 +487,7 @@ def test_session_selection():
 _TESTS = (test_status_rules, test_main_active, test_background_agent_is_not_a_yield,
           test_run_id_roundtrip, test_parse_state, test_encoding_tolerance,
           test_contention, test_timings, test_waiting_detection, test_step_activity,
-          test_session_selection)
+          test_token_totals, test_session_selection)
 
 
 def _run_all():

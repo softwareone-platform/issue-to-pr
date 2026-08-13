@@ -160,7 +160,7 @@ class RunManager:
                 # run's last-progress time; stable across a next-day relaunch
                 ended_ms = ps._mtime_ms(state_path)
                 timings = ps.parse_timings(os.path.join(resolve_dir, "timings.md"))
-            events, tin, tout = [], 0, 0
+            events, tin, tout, tcached = [], 0, 0, 0
             main_active = False
             main_seen = False
             token_records = []
@@ -168,6 +168,7 @@ class RunManager:
                 self.collector.refresh()
                 events = self.collector.events()
                 tin, tout = self.collector.tokens_in, self.collector.tokens_out
+                tcached = self.collector.tokens_cached
                 main_active = self.collector.main_active()
                 main_seen = self.collector.main_seen()
                 token_records = self.collector.token_records()
@@ -177,7 +178,7 @@ class RunManager:
                 "cwd": sel_cwd,
                 "ticketDetected": ticket,
             }
-            model = ps.build_model(state, events, tin, tout, meta, ended_ms, main_active, timings, main_seen, token_records)
+            model = ps.build_model(state, events, tin, tout, meta, ended_ms, main_active, timings, main_seen, token_records, tcached)
             # include run_key so the selected-id matches the ARCHIVED run's
             # sidebar entry (run_id keys on it) instead of the live run's
             selected_id = ps.run_id(sel_cwd, ticket, self.sel_run_key)
