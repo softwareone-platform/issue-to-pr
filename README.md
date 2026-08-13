@@ -1,6 +1,6 @@
 # issue-to-pr
 
-A [Claude Code](https://claude.com/claude-code) **plugin marketplace** (`itpr`) for an engineering team — a set of skills and subagents that take a ticket from diagnosis to a reviewed pull request, plus the review, test-authoring, and housekeeping tools that support that flow.
+A [Claude Code](https://claude.com/claude-code) **plugin marketplace** (`itpr`) — a set of skills and subagents that take a ticket from diagnosis to a reviewed pull request, plus the review, test-authoring, and housekeeping tools that support that flow.
 
 ![The resolve-issue-dashboard visualising a run mid-pipeline](docs/resolve-issue-dashboard.png)
 
@@ -71,7 +71,11 @@ The review, test, and PR plugins are independently useful. `issue-to-pr-pipeline
 
 **Drafting the plan and making the code change are the only steps that run without you.** Two stops are unconditional — plan approval and the open-PR confirmation — and every other step can pause to ask: a design decision it is barred from guessing, a risk to disposition, a test-type call, a quality flag. Each wait is unbounded — a paused run sits there until it is answered. It names what it is waiting for in `state.md`, and `resolve-issue-dashboard` shows it. Full breakdown, grouped by why each stop exists: [resolve-issue's README](plugins/issue-to-pr-pipeline/skills/resolve-issue/README.md#where-the-run-stops-for-you).
 
+**What a run costs you.** Most steps delegate to subagents, and the test and review steps each pay for a writer plus an independent verifier — so even a one-line fix pays for that pair. Nothing in the pipeline can report its own spend: the orchestrator cannot see its own token usage, and the dashboard's counters are volume, not price. Wall-clock is no more quotable — a run's elapsed time is mostly how long it waited for **you** at a gate, which is why no duration is quoted here. Watch your first run's usage rather than trusting an estimate.
+
 The whole run checkpoints to `.claude/resolve/<ticket>/`, so a fresh session can resume it. `resolve-issue-dashboard` visualises a run live; `resolve-issue-learnings` distils what the pipeline learned across runs.
+
+**One thing lands outside the repo you invoked it in.** `resolve-issue` appends candidate learnings to `~/.claude/resolve-learnings/candidates.md`, and `resolve-issue-learnings` promotes the verified ones into `~/.claude/resolve-learnings/conventions.md` for later runs to honour. Both are user-global, shared across all your repos, and plain markdown you can read, edit, or delete — and they are the only files these plugins write outside the repo. Everything else stays in that repo's `.claude/`; the dashboard reads `~/.claude/projects/` but never writes there.
 
 ## Skills
 

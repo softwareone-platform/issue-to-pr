@@ -99,8 +99,10 @@ def encode_cwd(cwd):
     """Mirror Claude Code's project-dir naming: every non-alphanumeric character
     in the absolute cwd becomes a dash.
 
-    Example: C:\\Users\\alex\\source\\repos\\my-service
-          -> C--Users-alex-source-repos-my-service
+    Examples: /home/alex/src/my-service
+           -> -home-alex-src-my-service
+              C:\\Users\\alex\\source\\repos\\my-service
+           -> C--Users-alex-source-repos-my-service
     """
     return re.sub(r"[^A-Za-z0-9]", "-", os.path.abspath(cwd))
 
