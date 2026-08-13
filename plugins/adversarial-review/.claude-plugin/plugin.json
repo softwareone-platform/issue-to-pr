@@ -1,7 +1,8 @@
 {
   "name": "adversarial-review",
   "description": "Adversarial review skills: review-issue-fact (issue), review-plan-risk (design), review-code-risk (implementation)",
-  "version": "1.5.3",
+  "version": "1.5.4",
+  "license": "Apache-2.0",
   "author": {
     "name": "pbc-swo",
     "url": "https://github.com/pbc-swo"
