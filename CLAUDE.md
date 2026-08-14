@@ -99,7 +99,9 @@ Distinction that matters when editing content: **rules are non-negotiable**; **c
 
 ## Running skill evals
 
-Each `evals/evals.json` pairs prompts with an `expected_output` and a list of `assertions`. Author these via the `skill-creator` skill, not a standalone test runner.
+Each `evals/evals.json` pairs prompts with an `expected_output` and a list of `assertions`. Author these via the `skill-creator` skill, not a standalone test runner. Coverage is **7 of 14 skills** (`disconfirm-first` 1/3, `pr-lifecycle` 0/2, `test-authoring` 6/6, `issue-to-pr-pipeline` 0/3).
+
+**A built-in runner exists and our format does not match it — and it is gated, so do not convert (checked 2026-08-13).** `claude plugin eval` reads `evals/**/case.yaml` or `evals/**/prompt.md` + `graders/*.md`, none of which is our `evals.json`; it also offers exactly what this repo has always lacked — `--ablation with-without` runs a no-plugin baseline arm and reports the score delta, which is a real triggering oracle — plus `--runs`, `--tag`, `--threshold`, `--max-cost-usd`, and an HTML report that **publishes to claude.ai by default** (`--no-publish` to keep it local). But every invocation, `init --bare` included, returns `` `plugin eval` is currently in early access ``, and no `case.yaml` exists anywhere on disk to copy. So the schema is unknowable and the result unrunnable: converting the seven sets would only swap one format no runner reads for another, delivering none of the ablation value that motivated it. **The unblock is early access, not authoring.** Re-check the gate before spending any effort here.
 
 **They have never been executed, and three things block running the trigger eval from this repo on Windows — verified 2026-08-06, do not re-discover them:**
 
