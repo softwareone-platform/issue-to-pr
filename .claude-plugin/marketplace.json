@@ -21,7 +21,7 @@
     {
       "name": "test-authoring",
       "description": "Test authoring plugin: scan-test-gaps, add/update test workflows, optional setup-test-context profiler; rules are read from the plugin, not copied per-repo",
-      "version": "0.18.7",
+      "version": "0.18.8",
       "source": "./plugins/test-authoring"
     },
     {

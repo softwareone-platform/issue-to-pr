@@ -1,5 +1,6 @@
 {
   "skill_name": "setup-test-context",
+  "provenance": "DOCUMENT-DERIVED, NEVER OBSERVED. These assertions were written by reading setup-test-context/SKILL.md, not by watching the skill run — skill-creator's workflow drafts assertions while runs are in progress (its SKILL.md step: 'Don't write assertions yet — just the prompts'), and that step was skipped here. So each assertion states what the skill's text says it does, which is not evidence that it does it. Treat them as unvalidated until a grading run has been observed, then correct them against what actually happened rather than assuming a green result confirms them.",
   "evals": [
     {
       "id": 0,
