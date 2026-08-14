@@ -1,7 +1,7 @@
 {
   "name": "disconfirm-first",
   "description": "Adversarial review skills: review-issue-fact (issue), review-plan-risk (design), review-code-risk (implementation)",
-  "version": "1.6.1",
+  "version": "1.7.0",
   "repository": "https://github.com/softwareone-platform/issue-to-pr",
   "homepage": "https://github.com/softwareone-platform/issue-to-pr#disconfirm-first",
   "license": "Apache-2.0",

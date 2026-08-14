@@ -134,7 +134,7 @@ When presenting the plan, add one line noting this pause is also the moment to c
 
 ## Degradation and safety
 
-- **Atlassian MCP absent** — `review-issue-fact` degrades itself (`Jira anchor not available`). If there is no issue content at all, ask the human to paste the issue before a-fact-check.
+- **Tracker unreachable** — `review-issue-fact` degrades itself (`Jira anchor not available` when the Atlassian MCP is absent, `GitHub anchor not available` when `gh` is missing or unauthenticated). If there is no issue content at all, ask the human to paste the issue before a-fact-check.
 - **`review-issue-fact` returns HALT** — advisory; surface it prominently, name the refuted claim, and ask whether to stop or proceed (default toward stopping). Record the decision.
 - **`review-issue-fact` returns RESOLVE** — advisory, handled the same way as HALT above: surface it, name what is missing, ask whether to stop or proceed, default toward stopping. **What differs is the ask**, because four different things produce RESOLVE — `PLANNING.md`'s a-fact-check entry enumerates them and is the single place they are listed, so read it there rather than inferring from the verdict word alone.
 - **Running inside a subagent** — stop at P0; do not proceed in a degraded mode that would silently lose the component verifiers and the human gates.
