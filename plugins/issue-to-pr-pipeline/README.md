@@ -65,3 +65,12 @@ The component skills coordinate only by natural-language invocation — there is
 ## Consumer-repo note — `.claude/resolve/` is self-ignored
 
 `resolve-issue` writes its handoff artifacts (`state.md`, `fact-check.md`, `plan.md`) under `.claude/resolve/<ticket>/` in the repo it runs in, and drops a self-scoped `.claude/resolve/.gitignore` (`*`) there so those artifacts stay out of git automatically — without editing the consumer repo's root `.gitignore`. `review-code-risk` reads `plan.md` from the working-tree disk, so it need not be committed, and committing it would add the internal design doc to the PR diff. Gitignored files do not make the working tree "dirty", so `review-code-risk`'s clean-tree precondition still holds. A team that wants the plan in the PR for context may commit `plan.md` explicitly, but that is a preference, not the default.
+
+## What lands outside the repo — two files, both yours to read or delete
+
+Everything above stays inside the repo you invoked the pipeline in. Two files do not:
+
+- `~/.claude/resolve-learnings/candidates.md` — `resolve-issue` appends a candidate learning here at a step boundary, but only when the observation is generic, orchestration-scoped, grounded in a concrete signal, and novel. The bias is silence, so most steps append nothing. Writing is append-only and never blocks a run; at the end of an interactive run the pipeline counts the fresh entries and, once enough accumulate, auto-invokes the harvest below as internal upkeep.
+- `~/.claude/resolve-learnings/conventions.md` — `resolve-issue-learnings` verifies the candidates against the current skill and writes the survivors here; `resolve-issue` reads it at startup and honours what still fits, as preferences rather than hard rules.
+
+Both are **user-global**, so they are shared by every repo you run the pipeline in — that is deliberate, since a lesson about the pipeline's own flow is not repo-specific. Both are plain markdown you can read, edit, or delete at any time, and deleting them costs nothing but the accumulated learnings. Nothing else these skills do reaches outside the repo: `resolve-issue-dashboard` reads `~/.claude/projects/` to tail transcripts but never writes there.
