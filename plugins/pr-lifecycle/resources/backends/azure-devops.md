@@ -105,7 +105,7 @@ whole pull request, so git holds both halves:
 - **Subject** — `Merged PR <n>: <title>`. Strip `^Merged PR [0-9]+: ` **once**.
   A subject that does not match never went through a pull request; ignore it.
   A completion message is a free-text box a human may edit, and re-completions happen,
-  so `Merged PR 99720: Merged PR 99711: <title>` is a real shape: a residual
+  so `Merged PR <n>: Merged PR <m>: <title>` is a real shape: a residual
   `Merged PR <n>: ` after one strip is that case rather than part of the title.
 - **Body** — whatever the pull request's description was, verbatim: the completion copies
   it rather than summarising it, so headings, bullets, and fenced blocks survive if they

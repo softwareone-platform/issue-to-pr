@@ -11,10 +11,14 @@ are **orthogonal** — Jira can back a PR on either platform.
 
 - Match a Jira key with `[A-Z][A-Z0-9]+-\d+` (case-insensitive first match),
   typically from the branch name.
-- **Normalise case twice** from that one value:
-  - lowercase for the PR title (e.g. `[acme-12345]`),
-  - uppercase for the Jira URL (e.g. `ACME-12345`).
-  Never reuse one casing for both.
+- **The link needs the uppercase key** (e.g. `ACME-12345`) — that is Jira's own
+  canonical form, and it is the one thing about the key this adapter decides.
+- **How the key is written in the *title* is not this adapter's call.** Bracketed,
+  bare with a colon, prefixed by a Conventional Commits type, lower case, upper case,
+  or absent altogether are all real conventions in real repos, and which one applies
+  is what Step 3 learns from previous PRs. Hand Step 3 the key and let the sample
+  decide how it appears. With nothing learned, use the key as the tracker records it
+  and add no bracket, no case change, and no marker of your own.
 - Two or more *different* ticket keys → ask which, rather than silently taking
   the first.
 - No key found → omit the Jira link line, and title it however this repo titles

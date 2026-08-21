@@ -30,11 +30,13 @@ flowchart TD
     S4 -- "cannot confirm / subagent" --> P(["do NOT push, do NOT create;<br>print prepared draft"])
 ```
 
-## Format (default; the convention learned for the target overrides it — layout as well as presentation)
+## Format — learned, not shipped
 
-- Title (Jira tracker) `[acme-xxxxx] <summary>` (lowercase `acme-`). On the GitHub Issues tracker the title/link use `#<n>` instead. Any further marker comes from the sampled PRs, never from the target branch's name.
-- Description: ticket link (first line — Jira URL with uppercase `ACME-`, or GitHub `#<n>`) → summary → bulleted what/why → optional high-level ASCII diagram **in a fenced code block** that visualises the change (context / flow / overview — whatever fits; prioritise clear visualisation over format (presentation is the skill's best-effort call), and split a before/after or any complex view into separate diagrams rather than a hard-to-align side-by-side block; plain-ASCII glyphs so it survives encoding downgrades) → an optional `🤖 Drafted with Claude Code` footer (off by default; opted-in only, and then the last line). The description is sent via a temp body-file, not an inline string — see the backend adapter for each platform's create recipe and encoding traps.
-- Where the majority of the sampled PRs are terser than that, that shape is reproduced instead of the default — a maintenance line's PRs are often a ticket link plus a line pointing at the PR the change was ported from, and the backend adapter supplies the platform's PR-link form. What holds on every path is a ticket link when a ticket exists, and a body that says what the change does.
+- **Nothing here is a default title or description shape.** The form comes from previous PRs — yours into this target, then anyone's, then repo-wide — and that includes the ticket-reference shape: bracketed, bare with a colon, prefixed by a Conventional Commits type, or absent altogether, whichever the sample uses. Where a repo's PRs carry no ticket reference, none is added.
+
+- **What is fixed is the content, not the form.** A ticket link when a ticket exists (first line, because the platform auto-links it there), and a description of what changed and why, proportionate to the change. Form is learned; silence is not — a repo whose PRs say nothing still gets a PR that does, and the skill says so when it made that call.
+
+- **Optional, and only where the sample or the caller calls for it**: a high-level ASCII diagram in a fenced code block (plain-ASCII glyphs so it survives encoding downgrades; split a complex view into several diagrams rather than one hard-to-align block), and a `🤖 Drafted with Claude Code` footer (off by default, opted-in only, and then the last line). The description is sent via a temp body-file, not an inline string — see the backend adapter for each platform's create recipe and encoding traps.
 - Always English; no git `Co-Authored-By` trailer of its own (that is a commit rule, and whether the repo wants one is read off the repo's own history, not decided here). AI-provenance markers are **off by default**: neither the `🤖` footer nor the `ai-assisted` label is added unless the invoking request explicitly asks to mark the PR as AI-assisted. When opted in, the footer is the last line and the label is best-effort (see SKILL.md and the backend adapter). *(Changed: earlier versions always added both. Ask for them explicitly if you want them — e.g. an audit/disclosure workflow.)*
 
 ## Design notes

@@ -30,6 +30,7 @@ are **orthogonal**, though GitHub Issues is most natural on a GitHub remote
 
 - Format: `#<n>` — GitHub auto-links a same-repo issue reference, so no base URL
   and no full URL are needed.
-- Use `#<n>` both in the title (in place of the Jira `[acme-xxxxx]` bracket form)
-  and in the description.
+- Use `#<n>` in the description. In the *title*, use it only where the convention
+  Step 3 learned puts a ticket reference there, and in the position that sample puts
+  it — this adapter supplies the reference, never the title's shape.
 - There is **no base URL** to resolve for this tracker.
