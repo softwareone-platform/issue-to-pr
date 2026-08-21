@@ -7,7 +7,7 @@ so no `gh`-specific field parsing lives in the skill body itself.
 
 > **Scope:** this file covers both the **open-pr** operations
 > (create PR, list existing PR for dup-check,
-> list merged PRs by target for convention learning,
+> list a target's merged PRs for convention learning,
 > add label, PR cross-reference link)
 > and the **resolve-pr-comments** thread operations
 > (identity / belongs-to-repo check, fetch + normalize review threads via
@@ -84,23 +84,54 @@ above never passes `--label`, so the default (no opt-in) needs no change here.
    be pre-created in the repo to be filterable). Never let a missing label
    abort or undo the PR.
 
-### List merged PRs by target (convention learning)
+### Reading a target's previous PRs — use the API, not git
+
+Git is **not** a sound source on GitHub, and the reason is structural rather than
+fussy: several merge strategies coexist, one repo can show all of them, and the list
+is not closed.
+
+- **Squash merge** — subject `<title> (#<n>)`; body is either the PR description or
+  the branch's own commit messages, depending on a repo setting.
+- **Merge commit** — subject `Merge pull request #<n> from <owner>/<branch>`; the title
+  is the body's first line and the description is absent entirely.
+- **Rebase merge** — nothing marks a pull request at all.
+- **Merge queues and merge bots** add their own subjects (`Auto merge of #<n> - …`,
+  `Rollup merge of #<n> - …`), so any fixed taxonomy is incomplete.
+
+Two consequences make git unusable here. A multi-line body has no delimiter, so
+nothing distinguishes a body's continuation line from the next commit's subject —
+and merge commits are common enough to dominate a window. And an ordinary
+direct-push commit that references an *issue* (`Bump dep to 4.2 (#1234)`) is
+indistinguishable from a squashed PR title.
+
+So use the API, whose base filter is correct by construction:
 
 ```
-gh pr list --base <target> --state merged --limit 20 [--author <login>]
+gh pr list --base <target> --state merged --limit 20 \
+  --json number,title,body,mergedAt [--author <login>]
 ```
 
-Scoping the sample to PRs that actually merged **into `<target>`**
-is what makes the learned convention that target's own rather than the default branch's.
-`--author` takes a GitHub **login**, not an email —
-resolve the caller's with `gh api user --jq .login`,
-and drop the flag to widen to every author on that target.
+- **`--json` is not optional.** Without it the output is a human table whose last
+  column is the *creation* date, and which carries **no body at all**.
+- **`--author` takes a GitHub login, not an email**, and it is how the caller-scoped
+  rung is expressed here. Passing the caller's git email returns an empty list with a
+  **success** exit, which reads as "no history". Resolve the login with
+  `gh api user --jq .login`, and note this is the `gh`-authenticated account, which
+  need not be the same person as `git config user.email` — where the two disagree,
+  say so rather than sampling silently. Drop the flag for the all-authors rung.
+- **The list is creation-ordered, not merge-ordered.** `mergedAt` is in the JSON —
+  sort on it yourself for any "most recent" decision.
+- **An empty list and a failure are distinguishable here, so distinguish them.**
+  A target branch that does not exist yields `[]` at exit 0. Bad credentials and an
+  unreachable host **fail** instead — `HTTP 401: Bad credentials`, or a remote
+  mismatch — at a non-zero exit. Check the exit status; do not read every empty
+  result as history.
 
 ### PR cross-reference link syntax
 
-GitHub auto-links `#<pr_number>` to that PR in the same repo —
-the form to use when the layout learned for a target cross-references an originating PR
-(e.g. `cherry pick from #<pr_number>`).
+GitHub auto-links `#<pr_number>` to that PR in the same repo — the form to use when the
+sampled PRs for a target reference the PR a change was ported from. Which number that is
+comes from whoever asked for the port, not from this adapter.
 
 ## Thread operations (resolve-pr-comments)
 

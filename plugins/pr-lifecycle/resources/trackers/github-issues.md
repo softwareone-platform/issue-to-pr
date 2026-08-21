@@ -23,9 +23,8 @@ are **orthogonal**, though GitHub Issues is most natural on a GitHub remote
   issue-shaped ref, or more than one candidate, **ask rather than guess** — a wrong
   `#<n>` auto-links to an unrelated issue or PR (GitHub shares one number series).
 - No issue number found → omit the link, and title it however this repo titles
-  ticket-less PRs (Step 3's learned convention). `ad-hoc <summary>` is the
-  fallback only when that history yielded nothing; a plain `<summary>` is the
-  safer default, since `ad-hoc` is one team's marker rather than a general form.
+  ticket-less PRs (Step 3's learned convention). Where that history yielded
+  nothing, the title is the summary alone — introduce no marker of your own.
 
 ## Ticket link
 

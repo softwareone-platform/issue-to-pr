@@ -7,8 +7,8 @@ so no `az`-specific field parsing lives in the skill body itself.
 
 > **Scope:** this file covers both the **open-pr** operations
 > (create PR, list existing PR for dup-check,
-> list merged PRs by target for convention learning,
-> add label, PR cross-reference link)
+> read a target's previous PRs out of git for convention learning,
+> with an API fallback for a marker-less target, add label, PR cross-reference link)
 > and the **resolve-pr-comments** thread operations
 > (identity / belongs-to-repo check, fetch + normalize review threads,
 > post a reply, set thread status).
@@ -97,22 +97,77 @@ It is then **best-effort**: if the org disallows ad-hoc PR tags and
 `az repos pr create` rejects `--labels`, drop the tag, create the PR with the
 opted-in footer alone, and say so.
 
-### List merged PRs by target (convention learning)
+### Reading a target's previous PRs out of git — the whole sample, no API
+
+Completing a pull request writes one commit onto the target branch that carries the
+whole pull request, so git holds both halves:
+
+- **Subject** — `Merged PR <n>: <title>`. Strip `^Merged PR [0-9]+: ` **once**.
+  A subject that does not match never went through a pull request; ignore it.
+  A completion message is a free-text box a human may edit, and re-completions happen,
+  so `Merged PR 99720: Merged PR 99711: <title>` is a real shape: a residual
+  `Merged PR <n>: ` after one strip is that case rather than part of the title.
+- **Body** — whatever the pull request's description was, verbatim: the completion copies
+  it rather than summarising it, so headings, bullets, and fenced blocks survive if they
+  were there. Expect that they usually were not. Across these repos most descriptions are
+  one or two lines, a quarter of them on some branches are empty, and fenced blocks are
+  close to absent — so the body is a faithful sample, not a rich one.
+- **Author** — the pull request's author, so `-i --author=<pattern>` selects that
+  person's own PRs.
 
 ```
-az repos pr list --target-branch <target> --status completed --top 20 [--creator <email>]
+git log $(git merge-base origin/<default> origin/<target>)..origin/<target> \
+  -i --author=<pattern> --format='%x1e%s%n%b' -n 60
 ```
 
-Scoping the sample to PRs that actually completed **into `<target>`**
-is what makes the learned convention that target's own rather than the default branch's.
-Pass `--creator` (an identity — the caller's `git config user.email`) for the caller's own PRs,
-and drop it to widen to every author on that target.
+Every part of that line is load-bearing:
+
+- **`origin/<target>`, not `<target>`** — a local branch of the same name is routinely
+  behind the remote, and reading it fails *silently* with a stale sample; in a fresh
+  clone it does not exist and the command errors instead. `git fetch` updates
+  `origin/*` and never the local branch, so fetching does not protect you.
+- **The `merge-base ..` bound** keeps the sample inside the target's own history.
+  Without it a young maintenance line returns the default branch's PRs, and a line
+  with no commits of its own yet returns *nothing but* the default branch's.
+- **`-i`** because `git log --author` is case-sensitive, and one person's display name
+  appears in more than one form in the same repo (`Surname, First` alongside
+  `First Surname`).
+- **`%x1e`** is a record separator, and it is not decoration: descriptions are
+  multi-line, so without a delimiter nothing distinguishes a body's continuation line
+  from the next commit's subject.
+
+Where a target carries no `Merged PR` markers at all — a rewritten branch, or
+completions predating the current policy — say so and use the API fallback below
+rather than reporting "no history".
+
+### List merged PRs by target (API fallback, for a marker-less target)
+
+```
+az repos pr list --target-branch <target> --status completed --top 20
+```
+
+Needed only where the git read above found no markers. Each result carries both
+`title` and `description`, so this fallback serves *both* halves — it is not a
+descriptions-only path. Note the two windows differ (`--top 20` here against 60
+commits above), so report whichever you actually used.
+Two flags to leave off, both verified against the extension's behaviour:
+
+- **`--creator`** is resolved through the directory and **raises** on failure
+  (`Could not resolve identity`, or `There are multiple identities found`) instead of
+  returning an empty list, so a commit email that is not a directory identity
+  (a `noreply` address, a machine account) stops the call outright. Filter by author
+  with git's `--author` instead.
+- **`--org`** disables the git-remote detection that supplies organisation, project,
+  and repository. That detection is reliable here — this adapter is only ever loaded
+  because the remote is an Azure DevOps one — and an unresolved repository is *not*
+  an error: the extension falls back to listing the whole project's pull requests,
+  drawing the sample from other repositories. So leave detection alone.
 
 ### PR cross-reference link syntax
 
-Azure DevOps renders `!<pr_number>` as a link to that PR —
-the form to use when the layout learned for a target cross-references an originating PR
-(e.g. `cherry pick from !<pr_number>`).
+Azure DevOps renders `!<pr_number>` as a link to that PR — the form to use when the
+sampled PRs for a target reference the PR a change was ported from. Which number that is
+comes from whoever asked for the port, not from this adapter.
 
 ## Thread operations (resolve-pr-comments)
 
