@@ -6,7 +6,9 @@ The skill body detects the platform (Step 0) and follows the recipes here,
 so no `az`-specific field parsing lives in the skill body itself.
 
 > **Scope:** this file covers both the **open-pr** operations
-> (create PR, list existing PR for dup-check, add label, backport PR-link)
+> (create PR, list existing PR for dup-check,
+> list merged PRs by target for convention learning,
+> add label, PR cross-reference link)
 > and the **resolve-pr-comments** thread operations
 > (identity / belongs-to-repo check, fetch + normalize review threads,
 > post a reply, set thread status).
@@ -95,10 +97,22 @@ It is then **best-effort**: if the org disallows ad-hoc PR tags and
 `az repos pr create` rejects `--labels`, drop the tag, create the PR with the
 opted-in footer alone, and say so.
 
-### Backport PR-link syntax
+### List merged PRs by target (convention learning)
 
-Azure DevOps renders `!<pr_number>` as a link to that PR.
-Use `cherry pick from !<pr_number>` in the backport description.
+```
+az repos pr list --target-branch <target> --status completed --top 20 [--creator <email>]
+```
+
+Scoping the sample to PRs that actually completed **into `<target>`**
+is what makes the learned convention that target's own rather than the default branch's.
+Pass `--creator` (an identity — the caller's `git config user.email`) for the caller's own PRs,
+and drop it to widen to every author on that target.
+
+### PR cross-reference link syntax
+
+Azure DevOps renders `!<pr_number>` as a link to that PR —
+the form to use when the layout learned for a target cross-references an originating PR
+(e.g. `cherry pick from !<pr_number>`).
 
 ## Thread operations (resolve-pr-comments)
 

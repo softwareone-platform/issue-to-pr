@@ -15,7 +15,7 @@
     {
       "name": "pr-lifecycle",
       "description": "Team-agnostic PR lifecycle skills (Azure DevOps or GitHub): open-pr, resolve-pr-comments",
-      "version": "0.8.7",
+      "version": "0.9.0",
       "source": "./plugins/pr-lifecycle"
     },
     {
@@ -27,7 +27,7 @@
     {
       "name": "issue-to-pr-pipeline",
       "description": "Issue-to-PR orchestration: resolve-issue chains the review, test, and PR-lifecycle skills into one resumable pipeline gated on plan approval, pausing again wherever a decision is yours; resolve-issue-dashboard is a read-only dashboard that visualises a run; resolve-issue-learnings harvests learnings across runs",
-      "version": "0.24.7",
+      "version": "0.24.8",
       "source": "./plugins/issue-to-pr-pipeline"
     }
   ]

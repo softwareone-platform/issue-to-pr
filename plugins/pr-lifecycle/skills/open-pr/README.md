@@ -8,7 +8,7 @@ Part of `pr-lifecycle`, the team-agnostic PR-lifecycle plugin. Sibling: `resolve
 
 The skill is backend-agnostic across two orthogonal axes, detected in Step 0:
 
-- **PR platform** — **Azure DevOps** (`dev.azure.com` / `*.visualstudio.com` remote) or **GitHub** (`github.com` remote). Determines the create / dup-check / label / backport-link mechanics.
+- **PR platform** — **Azure DevOps** (`dev.azure.com` / `*.visualstudio.com` remote) or **GitHub** (`github.com` remote). Determines the create / dup-check / label / PR-cross-reference-link mechanics, and the merged-PRs-by-target query the convention learning samples.
 - **Issue tracker** — **Jira** (`ACME-123` keys, `https://<base>/browse/KEY` links) or **GitHub Issues** (`#123` refs, auto-linked). GitHub Issues is the zero-config default on a GitHub remote when there is no Jira configuration; a Jira base URL comes from `.claude/pr-lifecycle.json`, the Atlassian MCP, or a one-time prompt.
 
 Platform-specific recipes live in `resources/backends/{azure-devops,github}.md`; tracker-specific id/link rules live in `resources/trackers/{jira,github-issues}.md`. The skill body holds no `az`/`gh` field parsing and no tracker id/URL parsing — it detects, loads the matching adapters, and follows their recipes. (The backend files cover both siblings — the open-pr operations and `resolve-pr-comments`'s thread operations.)
@@ -20,29 +20,29 @@ flowchart TD
     T(["/pr-lifecycle:open-pr<br>or trigger phrase"]) --> G{"Open a NEW PR?<br>(not review / triage / merge)"}
     G -- "no" --> STOP(["Stop: wrong skill<br>(review / resolve-pr-comments / merge)"])
     G -- "yes" --> S0["Step 0 — detect platform + tracker<br>(Azure DevOps / GitHub; Jira / GitHub Issues)<br>load adapters; ambiguous → ask"]
-    S0 --> S1["Step 1 — detect target<br>read origin/HEAD; release/* → backport;<br>ambiguous → ask"]
+    S0 --> S1["Step 1 — detect target<br>explicit target, else origin/HEAD;<br>no name-based special case; ambiguous → ask"]
     S1 --> S2{"Step 2 — preconditions"}
     S2 -- "behind target" --> X1(["stop & report"])
     S2 -- "existing active PR" --> X2(["stop & point to it<br>(no duplicate, no edit)"])
-    S2 -- "ok (not-pushed → publish at S4)" --> S3["Step 3 — learn caller convention<br>(git log --author; default fallback)<br>+ draft title / description"]
+    S2 -- "ok (not-pushed → publish at S4)" --> S3["Step 3 — learn convention<br>(merged PRs into THIS target;<br>widen → repo-wide → default)<br>+ draft title / description"]
     S3 --> S4{"Step 4 — present + confirm"}
     S4 -- "confirmed (standalone)" --> C(["publish branch if needed (git push -u)<br>→ backend adapter create recipe → return URL"])
     S4 -- "cannot confirm / subagent" --> P(["do NOT push, do NOT create;<br>print prepared draft"])
 ```
 
-## Format (default; the caller's convention overrides presentation)
+## Format (default; the convention learned for the target overrides it — layout as well as presentation)
 
-- Title (Jira tracker) `[acme-xxxxx] <summary>` (lowercase `acme-`); backport `[acme-xxxxx] [release] <summary>`. On the GitHub Issues tracker the title/link use `#<n>` instead.
+- Title (Jira tracker) `[acme-xxxxx] <summary>` (lowercase `acme-`). On the GitHub Issues tracker the title/link use `#<n>` instead. Any further marker comes from the sampled PRs, never from the target branch's name.
 - Description: ticket link (first line — Jira URL with uppercase `ACME-`, or GitHub `#<n>`) → summary → bulleted what/why → optional high-level ASCII diagram **in a fenced code block** that visualises the change (context / flow / overview — whatever fits; prioritise clear visualisation over format (presentation is the skill's best-effort call), and split a before/after or any complex view into separate diagrams rather than a hard-to-align side-by-side block; plain-ASCII glyphs so it survives encoding downgrades) → an optional `🤖 Drafted with Claude Code` footer (off by default; opted-in only, and then the last line). The description is sent via a temp body-file, not an inline string — see the backend adapter for each platform's create recipe and encoding traps.
-- Backport description: the ticket link, `cherry pick from <PR-link>` (Azure DevOps `!<pr>`, GitHub `#<pr>`), then — when provenance is opted in — the footer.
+- Where the PRs sampled for a target are consistently terser than that — typically a maintenance line whose PRs carry only the ticket link and `cherry pick from <PR-link>` (Azure DevOps `!<pr>`, GitHub `#<pr>`), then the opted-in footer — that shape is reproduced instead of the default. Only the ticket link is mandatory on every path.
 - Always English; no git `Co-Authored-By` trailer of its own (that is a commit rule, and whether the repo wants one is read off the repo's own history, not decided here). AI-provenance markers are **off by default**: neither the `🤖` footer nor the `ai-assisted` label is added unless the invoking request explicitly asks to mark the PR as AI-assisted. When opted in, the footer is the last line and the label is best-effort (see SKILL.md and the backend adapter). *(Changed: earlier versions always added both. Ask for them explicitly if you want them — e.g. an audit/disclosure workflow.)*
 
 ## Design notes
 
 This is the **team-agnostic** PR-creation skill. Its mechanics (routed through the backend/tracker adapters) and safety rails — confirm before creating, never auto-resolve conflicts, never delete branches, never force-push — are deliberately scoped:
 
-- learns the caller's PR convention instead of imposing a fixed format;
+- learns the PR convention of the target branch (the caller's own PRs first) instead of imposing a fixed format;
 - opens a PR for the branch as-is (no bundled "merge the base branch in" step), publishing the branch to the remote if it is not there yet so you need not push first;
 - has an unattended-safe path (never auto-creates without confirmation);
 - checks for an existing PR first to avoid duplicates;
-- targets `release/*` for backports.
+- learns the convention per target branch, so a PR onto a maintenance line follows that line's own shape rather than the default branch's.

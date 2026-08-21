@@ -6,7 +6,9 @@ The skill body detects the platform (Step 0) and follows the recipes here,
 so no `gh`-specific field parsing lives in the skill body itself.
 
 > **Scope:** this file covers both the **open-pr** operations
-> (create PR, list existing PR for dup-check, add label, backport PR-link)
+> (create PR, list existing PR for dup-check,
+> list merged PRs by target for convention learning,
+> add label, PR cross-reference link)
 > and the **resolve-pr-comments** thread operations
 > (identity / belongs-to-repo check, fetch + normalize review threads via
 > `gh api graphql`, post a reply, resolve via `resolveReviewThread`).
@@ -82,10 +84,23 @@ above never passes `--label`, so the default (no opt-in) needs no change here.
    be pre-created in the repo to be filterable). Never let a missing label
    abort or undo the PR.
 
-### Backport PR-link syntax
+### List merged PRs by target (convention learning)
 
-GitHub auto-links `#<pr_number>` to that PR in the same repo.
-Use `cherry pick from #<pr_number>` in the backport description.
+```
+gh pr list --base <target> --state merged --limit 20 [--author <login>]
+```
+
+Scoping the sample to PRs that actually merged **into `<target>`**
+is what makes the learned convention that target's own rather than the default branch's.
+`--author` takes a GitHub **login**, not an email —
+resolve the caller's with `gh api user --jq .login`,
+and drop the flag to widen to every author on that target.
+
+### PR cross-reference link syntax
+
+GitHub auto-links `#<pr_number>` to that PR in the same repo —
+the form to use when the layout learned for a target cross-references an originating PR
+(e.g. `cherry pick from #<pr_number>`).
 
 ## Thread operations (resolve-pr-comments)
 

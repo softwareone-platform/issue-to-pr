@@ -91,7 +91,7 @@ Three adversarial reviewers, one per altitude — each pressure-tests a differen
 
 Team-agnostic PR lifecycle for Azure DevOps or GitHub — the platform is detected from the git remote at runtime. Both skills confirm before making any outward change.
 
-- **open-pr** — Opens a PR whose title and description follow *your own* past-PR conventions, learned at runtime. Handles standard PRs and backports to `release/*`.
+- **open-pr** — Opens a PR whose title and description follow *your own* past-PR conventions, learned at runtime from the PRs that targeted the same branch — so a PR onto a maintenance line follows that line's own shape.
 - **resolve-pr-comments** — Fetches a PR's review threads, triages each, drafts the code fixes and replies, and — after one confirmation — commits, pushes, replies, and updates thread status.
 
 ### test-authoring

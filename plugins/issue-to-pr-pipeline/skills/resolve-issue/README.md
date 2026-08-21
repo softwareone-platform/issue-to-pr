@@ -31,7 +31,7 @@ flowchart TD
         bSecurityReview --> bCodeRisk["b-code-risk git fetch → review-code-risk<br>(diff + issue + plan.md;<br>verifier = backstop;<br>commit auto-fixes after human sees table)"]
         bCodeRisk --> CK{"b-code-risk→b-open-pr checkpoint:<br>unresolved real / failed-verification?"}
         CK -- "yes" --> HOLD(["pause for human disposition"])
-        CK -- "clear" --> bOpenPr["b-open-pr push work-branch → open-pr<br>(confirm gate; backport format if release/*)"]
+        CK -- "clear" --> bOpenPr["b-open-pr push work-branch → open-pr<br>(confirm gate; convention learned per target)"]
     end
     bOpenPr --> DONE(["done: record pr-url;<br>point to Phase C<br>(resolve-pr-comments, user-invoked)"])
 ```
@@ -44,7 +44,7 @@ flowchart TD
 - **Pick model and effort before you invoke; the pipeline never switches or downgrades them** — effort is chosen at invocation and never changes mid-run, and Phase A (diagnose and plan) is the reasoning-critical part it drives, so bias toward a stronger model and higher effort for a complex, ambiguous, or high-risk issue. The a-gate-approve pause is the natural moment to change model/effort for Phase B. The pipeline and its subagents follow the session's model and effort and never pin, cap, or silently downgrade them — lower the session model yourself if you want a run to be cheaper.
 - **`plan.md` is not committed** — `review-code-risk` reads it from the working-tree disk; committing it would pollute the code diff and the PR. Recommend gitignoring `.claude/resolve/` in the consumer repo.
 - **Tests are committed before the review passes** — Phase B runs implement → test → commit → `security-review` (security) → `review-code-risk` → PR. Committing the tests first makes them an **independent regression oracle** for the security and fix-review edits; each pass reads the committed diff, applies its fixes uncommitted, and — when it changed code — a build+test gate verifies them before that pass commits.
-- **Never commit onto the base branch** — a work-branch guard stops any Phase B commit unless the current branch is a feature branch distinct from the base (`master` / `main`, or the targeted `release/*` for a backport).
+- **Never commit onto the base branch** — a work-branch guard stops any Phase B commit unless the current branch is a feature branch distinct from the base P2 recorded (the default branch, or a maintenance line).
 - **Ends at PR-created** — addressing review comments is Phase C (`resolve-pr-comments`), invoked by the human later; there is no polling loop.
 
 ## Where the run stops for you
