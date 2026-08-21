@@ -97,59 +97,64 @@ It is then **best-effort**: if the org disallows ad-hoc PR tags and
 `az repos pr create` rejects `--labels`, drop the tag, create the PR with the
 opted-in footer alone, and say so.
 
-### Reading a target's previous PRs out of git — the whole sample, no API
+### Reading previous pull requests out of git — the whole sample, no API
 
-Completing a pull request writes one commit onto the target branch that carries the
-whole pull request, so git holds both halves:
-
-- **Subject** — `Merged PR <n>: <title>`. Strip `^Merged PR [0-9]+: ` **once**.
-  A subject that does not match never went through a pull request; ignore it.
-  A completion message is a free-text box a human may edit, and re-completions happen,
-  so `Merged PR <n>: Merged PR <m>: <title>` is a real shape: a residual
-  `Merged PR <n>: ` after one strip is that case rather than part of the title.
-- **Body** — whatever the pull request's description was, verbatim: the completion copies
-  it rather than summarising it, so headings, bullets, and fenced blocks survive if they
-  were there. Expect that they usually were not. Across these repos most descriptions are
-  one or two lines, a quarter of them on some branches are empty, and fenced blocks are
-  close to absent — so the body is a faithful sample, not a rich one.
-- **Author** — the pull request's author, so `-i --author=<pattern>` selects that
-  person's own PRs.
+Completing a pull request writes one commit that carries the whole pull request, so
+git holds both halves and no `az` call, authentication, or identity lookup is needed:
 
 ```
-git log $(git merge-base origin/<default> origin/<target>)..origin/<target> \
-  -i --author=<pattern> --format='%x1e%s%n%b' -n 60
+git log origin/<default-branch> -i --author=<token> --format='%x1e%s%n%b' -n 200
 ```
 
-Every part of that line is load-bearing:
+- **Subject** — `Merged PR <n>: <title>`. Strip `^Merged PR [0-9]+: `. A subject that
+  does not match never went through a pull request, so ignore it — and count the ones
+  that *do* match, because that is the sample size, not `-n`.
+- **Body** — whatever the description was, verbatim: the completion copies it rather
+  than summarising, so headings, bullets, and fenced blocks survive when they were
+  there. How often they were there varies enormously between repositories; read the
+  sample rather than expecting either answer.
+- **Author** — the pull request's author, which is the identity **the organisation
+  directory holds**, not the one in the contributor's `git config`. Those routinely
+  differ in both spelling and word order, which is why the skill matches a token
+  rather than a whole name. `-i` handles the casing half of that and nothing more.
+- **`%x1e`** is a record separator, and it is load-bearing: descriptions are multi-line,
+  so without a delimiter nothing distinguishes a body's continuation line from the next
+  commit's subject. It is emitted *before* each record, so the first field is empty.
+- **`origin/<default-branch>`, never a bare local name** — a local branch of the same
+  name is routinely behind the remote and reading it fails *silently* with a stale
+  sample. This applies to `git log` only: the API recipes below take a bare branch
+  name, and prefixing one there matches nothing at a success exit.
 
-- **`origin/<target>`, not `<target>`** — a local branch of the same name is routinely
-  behind the remote, and reading it fails *silently* with a stale sample; in a fresh
-  clone it does not exist and the command errors instead. `git fetch` updates
-  `origin/*` and never the local branch, so fetching does not protect you.
-- **The `merge-base ..` bound** keeps the sample inside the target's own history.
-  Without it a young maintenance line returns the default branch's PRs, and a line
-  with no commits of its own yet returns *nothing but* the default branch's.
-- **`-i`** because `git log --author` is case-sensitive, and one person's display name
-  appears in more than one form in the same repo (`Surname, First` alongside
-  `First Surname`).
-- **`%x1e`** is a record separator, and it is not decoration: descriptions are
-  multi-line, so without a delimiter nothing distinguishes a body's continuation line
-  from the next commit's subject.
+**Not every repository yields markers.** Completion strategy is a per-repo, per-branch
+policy, and a rebase-and-fast-forward completion writes no merge commit at all — that
+is a healthy configuration, not a rewritten history. A no-fast-forward policy also
+mixes the source branch's own commits into the range, so the marker count can be a
+small fraction of `-n`. Where the markers are too few, say so and use the API fallback
+below rather than reporting "no history".
 
-Where a target carries no `Merged PR` markers at all — a rewritten branch, or
-completions predating the current policy — say so and use the API fallback below
-rather than reporting "no history".
-
-### List merged PRs by target (API fallback, for a marker-less target)
+### List merged pull requests (API fallback, for a marker-less repository)
 
 ```
-az repos pr list --target-branch <target> --status completed --top 20
+az repos pr list --status completed --top 100 -o json
 ```
 
-Needed only where the git read above found no markers. Each result carries both
-`title` and `description`, so this fallback serves *both* halves — it is not a
-descriptions-only path. Note the two windows differ (`--top 20` here against 60
-commits above), so report whichever you actually used.
+Needed only where the git read above found too few markers. Each result carries both
+`title` and `description`, so this serves both halves.
+
+- **`-o json` is not optional.** The default table output carries no description at all
+  and truncates the title, so a user whose `az` output default is `table` would learn a
+  body convention from nothing. Ask for JSON explicitly.
+- **Do not add `--creator`.** It resolves through the organisation directory and
+  **raises** (`Could not resolve identity`, `There are multiple identities found`)
+  rather than returning an empty list, so a commit email that is not a directory
+  identity stops the call outright. Filter by author yourself, over the returned JSON.
+- **Do not add `--org`.** Organisation, project, and repository are detected from the
+  git remote, which is the only reason this adapter was loaded; passing `--org` is what
+  *disables* that detection, and an unresolved repository is not an error — the
+  extension falls back to listing the whole project's pull requests, drawing the sample
+  from other repositories.
+- The window here (`--top`) and the git window (`-n`) are different sizes; report which
+  one the sample came from.
 Two flags to leave off, both verified against the extension's behaviour:
 
 - **`--creator`** is resolved through the directory and **raises** on failure

@@ -1,6 +1,6 @@
 # open-pr
 
-Open a pull request (Azure DevOps or GitHub) for the current branch, with a title and description that follow **the caller's own previous PRs** (learned at runtime from the repo's history, falling back to everyone's and then to no convention at all) instead of a fixed house style. Only the *form* is learned: what the description has to say is not up for a vote, so a repo whose PRs say nothing still gets one that does. The draft is always presented for confirmation, and the PR is never created without explicit approval.
+Open a pull request (Azure DevOps or GitHub) for the current branch, with a title and description that follow **the caller's own previous PRs** (learned at runtime from the repo's history, falling back to everyone's and then to no convention at all) instead of a fixed house style. Presentation is learned; substance is learned only where the sample has some, so a repo whose PRs say nothing still gets one that does. The draft is always presented for confirmation, and the PR is never created without explicit approval.
 
 Part of `pr-lifecycle`, the team-agnostic PR-lifecycle plugin. Sibling: `resolve-pr-comments` (triage and act on an existing PR's review comments behind a single confirmation gate).
 
@@ -24,7 +24,7 @@ flowchart TD
     S1 --> S2{"Step 2 — preconditions"}
     S2 -- "behind target" --> X1(["stop & report"])
     S2 -- "existing active PR" --> X2(["stop & point to it<br>(no duplicate, no edit)"])
-    S2 -- "ok (not-pushed → publish at S4)" --> S3["Step 3 — learn convention from git log<br>(your PRs → anyone's → invent nothing)<br>+ draft title / description"]
+    S2 -- "ok (not-pushed → publish at S4)" --> S3["Step 3 — learn from previous PRs<br>(yours → anyone's → invent nothing;<br>source per the backend adapter)<br>+ draft title / description"]
     S3 --> S4{"Step 4 — present + confirm"}
     S4 -- "confirmed (standalone)" --> C(["publish branch if needed (git push -u)<br>→ backend adapter create recipe → return URL"])
     S4 -- "cannot confirm / subagent" --> P(["do NOT push, do NOT create;<br>print prepared draft"])
@@ -32,12 +32,12 @@ flowchart TD
 
 ## Format — learned, not shipped
 
-- **Nothing here is a default title or description shape.** The form comes from previous PRs — yours into this target, then anyone's, then repo-wide — and that includes the ticket-reference shape: bracketed, bare with a colon, prefixed by a Conventional Commits type, or absent altogether, whichever the sample uses. Where a repo's PRs carry no ticket reference, none is added.
+- **Nothing here is a default title or description shape.** Presentation comes from previous PRs — yours first, then anyone's — and that includes the ticket-reference shape: bracketed, bare with a colon, prefixed by a Conventional Commits type, or absent altogether, whichever the sample uses. A bracketed word is more often a component tag than a ticket reference, and where a repo's PRs carry no ticket reference none is added.
 
-- **What is fixed is the content, not the form.** A ticket link when a ticket exists (first line, because the platform auto-links it there), and a description of what changed and why, proportionate to the change. Form is learned; silence is not — a repo whose PRs say nothing still gets a PR that does, and the skill says so when it made that call.
+- **Substance is learned only where the sample has some.** The test is whether a sampled body, on its own, tells a reviewer what changed without following a link. Where it does, it is matched — length included. Where it does not, the draft says what changed anyway, in the presentation the sample taught, and announces that it overrode the sample.
 
-- **Optional, and only where the sample or the caller calls for it**: a high-level ASCII diagram in a fenced code block (plain-ASCII glyphs so it survives encoding downgrades; split a complex view into several diagrams rather than one hard-to-align block), and a `🤖 Drafted with Claude Code` footer (off by default, opted-in only, and then the last line). The description is sent via a temp body-file, not an inline string — see the backend adapter for each platform's create recipe and encoding traps.
-- Always English; no git `Co-Authored-By` trailer of its own (that is a commit rule, and whether the repo wants one is read off the repo's own history, not decided here). AI-provenance markers are **off by default**: neither the `🤖` footer nor the `ai-assisted` label is added unless the invoking request explicitly asks to mark the PR as AI-assisted. When opted in, the footer is the last line and the label is best-effort (see SKILL.md and the backend adapter). *(Changed: earlier versions always added both. Ask for them explicitly if you want them — e.g. an audit/disclosure workflow.)*
+- **AI-provenance markers are off by default**: neither the `🤖 Drafted with Claude Code` footer nor the `ai-assisted` label is added unless the invoking request explicitly asks to mark the PR as AI-assisted. When opted in, the footer is the last line and the label is best-effort. The description is sent via a temp body-file, not an inline string — see the backend adapter for each platform's create recipe and encoding traps.
+- *(Changed in 0.9.0: earlier versions shipped a fixed title and description shape and always added the provenance markers. Both are now off unless the repo's own history — or, for the markers, the caller — asks for them.)*
 
 ## Design notes
 
@@ -47,4 +47,4 @@ This is the **team-agnostic** PR-creation skill. Its mechanics (routed through t
 - opens a PR for the branch as-is (no bundled "merge the base branch in" step), publishing the branch to the remote if it is not there yet so you need not push first;
 - has an unattended-safe path (never auto-creates without confirmation);
 - checks for an existing PR first to avoid duplicates;
-- learns the convention from the target branch's own previous PRs where it has enough of them, and says so when it had to fall back to the default branch's instead.
+- reads its sample from the repo's previous pull requests, not from the target branch — a maintenance line with its own distinct style is a known, accepted gap rather than an oversight.

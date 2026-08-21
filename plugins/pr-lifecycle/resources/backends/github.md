@@ -104,11 +104,11 @@ and merge commits are common enough to dominate a window. And an ordinary
 direct-push commit that references an *issue* (`Bump dep to 4.2 (#1234)`) is
 indistinguishable from a squashed PR title.
 
-So use the API, whose base filter is correct by construction:
+So use the API:
 
 ```
-gh pr list --base <target> --state merged --limit 20 \
-  --json number,title,body,mergedAt [--author <login>]
+gh pr list --state merged --limit 60 \
+  --json number,title,body,mergedAt,author [--author <login>]
 ```
 
 - **`--json` is not optional.** Without it the output is a human table whose last

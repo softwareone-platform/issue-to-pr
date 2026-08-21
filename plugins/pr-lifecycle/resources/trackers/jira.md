@@ -9,8 +9,11 @@ are **orthogonal** — Jira can back a PR on either platform.
 
 ## Ticket-id extraction
 
-- Match a Jira key with `[A-Z][A-Z0-9]+-\d+` (case-insensitive first match),
-  typically from the branch name.
+- Match a Jira key with `[A-Z][A-Z0-9]+-\d+`, **case-sensitively**, typically from the
+  branch name. Case is what keeps this pattern honest: matched case-insensitively it
+  swallows ordinary branch names (`patch-1`, `electron-41-eol`) and manufactures a key
+  out of a slug word. Scan for *every* match, not the first — the next rule needs to know
+  whether a second, different key exists.
 - **The link needs the uppercase key** (e.g. `ACME-12345`) — that is Jira's own
   canonical form, and it is the one thing about the key this adapter decides.
 - **How the key is written in the *title* is not this adapter's call.** Bracketed,
