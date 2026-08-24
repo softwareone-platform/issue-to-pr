@@ -103,20 +103,25 @@ Completing a pull request writes one commit that carries the whole pull request,
 git holds both halves and no `az` call, authentication, or identity lookup is needed:
 
 ```
-git log origin/<default-branch> -i --author=<token> --format='%x1e%s%n%b' -n 200
+git log origin/<default-branch> -i --author=<token> --format='%x1e%an%x1f%s%n%b' -n 200
 ```
 
-- **Subject** — `Merged PR <n>: <title>`. Strip `^Merged PR [0-9]+: `. A subject that
+- **Subject** — the field after the `0x1f`, of the form `Merged PR <n>: <title>`; strip a
+  leading `Merged PR [0-9]+: ` from it (the record no longer starts there, so an anchored
+  pattern will not match). A subject that
   does not match never went through a pull request, so ignore it — and count the ones
   that *do* match, because that is the sample size, not `-n`.
 - **Body** — whatever the description was, verbatim: the completion copies it rather
   than summarising, so headings, bullets, and fenced blocks survive when they were
   there. How often they were there varies enormously between repositories; read the
   sample rather than expecting either answer.
-- **Author** — the pull request's author, which is the identity **the organisation
-  directory holds**, not the one in the contributor's `git config`. Those routinely
-  differ in both spelling and word order, which is why the skill matches a token
-  rather than a whole name. `-i` handles the casing half of that and nothing more.
+- **Author** — `%an`, ahead of a `%x1f` unit separator, so each record reads
+  *author*, `0x1f`, *subject*, newline, *body*. It is the identity **the organisation
+  directory holds**, not the one in the contributor's `git config`: those routinely
+  differ in both spelling and word order, which is why the skill matches a token rather
+  than a whole name, and `-i` handles the casing half of that and nothing more. Carry
+  the author through rather than dropping it — a sample can be dominated by one person
+  or by automation, and that is only visible if the author is in front of you.
 - **`%x1e`** is a record separator, and it is load-bearing: descriptions are multi-line,
   so without a delimiter nothing distinguishes a body's continuation line from the next
   commit's subject. It is emitted *before* each record, so the first field is empty.

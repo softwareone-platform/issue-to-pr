@@ -80,7 +80,7 @@ If neither yields anything, no convention is known: draft plainly (below) and sa
 
 Reproduce what the sample does, and introduce nothing it does not do.
 
-- **The title's shape, whatever that is** — a ticket reference in brackets, bare with a colon, a Conventional Commits type, a component or subsystem tag in brackets, or no prefix at all. A bracketed word is far more often a component tag than a ticket reference, so do not put a ticket key where the sample puts a component name. Where the sampled titles carry no ticket reference, do not introduce one.
+- **The title's shape, whatever that is** — a ticket reference in brackets, bare with a colon, a Conventional Commits type, a component or subsystem tag in brackets, or no prefix at all. Where the sampled titles carry no ticket reference, do not introduce one — and look for where the sample *does* put one, since a repo that keeps ticket references out of its titles often has a dedicated slot for them in the body.
 - **The body's shape** — prose, bullets, a heading structure, a filled-in template, a bare reference to the PR a change was ported from. Where the sampled bodies share a heading structure, reproduce it, dropping only what is not content: the template's own instruction comments, and any heading left blank across most of the sample. Never copy a checkbox's state, and never carry over a provenance footer some earlier run left behind.
 - **The language the sample is written in.** A repo whose pull requests are written in the maintainers' language gets one written in that language.
 
