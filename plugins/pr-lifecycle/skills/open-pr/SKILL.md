@@ -44,7 +44,11 @@ Before anything else, resolve which backend and tracker this run targets:
   - Jira → `resources/trackers/jira.md`; GitHub Issues → `resources/trackers/github-issues.md`.
 - **Announce** the detected platform and tracker so a silent wrong guess is impossible.
 
-Load the matching backend and tracker adapters and run the platform/tracker-specific parts of the steps below through them. The **only** backend seam in this body is recognising the remote string to *select* the adapter — no field access beyond that. (Adapter paths are relative to the **plugin root** — `plugins/pr-lifecycle/resources/backends/` and `resources/trackers/` — not the skill directory.)
+**Resolve the plugin root first, and stop if you cannot.** Every adapter this skill reads lives under the plugin root, at `resources/backends/` and `resources/trackers/` — never under the skill directory, and never at a path containing `plugins/pr-lifecycle/`, which exists only in this marketplace's own source tree and not in an install. Resolve that root the way this Claude Code build exposes it (`${CLAUDE_PLUGIN_ROOT}` where available, otherwise the directory holding this skill's plugin manifest), and read one adapter to confirm the resolution before going further.
+
+**If the adapters cannot be read, stop and say so — do not continue unadapted.** The whole platform-specific half of this skill lives in them: how a sample is obtained, how a duplicate is detected, how the pull request is created, how a ticket reference is built. Without them there is no sample to learn from and no create recipe, so proceeding produces either a wrong pull request or an invented one. Report which path failed and let the human point you at the plugin, the same way Step 4 prints a prepared draft rather than guessing when it cannot get a confirmation.
+
+Then load the matching backend and tracker adapters and run the platform/tracker-specific parts of the steps below through them. The **only** backend seam in this body is recognising the remote string to *select* the adapter — no field access beyond that.
 
 ## Step 1 — Detect the target branch
 
