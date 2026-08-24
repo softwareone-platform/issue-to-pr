@@ -127,6 +127,13 @@ gh pr list --state merged --limit 60 \
   mismatch — at a non-zero exit. Check the exit status; do not read every empty
   result as history.
 
+### Diagram form
+
+GitHub renders a ```` ```mermaid ```` fence in a pull request body, so a Mermaid diagram is
+the first choice here — it reads as a drawing rather than as monospace art, and it survives
+the reader's font. A fenced plain-ASCII diagram also renders and is the fallback where the
+shape does not suit Mermaid.
+
 ### PR cross-reference link syntax
 
 GitHub auto-links `#<pr_number>` to that PR in the same repo — the form to use when the

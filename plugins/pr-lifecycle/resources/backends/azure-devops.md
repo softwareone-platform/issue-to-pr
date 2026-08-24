@@ -173,6 +173,16 @@ Two flags to leave off, both verified against the extension's behaviour:
   an error: the extension falls back to listing the whole project's pull requests,
   drawing the sample from other repositories. So leave detection alone.
 
+### Diagram form
+
+Azure DevOps does **not** reliably render Mermaid in a pull request description, so a diagram
+here is a fenced **plain-ASCII** one — boxes, arrows, and `+ - | > v` glyphs, which survive an
+encoding downgrade as well as a font change. Two constraints come with it, both from this
+file's create recipe: the description travels through the UTF-8 temp file described there, and
+the platform enforces a hard **4,000-character** description limit that it *rejects* rather
+than truncates — so a diagram that pushes a description past it fails the create after the
+human has already confirmed. Check the length before offering a large one.
+
 ### PR cross-reference link syntax
 
 Azure DevOps renders `!<pr_number>` as a link to that PR — the form to use when the
