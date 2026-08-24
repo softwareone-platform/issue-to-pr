@@ -33,7 +33,11 @@ Before anything else, resolve which backend this run targets, from `git remote g
 - `github.com` → **GitHub** (`resources/backends/github.md`).
 - Ambiguous or another host → voice the limit and ask the user which platform to target rather than guessing.
 
-**Announce** the detected platform so a silent wrong guess is impossible, then load the matching backend adapter and run the platform-specific parts of the steps below through it. The **only** backend seam in this body is recognising the remote string to *select* the adapter — no field access beyond that. The normalized model the adapter produces is defined in Step 3. (Adapter paths are relative to the **plugin root** — `plugins/pr-lifecycle/resources/backends/` — not the skill directory.)
+**Resolve the plugin root first, and stop if you cannot.** The backend adapter lives under the plugin root at `resources/backends/` — never under the skill directory, and never at a path containing `plugins/pr-lifecycle/`, which exists only in this marketplace's own source tree and not in an install. Resolve that root the way this Claude Code build exposes it (`${CLAUDE_PLUGIN_ROOT}` where available, otherwise the directory holding this skill's plugin manifest), and read the adapter to confirm the resolution before going further.
+
+**If the adapter cannot be read, stop and say so — do not continue unadapted.** Every platform-specific operation this skill performs is in it: fetching the threads, normalizing them, posting a reply, setting a thread's status. Without it there is nothing to triage and no way to answer, so proceeding would either act on nothing or invent a shape for someone else's review comments. Report which path failed and let the human point you at the plugin.
+
+**Announce** the detected platform so a silent wrong guess is impossible, then load the matching backend adapter and run the platform-specific parts of the steps below through it. The **only** backend seam in this body is recognising the remote string to *select* the adapter — no field access beyond that. The normalized model the adapter produces is defined in Step 3.
 
 ## Step 1 — Identify the PR and confirm it belongs to this repo
 
