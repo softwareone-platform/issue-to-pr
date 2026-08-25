@@ -200,8 +200,11 @@ class RunManager:
                 if r.get("id") == selected_id:
                     r["status"] = "active" if model_status == "running" else model_status
                     break
+        # group / bucket / order for the sidebar LAST, so both readers above saw the full flat list:
+        # contention needs the runs this drops,
+        # and the reconcile needs to find the selected entry before it is bucketed
         return {
-            "runs": runs,
+            "runPanel": ps.plan_run_panel(runs, selected_id),
             "selectedId": selected_id,
             "model": model,
             "contention": contention,

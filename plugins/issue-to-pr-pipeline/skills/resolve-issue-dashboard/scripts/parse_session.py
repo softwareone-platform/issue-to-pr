@@ -971,7 +971,13 @@ def _run_summary(cwd, ticket, run_key, run_stamp, state_path, dir_path):
     historical run - the dashboard groups by repo/ticket and composes the label."""
     state = parse_state(state_path)
     next_step = state.get("next-step")
-    status = "blocked" if _is_blocked(state.get("attention")) else list_status(next_step)
+    status = list_status(next_step)
+    # a finished run stays finished.
+    # resolve-issue leaves a handoff note in `attention` after the PR is open - things the human still owes in the CLI -
+    # and reading that as a run state pinned a done run to the top of the panel permanently,
+    # because nothing ever writes to a finished run again
+    if status != "done" and _is_blocked(state.get("attention")):
+        status = "blocked"
     mtime_src = state_path if os.path.isfile(state_path) else dir_path
     try:
         last_ms = int(os.path.getmtime(mtime_src) * 1000)
@@ -1057,6 +1063,61 @@ def list_runs(launch_cwd=None):
                 "ticket": None, "nextStep": None, "status": "idle", "lastActivityMs": None,
             })
     return sorted(runs.values(), key=lambda r: r["lastActivityMs"] or 0, reverse=True)
+
+
+# open-run ordering inside a repo: by how much the run still needs, not by recency alone.
+# the panel never tails a transcript (see list_status), so it cannot know which run is live -
+# this deliberately makes no liveness claim
+_OPEN_RANK = {"active": 0, "blocked": 1, "paused": 2, "idle": 3}
+
+
+def plan_run_panel(runs, selected_id=None):
+    """Group, bucket, and order the run list for the sidebar.
+    Pure: no I/O and no clock reads, so the whole presentation decision is testable off a list of summaries.
+
+    Returns one entry per repo, most-recently-active first: `{repo, cwd, open, done, selectedInDone}`.
+    `open` is everything still needing attention, ordered by status band and then by recency.
+    `done` is the finished runs the client collapses behind a count, newest first.
+    `selectedInDone` tells the client to open that bucket, so a run being reviewed stays visible.
+
+    A run whose cursor names a step the registry does not have is dropped entirely.
+    That is a data defect in its state.md rather than a run state,
+    and showing it as a peer run invited a click that resolve-issue could not resume.
+    A cursor of None is NOT that case:
+    it is the launch-cwd placeholder, or a resolve dir created before its first state.md write.
+
+    Known limit, deliberately unguarded.
+    If the step registry ever fails to load, _load_steps() falls back silently - its except body is a bare pass -
+    so every current cursor becomes unrecognised,
+    and the symptom here is runs vanishing rather than an error.
+    No detector is shipped for a state nobody has observed.
+    This note is the trail to follow if it ever happens."""
+    groups, order = {}, []
+    for r in runs:
+        next_step = r.get("nextStep")
+        if next_step and next_step not in STEP_IDS:
+            continue
+        key = r.get("cwd") or r.get("repo") or ""
+        g = groups.get(key)
+        if g is None:
+            g = groups[key] = {"repo": r.get("repo"), "cwd": r.get("cwd"),
+                               "open": [], "done": [], "selectedInDone": False}
+            order.append(key)
+        bucket = "done" if r.get("status") == "done" else "open"
+        g[bucket].append(r)
+        if bucket == "done" and selected_id and r.get("id") == selected_id:
+            g["selectedInDone"] = True
+
+    def recency(r):
+        return r.get("lastActivityMs") or 0
+
+    for key in order:
+        g = groups[key]
+        g["open"].sort(key=lambda r: (_OPEN_RANK.get(r.get("status"), 99), -recency(r)))
+        g["done"].sort(key=recency, reverse=True)
+    order.sort(key=lambda k: max([recency(r) for r in groups[k]["open"] + groups[k]["done"]] or [0]),
+               reverse=True)
+    return [groups[k] for k in order]
 
 
 def contention(runs):

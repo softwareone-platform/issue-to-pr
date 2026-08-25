@@ -12,6 +12,7 @@ failure so a Stop hook can surface it. Run from anywhere:
     python selfcheck.py
 """
 
+import io
 import json
 import os
 import sys
@@ -21,6 +22,8 @@ import tempfile
 _HERE = os.path.dirname(os.path.abspath(__file__))
 sys.path.insert(0, os.path.normpath(os.path.join(_HERE, "..", "scripts")))
 import parse_session as ps  # noqa: E402
+
+NL = chr(10)
 
 
 # every check records (group, name, ok, detail) so a manual run can list the
@@ -484,10 +487,108 @@ def test_session_selection():
     check("_session_mentions no ticket", ps._session_mentions(older, None), False)
 
 
+# ----- run panel: cursor-vs-attention precedence, bucketing, ordering ---------
+
+def _summary(next_step, attention=""):
+    """Write a minimal state.md and read it back through _run_summary,
+    so the cursor-vs-attention precedence is exercised through the real parse path
+    rather than against a hand-built dict."""
+    d = tempfile.mkdtemp()
+    p = os.path.join(d, "state.md")
+    with io.open(p, "w", encoding="utf-8") as f:
+        f.write(NL.join([u"- next-step: " + next_step,
+                         u"- ticket: acme-1",
+                         u"- attention: " + attention, u""]))
+    return ps._run_summary(d, "acme-1", "", "", p, d)
+
+
+def test_run_summary_precedence():
+    # a finished run stays finished.
+    # resolve-issue leaves a handoff note in `attention` after the PR is open,
+    # and reading that as a run state pinned a done run to the top of the panel forever - nothing ever clears it
+    check("done outranks attention",
+          _summary("done", "PR open; six tickets left for the developer")["status"], "done")
+    # an unfinished step with a note is still the human's to dispose of
+    check("attention on an open step", _summary("b-open-pr", "confirm the PR")["status"], "blocked")
+    check("no attention", _summary("b-implement")["status"], "active")
+    check("gate step", _summary("a-gate-approve")["status"], "paused")
+    check("unknown cursor still classified", _summary("A1-fact-check")["status"], "idle")
+
+
+def _r(rid, status, ms, next_step="b-implement", cwd="/repo-a", repo="repo-a"):
+    return {"id": rid, "repo": repo, "cwd": cwd, "ticket": rid, "runKey": "",
+            "runStamp": "", "nextStep": next_step, "status": status,
+            "lastActivityMs": ms}
+
+
+def _ids(bucket):
+    return [r["id"] for r in bucket]
+
+
+def test_run_panel():
+    # a cursor the registry does not have is a data defect rather than a run state,
+    # so it is dropped from the panel entirely rather than shown as a peer run
+    dirty = _r("legacy", "idle", 900, next_step="A1-fact-check")
+    panel = ps.plan_run_panel([dirty, _r("live", "active", 500)])
+    check("dirty run dropped", _ids(panel[0]["open"]) + _ids(panel[0]["done"]), ["live"])
+    check("dirty run does not create a group", len(panel), 1)
+
+    # a run with no cursor at all is NOT a defect -
+    # it is the launch-cwd placeholder, or a resolve dir created before state.md is written
+    nostep = ps.plan_run_panel([_r("fresh", "idle", 100, next_step=None)])
+    check("no cursor is kept", _ids(nostep[0]["open"]), ["fresh"])
+
+    # bucketing: done collapses, everything else stays open
+    mixed = ps.plan_run_panel([
+        _r("d1", "done", 900), _r("open1", "paused", 100), _r("d2", "done", 800),
+    ])
+    check("open bucket", _ids(mixed[0]["open"]), ["open1"])
+    check("done bucket newest first", _ids(mixed[0]["done"]), ["d1", "d2"])
+
+    # open ordering is by status band first, and by recency only inside a band.
+    # the panel cannot know which run is live, because it never tails,
+    # so this orders by how much the run still needs rather than by a liveness claim it cannot make
+    bands = ps.plan_run_panel([
+        _r("i", "idle", 900, next_step=None), _r("p", "paused", 800),
+        _r("b", "blocked", 700), _r("a", "active", 600),
+    ])
+    check("open ordered by band", _ids(bands[0]["open"]), ["a", "b", "p", "i"])
+
+    within = ps.plan_run_panel([_r("older", "active", 100), _r("newer", "active", 900)])
+    check("recency inside a band", _ids(within[0]["open"]), ["newer", "older"])
+
+    # groups: most-recently-active repo first,
+    # keyed on cwd so two repos sharing a basename stay distinct
+    two = ps.plan_run_panel([
+        _r("a1", "done", 100, cwd="/repo-a", repo="repo-a"),
+        _r("b1", "done", 900, cwd="/repo-b", repo="repo-b"),
+    ])
+    check("groups by recency", [g["cwd"] for g in two], ["/repo-b", "/repo-a"])
+
+    dup = ps.plan_run_panel([
+        _r("x", "done", 100, cwd="/one/name", repo="name"),
+        _r("y", "done", 900, cwd="/two/name", repo="name"),
+    ])
+    check("same basename stays distinct", len(dup), 2)
+
+    # the selected run must stay visible,
+    # so a selection inside the collapsed bucket flags its group for the client to open
+    sel = ps.plan_run_panel([_r("d1", "done", 900), _r("o1", "active", 100)], "d1")
+    check("selection in done flags the group", sel[0]["selectedInDone"], True)
+    check("selection in open does not", 
+          ps.plan_run_panel([_r("d1", "done", 900), _r("o1", "active", 100)], "o1")[0]["selectedInDone"],
+          False)
+    check("no selection does not",
+          ps.plan_run_panel([_r("d1", "done", 900)])[0]["selectedInDone"], False)
+
+    check("empty list", ps.plan_run_panel([]), [])
+
+
 _TESTS = (test_status_rules, test_main_active, test_background_agent_is_not_a_yield,
           test_run_id_roundtrip, test_parse_state, test_encoding_tolerance,
           test_contention, test_timings, test_waiting_detection, test_step_activity,
-          test_token_totals, test_session_selection)
+          test_token_totals, test_session_selection, test_run_summary_precedence,
+          test_run_panel)
 
 
 def _run_all():
