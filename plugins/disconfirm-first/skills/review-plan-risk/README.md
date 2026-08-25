@@ -15,7 +15,8 @@ flowchart TD
     subgraph S2["Step 2 — find, then calibrate (separate passes)"]
         EN["Sweep with adversarial lenses:<br>backward-from-failure, assumption surfacing,<br>invariant violation, silent failure / boundary,<br>second-order, cross-artifact contract,<br>executability, necessity<br>(weighted by artifact type)"]
         EN --> FO["Sweep via independent fan-out —<br>fresh blind finder agents, each sweeps<br>ALL lenses, enumerate only; merge + dedup<br>(keep every cited location); degrade to<br>one sweep for a tiny artifact / no-spawn"]
-        FO --> CAL["Calibrate on its own pass:<br>plausibility (real / edge-case / theoretical)<br>× severity, verify load-bearing premises<br>(refuted premise → real risk),<br>drop what the evidence contradicts"]
+        FO --> IDX["Index the elements the design<br>introduces (read off the artifact) against<br>the risks citing each — several risks on<br>one introduced element opens the question<br>the per-risk fixes cannot: should it exist"]
+        IDX --> CAL["Calibrate on its own pass:<br>plausibility (real / edge-case / theoretical)<br>× severity, verify load-bearing premises<br>(refuted premise → real risk),<br>drop what the evidence contradicts"]
         CAL --> RANK["Single ranked risk table<br>(one failure scenario per row)"]
     end
     S1 --> SC["Surface the resolved scope<br>(partners pulled in vs incidental)<br>— human may promote or drop;<br>the only gate before editing begins"]
