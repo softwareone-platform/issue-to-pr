@@ -94,7 +94,42 @@ Distinction that matters when editing content: **rules are non-negotiable**; **c
 - **Adding a guard to a skill or agent** (a check that detects a bad state): four traps, all hit within one change here, and they compound. **(a)** Do not build a detector for a state nobody has observed — that is the argument that killed the invariant-harness proposal, and it applies to guards too. **(b)** Every guard needs a boundary, and each boundary puts some legitimate run on the wrong side; each false positive earns a carve-out, each carve-out is a new mechanism, and the new mechanism is the next review round's weakest link. Prefer cutting the guard to adding a third carve-out. **(c)** A guard's inputs must be something someone is *obliged* to produce — check the producing side's own contract, not just that the value exists somewhere. **(d)** Never put a guard downstream of the party it distrusts: a check asking "did you do what you claimed" must not take its trigger, its file list, or its baseline from the claimant. The worst defect found in both halves of one change was exactly this — a spawn gate keyed on the untrustworthy party's own report. **(e) Inventory before you add — including your own recent work.** Grep for the thing you are about to guard against and read what already covers it. This is not the same as (a): the state may be worth guarding and already guarded. A plan step here was written to make `review-plan-risk` re-check a claim class that `review-issue-fact`'s verifier already challenges bidirectionally — **and those two lines had been added the same morning, by the same session that then wrote the step.** Judgement was not the failure; knowing what was already in hand was.
 
   The four traps above plus this one share a root worth stating on its own: **every one of those fixes was validated against the artifact, never against the world.** Prose can be perfectly self-consistent while its premise is false, its substrate contract forbids it, or the problem is already solved elsewhere — and a review reads the artifact, so a review is structurally blind to all three. Two cheap correctives, and they are not interchangeable: a **fixture** tests the world (does the premise hold, does the mechanism fire), an **inventory** tests what already exists. Run both before writing the guard, not after.
-- **Citing a file from a rule book**: check the citation against the orchestrators' Step -1 reading lists before adding it. Each lists writer/verifier rule books under **Never** for context discipline, so a document on that list **cannot** be cited as the definition of something the orchestrator must produce — inline what it needs instead, and say which copy is authoritative. This has bitten once (`common-orchestrator-flow.md` was pointed at `common-writer-instructions.md` for the convention-spec field set); the target existing is not the same as this reader being allowed to reach it.
+- **Citing a file from a rule book, or adding any name that crosses a role boundary.** The rule used to be
+  "check the citation against the orchestrators' Step -1 reading lists". It has now bitten **four** times
+  under that wording, which is three more than a rule needs before you conclude the rule is not the problem.
+  Checking meant opening five skill files and reading a section of each, so the check was skipped every time.
+  The table below is that check, collapsed to one glance. It was extracted from the files on 2026-08-26 —
+  from each skill's Step -1 **Now** / **Never** lists and each agent's own rule-book references — not recalled.
+
+  | Party | Reads | Never opens |
+  |---|---|---|
+  | **Orchestrator** (all five skills) | `common-orchestrator-flow.md` (immediately), then `test-rules.md`, `fix-protocol.md`, `shared/scope-resolution.md`, `static/status-legend.md` lazily, and `sut-analysis.md` on one narrow path | `common-writer-instructions.md`, `common-verifier-checks.md`, `test-writer-rules.md`, plus `common-update-instructions.md` for the add flows |
+  | **Writer** (add and update) | `common-writer-instructions.md`, `test-writer-rules.md`, `test-rules.md`, `sut-analysis.md`, plus `common-update-instructions.md` for update writers | not declared, but it is handed no orchestrator or verifier rule book |
+  | **Verifier** (all four) | `common-verifier-checks.md`, its own per-type agent file, `fix-protocol.md`, `test-rules.md` | not declared, but it is handed no writer rule book |
+
+  **The one fact that explains all four bites: `test-rules.md` is the only file all three roles read.**
+  Orchestrator and writer otherwise share only `sut-analysis.md`, which the orchestrator opens on a single
+  narrow path and is therefore not a general declaration site. So a field, flag, or state that a writer
+  produces and an orchestrator must act on has **no shared home by default**, and declaring it once always
+  leaves one of them unable to see it.
+
+  Three rules follow, and the third is the one that keeps being missed:
+
+  1. A document on a reader's **Never** list cannot be cited to that reader as the definition of anything it
+     must produce or act on. Inline what it needs and say which copy is authoritative.
+  2. A name that crosses a role boundary is declared **at both ends**, or in `test-rules.md` if every role
+     needs it. Inlining twice is the cheap error here; declaring once is the expensive one.
+  3. **A flag is not reachable just because its definition is.** Check the party that must *set* it has a
+     field for it in the prompt template it fills, and the party that must *branch* on it is told to look
+     for it at the step where the branch happens. Three of the four bites were this: the definition was fine
+     and the value had nowhere to travel — a spawn template with no slot for the flag, a handler sitting under
+     a heading gated on a signal the producer was told not to send, and a carve-out reachable from one of the
+     three callers that needed it.
+
+  The four bites, so the shape is recognisable: `bootstrap_authorisation` and `bootstrap_seed` (each cited
+  to a reader forbidden to open the definition), `seed_request` (no slot in the template that had to carry
+  it, so the whole feature would have silently never fired), and a U1 carve-out reachable from one add-flow
+  caller of three. All four passed a behavioural fixture before a review caught them.
 - **Validating**: there is no linter. At minimum verify JSON parses (`marketplace.json`, `plugin.json`, `evals.json`) and that frontmatter is well-formed before committing.
 
 ## Running skill evals
