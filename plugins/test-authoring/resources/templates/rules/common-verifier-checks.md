@@ -29,6 +29,27 @@ Every per-type verifier receives a prompt containing one or more writer agent re
 
 Per-type verifiers may extend this with extra fields. Extensions live in the per-type file, not here.
 
+### Reviewing a seed proposal
+
+A caller may ask a writer for a **seed proposal** rather than written tests. A repo whose target test project holds no tests has no sibling to learn conventions from, so the writer returns the test it would have written as text and a human applies it.
+Such an invocation carries `seed_proposal: true`, the proposed path and content in place of test file paths, the writer's `invented_choices`, and no sibling paths, no test results and no build status.
+
+Review it as the most consequential test in the repo rather than the least verifiable one. Once applied it is the sibling every later writer inherits from and the oracle every later verifier grades against, so it is the highest-leverage file here — and the only one whose review happens before anyone can run it.
+
+Which checks apply. This list is exhaustive, so that none of them has to be guessed at:
+
+- **U1 and U2 do not apply.** Both grade against a sibling, and a seed exists precisely because there is none. Their absence is the premise of the run, never a finding.
+- **U4 does not apply.** No file was written, so nothing could be built or run.
+- **U2b applies unchanged.** The task description and the SUT are both in front of you, and a seed that contradicts the task is worth catching before it becomes the convention.
+- **U3 applies except its test-count item.** Skip attributes, commented-out tests and a tautological golden are all visible in the proposed text.
+  Its SUT-modification check matters more here than anywhere else: a writer asked to write nothing, whose source tree moved, is exactly the case that check exists for.
+- **The per-type assertion quality review is your primary check**, not an addition to the others. It needs only text, and on this path it is the whole of the quality gate.
+
+Two things to judge that only a seed has. Report both as quality flags, never as violations — they need a human's judgement, not a fix round:
+
+- **Is every invented choice labelled?** An unlabelled ecosystem default and a genuinely repo-derived one read identically in the payload, so check the claimed basis against the repo rather than accepting it. A basis that names the language or the ecosystem while claiming to be repo evidence is the failure mode.
+- **Would the proposal build if applied verbatim?** You cannot run it, but you can read it. An unpinned package placeholder is correct behaviour and must be flagged anyway, because a human who applies the file without pinning it gets a repo that does not restore.
+
 ## Universal check sequence
 
 Per-type verifiers run these five checks (U1, U2, U2b, U3, U4) in order before any type-specific checks. Per-type files may insert additional steps between or after these — the ordering contract is that **spot-check happens first, the divergence cross-check (U2b) follows convention compliance (U2), build/run happens last, anti-gaming happens before quality review**.
@@ -42,6 +63,8 @@ Check against the sibling the writer worked from — it is the only convention s
 If the writer's reported spec does not match the actual sibling, use **what you observe in the sibling** as the source of truth — not what the writer claimed.
 
 If the writer reported `No sibling tests found`, there is no oracle to spot-check against. A writer that stopped correctly produces no files, so the orchestrator never spawns you for that scope — if you are running at all, the writer wrote tests it had nothing to learn from. Report that as a violation rather than grading the tests against conventions you would have to invent yourself.
+
+**Unless your prompt carries `seed_proposal: true`**, in which case the reasoning above does not hold: no sibling is the premise your caller established before spawning you, and no file was written. Skip U1 and say you skipped it. Reporting a violation here would fail a writer for doing exactly what it was asked.
 
 ### U2. Convention compliance check (report only)
 

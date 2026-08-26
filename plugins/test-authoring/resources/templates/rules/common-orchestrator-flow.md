@@ -43,6 +43,17 @@ Before spawning writer agents, pre-fetch sibling context to reduce agent explora
    That list is inlined here on purpose. The authoritative copy lives in `common-writer-instructions.md` → "Style rules (inherit from sibling)", which is the **writer's** rule book and sits on your Step -1 **Never** list — you must not open it, so it cannot define anything you are required to produce. Duplication is the cheaper error here: seven words against loading a whole rule book into the main context. Your spec is an acceleration hint anyway — the writer re-derives it against its own copy and the sibling wins on any disagreement, so the two drifting apart degrades a hint, not a rule.
 3. Pass this context to the writer so it does NOT need to discover conventions itself.
 
+**Settle first whether this repo can teach a writer anything at all, because the answer changes what you spawn rather than what you pass.** You can see the whole repo; a writer cannot — its search is bounded by its own fallback chain, which never leaves the test project it was pointed at. Look for a test file in the target test project, and for one in any other test project.
+
+- **The target project has tests** — the ordinary path. Spawn as usual and ignore the rest of this.
+- **The target project has none, but another test project does** — do not spawn. Name that project and let the caller re-point the skill at it.
+  A convention already in the repo beats one a writer would invent, and this is the only branch where the better answer is to stop.
+- **No test file anywhere** — spawn **one** writer for the test project and ask it for a seed proposal, passing `seed_request: true` and whether the test project itself exists.
+  One writer, not one per source class. A repo needs one first test, and the fallback chain's terminal step is "any test file in the same test project", so a single applied seed gives every other scope in that project a sibling.
+  Report the remaining scopes as waiting on the seed. Spawning a writer per scope here buys N mutually inconsistent first tests, each having invented its own framework and naming, and whichever the human applies first becomes the convention by accident.
+
+This determination is yours and cannot be delegated: it is the one question the writer is structurally unable to answer, and the previous design that asked it to report the answer was asking it to see past its own search boundary.
+
 ## Writer delegation
 
 > **Plugin handoff (every spawn, always).** The orchestrator passes `plugin_resources_path` (the absolute path of the plugin's `resources/templates` directory, resolved in Step -1 — the directory that *contains* `rules/` and `shared/`, not the `resources/` directory above it) and `build_test_command` (session-detected; `--filter` adjusted per test class) into **every** subagent prompt — writer, verifier, and the audit / execute phases of update flows. Neither is optional: a subagent cannot resolve the plugin path itself, and the rule books it must obey live only there. The single exception is Step -1's **degraded mode** — when the plugin path could not be resolved at all, pass a `fallback_rules` block carrying the non-negotiable core inline, in place of `plugin_resources_path`, and say so in your visible output. It reads rules/shared from the passed path per its own Path-resolution preamble, and treats convention docs as optional (sibling-first).
@@ -110,8 +121,12 @@ A writer that finds neither a sibling test nor a convention file
 This is the expected outcome for a brand-new test project, not a failure — the plugin
 deliberately does not author the first test of a project from a language default.
 
-When a writer output contains such an entry, do NOT proceed to the build check or verifier
-for that writer's scope, and do NOT count it toward any fix circuit breaker. Instead:
+When a writer output contains such an entry, do NOT proceed to the build check for that writer's scope — nothing was written, so there is nothing to build — and do NOT count it toward any fix circuit breaker.
+
+**A seed proposal is reviewed.** Where the output carries one, spawn the verifier for it with `seed_proposal: true` and the writer's proposed path, proposed content and `invented_choices` in place of the file, test-result and build-status lines, then present its quality flags alongside the proposal.
+That flag is all you need; which checks it switches on is the verifier's own rule book, which is on your Step -1 **Never** list and which the verifier reads for itself. That file becomes the repo's convention source the moment a human applies it, so it is the last thing that should reach them unreviewed. A stop carrying no proposal has nothing to review either.
+
+Then:
 
 1. Report it to the user plainly: which scope has no conventions to learn from, and what was searched.
 2. Offer the two ways forward — **Option A**: point the skill at an existing test elsewhere in the
