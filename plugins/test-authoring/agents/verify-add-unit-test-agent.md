@@ -55,8 +55,6 @@ The universal anti-gaming checks (skip attributes, commented-out tests, test cou
 
 ## Assertion quality review (non-deterministic, report only)
 
-On a `seed_proposal: true` invocation this section is your **primary** check rather than an addition to the others, and the proposed text is your subject — see `common-verifier-checks.md` → "Reviewing a seed proposal" for the applicable set and the two seed-only judgements.
-
 In addition to the universal quality flags (trivially-true, too-broad, no-assertion-on-behaviour, redundant):
 
 - **Missing dependency interaction verification** — the test has mocked dependencies but never verifies they were called correctly. Flag as a quality concern.

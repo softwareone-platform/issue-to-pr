@@ -131,7 +131,7 @@ sibling_tests_referenced:
   <one line per observed dimension — the set listed under "Style rules (inherit from sibling)" above>
 
 files_created:
-- <path> (or "none" — a seed proposal writes no file, and the orchestrator tells a proposal from a write by this field)
+- <path>
 
 files_modified:
 - <path> (or "none")
@@ -152,20 +152,7 @@ spec_vs_impl_divergence:
 (or "none")
 
 build_status: success | failed (<errors>) | not_run (<reason>)
-
-# the block below appears only on a seed_request run, and then in full; omit it otherwise
-seed_proposal: true
-proposed_test_project: <suggested project name>   # only when the test project does not exist yet
-proposed_path: <where the file would go>
-proposed_content: |
-  <the full text of the file you would write, and the test project file too where one must be created>
-invented_choices:
-- <dimension>: <what you picked> (basis: <the repo evidence, or "ecosystem default — nothing in this repo told me">)
 ```
-
-On a seed run `test_count` counts the methods in the proposed text and `test_results` is `none`: nothing ran.
-Say plainly that the proposal was never compiled or executed. The reader is holding a proposal rather than a result, and that difference decides how hard they read it.
-See `test-writer-rules.md` → "Seed proposal" for when to set these and what the labelling requires.
 
 Per-type writers add fields — integration adds `test_project`. Those are declared in the per-type file.
 

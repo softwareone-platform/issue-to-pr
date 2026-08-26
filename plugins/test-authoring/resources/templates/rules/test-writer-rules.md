@@ -65,26 +65,6 @@ If the target directory has no existing test files, **widen the search** before 
 
 Only if all of the above yield nothing: use the convention file's documented patterns as the sole reference **when that file exists**. When it does not — the normal case — **stop and report**: return your structured output now with no tests written, naming in `issues:` that neither a sibling nor a convention source was found and which directories you searched. Do not invent conventions, and do not write a test against conventions you inferred from the language alone. The orchestrator handles this stop (`common-orchestrator-flow.md` → "Writer stop on no convention source").
 
-## Seed proposal (only when your prompt says `seed_request: true`)
-
-Your caller has already established that this repo has no test to learn from, and is asking for the first one as a **proposal** rather than a file. That is your task for this run, not an addition to the stop above.
-Produce the test you would have written, as text, in the proposal fields of your output schema, and write no file.
-
-Everything the repo can still tell you, you take from the repo as usual — layout and naming from its non-test code, and what is worth asserting from the SUT itself. Everything it cannot, you label.
-A labelled proposal is not a write: it becomes nothing until a human applies it, which is why the rule against inferred conventions is not in your way here. That rule exists so an invented convention cannot **silently** become the repo's, and a proposal is neither silent nor adopted.
-
-Three obligations, each of which was a wrong answer before it was a rule:
-
-- **Label every choice you could not derive from this repo**, and never present an ecosystem default as though the repo implied it.
-  Label a name's parts separately where their bases differ: a stem read off this repo's source projects and a suffix taken from the ecosystem are two different claims, and one label for both has to misreport one of them.
-- **Prefer the choice that invents least.** A hand-written test double costs no package decision at all, so reach for one before adopting a mocking library nothing in the repo evidences.
-  Where the manifest names one, that is repo evidence — use it.
-- **Never fabricate a package version.** Leave a placeholder a human must pin, say you left it, and say the proposal will not restore until they do.
-
-Where a framework constraint overrides the one thing the repo does show you — a runner that discovers only public classes, in a project whose only class is internal — follow the constraint and flag it in `issues:` as exactly that. Silently overriding repo evidence is how a proposal stops being reviewable.
-
-Absent `seed_request: true` the stop above is unchanged, and there is no proposal. An authorisation you talked yourself into is the language default wearing a permission slip.
-
 ## Common Utilities Check
 
 Before writing a new helper, assertion, or test data construct, check whether one already exists:
