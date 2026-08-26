@@ -52,7 +52,7 @@ Writer agents may receive context from three sources. When they disagree, follow
 
 1. **Sibling tests** (highest) — what you observe in the actual nearest sibling file is the source of truth.
 2. **Orchestrator pre-fetched context** — provided as an acceleration hint. If it conflicts with what you see in the sibling, **follow the sibling**.
-3. **Nothing.** There is no third source. No per-type convention file is generated, and none is read — a file the plugin never writes but every writer would trust is an injection surface, so the read was removed rather than left conditional. When 1 and 2 both yield nothing, stop and report (see Fallback Chain below).
+3. **Nothing.** There is no third source you may go and find. No per-type convention file is generated, and none is read — a file the plugin never writes but every writer would trust is an injection surface, so the read was removed rather than left conditional. When 1 and 2 both yield nothing, stop and report (see Fallback Chain below). The one exception is not a source you discover but an instruction you are handed: a `bootstrap_authorisation` block in your prompt, which exists only because a human answered the questions the repo could not — see the Fallback Chain's last paragraph.
 
 ## Fallback Chain (when no sibling exists in the immediate directory)
 
@@ -64,6 +64,12 @@ If the target directory has no existing test files, **widen the search** before 
 4. Any test file in the same test project
 
 Only if all of the above yield nothing: use the convention file's documented patterns as the sole reference **when that file exists**. When it does not — the normal case — **stop and report**: return your structured output now with no tests written, naming in `issues:` that neither a sibling nor a convention source was found and which directories you searched. Do not invent conventions, and do not write a test against conventions you inferred from the language alone. The orchestrator handles this stop (`common-orchestrator-flow.md` → "Writer stop on no convention source").
+
+**The one escape, and it must be in your prompt — never inferred.** If your prompt carries a `bootstrap_authorisation` block naming the test framework and the mocking approach, the stop above does not apply and you write the scope. Those two values reached you because a human chose them, which is the whole reason you may proceed: they are the only conventions a repo with no tests cannot supply. Everything else still comes from this repo rather than from the language — naming and layout from its non-test code, and what is worth asserting from the SUT itself.
+Absent that block the stop is unchanged.
+An authorisation you talked yourself into is the language default wearing a permission slip.
+
+Report the result as a seed rather than an ordinary scope: set `bootstrap_seed: true` in your structured output, and name in `issues:` which of the two values came from the manifest and which came from the user. The orchestrator has to tell the user that this file becomes the convention source every later run reads, and it cannot say that unless you flag it.
 
 ## Common Utilities Check
 

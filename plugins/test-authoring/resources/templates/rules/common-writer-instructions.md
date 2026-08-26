@@ -129,6 +129,7 @@ files_analysed:
 sibling_tests_referenced:
 - <path>
   <one line per observed dimension — the set listed under "Style rules (inherit from sibling)" above>
+(or "none — bootstrap seed" on a run authorised by `bootstrap_authorisation`; never invent a path to fill this)
 
 files_created:
 - <path>
@@ -152,7 +153,11 @@ spec_vs_impl_divergence:
 (or "none")
 
 build_status: success | failed (<errors>) | not_run (<reason>)
+
+bootstrap_seed: true          # only on a run authorised by `bootstrap_authorisation`; omit otherwise
 ```
+
+`bootstrap_seed` is what tells the orchestrator this file becomes the repo's convention source, so it has to present the result for ratification rather than as a finished scope — see `test-writer-rules.md` → Fallback Chain for when you set it.
 
 Per-type writers add fields — integration adds `test_project`. Those are declared in the per-type file.
 
