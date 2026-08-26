@@ -134,9 +134,6 @@ For each test file, identify which source class(es) it covers by:
 
 ## Step 4 — Identify Gaps
 
-**First, read the answer Step 3 already gave you.** If its global inventory found no test file at all, every gap below has one cause and one remedy, and fanning out a writer per gap buys nothing — each would walk its own Fallback Chain and stop for the same repo-level reason. Take the bootstrap path once for the whole batch instead, per `<PLUGIN_TEMPLATES>/rules/common-orchestrator-flow.md` → "Writer stop on no convention source", and skip Steps 5 to 7.5.
-A partial inventory is not this case: with even one test file the chain may reach it, so scan and fan out as normal.
-
 Cross-reference source files against test files to find gaps. **Be thorough** — do not just match by file name. A class may be tested inside a combined test file.
 
 <!-- MULTI_TYPE_ONLY: keep if ≥2 supported test types -->
