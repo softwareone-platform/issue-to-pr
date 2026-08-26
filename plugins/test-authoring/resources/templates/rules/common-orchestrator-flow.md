@@ -114,25 +114,11 @@ When a writer output contains such an entry, do NOT proceed to the build check o
 for that writer's scope, and do NOT count it toward any fix circuit breaker. Instead:
 
 1. Report it to the user plainly: which scope has no conventions to learn from, and what was searched.
-2. Offer the two ways forward.
-   **Option A** — point the skill at an existing test elsewhere in the repo to use as the pattern.
-   **Option B** — have the writer draft this repo's first test, for the user to ratify.
-   Before offering B, read the target test project's manifest, including any central package-management or shared build-props file, and take from it whichever of the test framework and the mocking library it already names.
-   Ask the user only for what the manifest does not name, as a closed-set choice.
-   Those two are the only ones the user picks from a closed set, but they are not the only ones the repo cannot supply: test-method naming has no analogue in non-test code, so whatever the writer picks there is a default rather than an observation, and it is what every later file copies.
-   The rest — file layout, namespace shape, how the SUT is constructed, what is worth asserting — does come from the repo's own non-test code and from the SUT under test.
-3. **Fresh re-spawn** for either option; there is no resume of the stopped instance.
-   For Option B the new prompt also carries a `bootstrap_authorisation` block, whose three fields are `test_framework`, `mocking_approach` and `authorised_by` — the first two each naming the value and whether it came from the manifest or from the user, the third recording that the user chose it after being shown that this repo has no test file to learn conventions from.
-   That field set is inlined here for the same reason the convention-spec dimensions above are: the writer's half of this contract lives in `test-writer-rules.md`, which sits on your Step -1 **Never** list, so it cannot define a block you are the one who has to produce.
-   The writer refuses an authorisation it derived itself, so the block carries weight only if those values really did come from the manifest or from the user.
-4. A bootstrap re-spawn returns an ordinary writer output with files written, so the build check and the verifier run on it exactly as they would on any other scope.
-   The "do NOT proceed" above governs the stop, not the draft that replaces it.
-   A bootstrap draft that skipped the verifier would be the one path in this plugin whose tests nobody independently checked.
-5. Present Option B's result as a **draft seed** rather than a finished scope, and say why: this file becomes the convention source every later run reads.
-   Ask the user to ratify or rectify its shape before they commit it, and put test-method naming first: it is the one dimension no part of the repo could have told the writer, so it is the one the user is genuinely being asked about rather than merely shown.
-   The plugin commits nothing either way.
-   Ratification is a house-style check, not a quality review: the writer's quality rules apply whether or not a sibling exists, so assertion strength is not what the user is being asked to supply.
-6. Mark the affected scope 🟥 unresolved in the summary if the user takes neither option.
+2. Offer the two ways forward — **Option A**: point the skill at an existing test elsewhere in the
+   repo to use as the pattern, and re-invoke; **Option B**: write the first test by hand, after which
+   every later run has a sibling to follow.
+3. **Fresh re-spawn** only if the user takes Option A; there is no resume of the stopped instance.
+4. Mark the affected scope 🟥 unresolved in the summary if the user takes neither.
 
 When several writers in one run stop this way — the normal case for a batch caller like `scan-test-gaps`
 against a repo with no tests — **merge them into a single question** listing every affected scope, not one
