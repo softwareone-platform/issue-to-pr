@@ -114,11 +114,19 @@ When a writer output contains such an entry, do NOT proceed to the build check o
 for that writer's scope, and do NOT count it toward any fix circuit breaker. Instead:
 
 1. Report it to the user plainly: which scope has no conventions to learn from, and what was searched.
-2. Offer the two ways forward — **Option A**: point the skill at an existing test elsewhere in the
-   repo to use as the pattern, and re-invoke; **Option B**: write the first test by hand, after which
-   every later run has a sibling to follow.
-3. **Fresh re-spawn** only if the user takes Option A; there is no resume of the stopped instance.
-4. Mark the affected scope 🟥 unresolved in the summary if the user takes neither.
+2. **Show the writer's proposal, and lead with what it invented.** The stop carries one.
+   Read it from the values the writer sent you — `proposed_population`, `proposed_test_project`, `proposed_path`, `proposed_content` and `invented_choices` — and do not go looking for the rule book that defines them, which is on your Step -1 **Never** list. The writer's schema is authoritative, and it has already sent you the values.
+   Put `invented_choices` **above** the proposed file rather than below it: the file reads as finished work, and the invented list is the only part carrying a decision.
+3. **Apply the remedy the population names.** These are not one problem with one answer:
+   - `empty_test_project` — the proposal is a file. Once the user applies it, every later run has a sibling and none of this runs again.
+   - `no_test_project` — the proposal is a project and a file, and the user creates both.
+     Create neither yourself, and edit no solution file or manifest: those sit outside the test tree, where the pre-writer source snapshot reads an edit as SUT tampering.
+   - `other_project_has_tests` — there is no proposal, and there should not be.
+     Another test project here has real tests, so point the skill at it and re-invoke rather than seeding a convention on top of one the repo already has.
+4. **Say the proposal is unverified.** No file was written, so nothing was compiled and nothing was run.
+   The user is reading a proposal rather than a result, and that difference decides how hard they read it.
+5. **Fresh re-spawn** for any re-invocation; there is no resume of the stopped instance.
+6. Mark the affected scope 🟥 unresolved in the summary if the user applies nothing.
 
 When several writers in one run stop this way — the normal case for a batch caller like `scan-test-gaps`
 against a repo with no tests — **merge them into a single question** listing every affected scope, not one
