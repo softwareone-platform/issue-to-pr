@@ -71,8 +71,6 @@ written. None of them is a failure; all three are protocol steps the orchestrato
 
 - **No convention source** — neither a sibling test nor a convention file, per
   `test-writer-rules.md` → Fallback Chain. Name the directories you searched in `issues:`.
-  This stop also carries a **proposal**, defined in that same section.
-  A proposal is text in this output and never a file, so returning one neither makes this a write nor changes the "no tests written" above.
 - **Missing framework source** — per `sut-analysis.md` → Runtime resolution flow.
   Name the package and the path you tried in `issues:`.
 - **Missing plugin context** — your prompt carried neither `plugin_resources_path` nor a `fallback_rules`
@@ -154,26 +152,7 @@ spec_vs_impl_divergence:
 (or "none")
 
 build_status: success | failed (<errors>) | not_run (<reason>)
-
-# the five fields below appear ONLY on a no_convention_source stop; omit them otherwise
-proposed_population: no_test_project | empty_test_project | other_project_has_tests
-
-proposed_test_project: <suggested project name>   # only when the population is no_test_project
-
-proposed_path: <where the file would go>
-
-proposed_content: |
-  <the full text of the file you would write>
-
-invented_choices:
-- <dimension>: <what you picked> (basis: <the repo evidence, or "ecosystem default — nothing in this repo told me">)
 ```
-
-Label a proposed project name's basis **per part of the name, not once for the whole name**.
-A stem read off this repo's own source projects and a suffix taken from the ecosystem are two different bases, and a single label for both would have to misreport one of them.
-In the `no_test_project` population, `proposed_content` carries the test project file as well as the test file, because the test file cannot build without it.
-Nothing in a proposal has been compiled or run: no file was written, so `build_test_command` never executed.
-Say so, so the reader knows they are holding a proposal rather than a result.
 
 Per-type writers add fields — integration adds `test_project`. Those are declared in the per-type file.
 

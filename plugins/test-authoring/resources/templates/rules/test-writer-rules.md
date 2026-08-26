@@ -65,33 +65,6 @@ If the target directory has no existing test files, **widen the search** before 
 
 Only if all of the above yield nothing: use the convention file's documented patterns as the sole reference **when that file exists**. When it does not — the normal case — **stop and report**: return your structured output now with no tests written, naming in `issues:` that neither a sibling nor a convention source was found and which directories you searched. Do not invent conventions, and do not write a test against conventions you inferred from the language alone. The orchestrator handles this stop (`common-orchestrator-flow.md` → "Writer stop on no convention source").
 
-**Then propose, in the same output.** Every word above still binds — you write no file.
-But a stop that hands the work back with nothing in it makes the caller start from a blank page, and you have already done the analysis: return the first test you would have written, as text, in the proposal fields of your output schema.
-A labelled proposal is not a write.
-It becomes nothing until a human applies it, and that is the whole reason the rule against inferred conventions is not in your way here — that rule exists so an invented convention cannot **silently** become the repo's, and a proposal is neither silent nor adopted.
-
-Report which of three situations you are in, because the remedy differs and only you can see which:
-
-- `empty_test_project` — a test project exists and holds no tests. Propose the file.
-- `no_test_project` — there is no test project. Propose one, named from the pattern this repo's own source projects follow where you can infer one, and from the ecosystem's usual shape where you cannot.
-- `other_project_has_tests` — the project mirroring your scope is empty, but **another test project in this repo has real tests**.
-  Do **not** propose. Name that project and stop there: a convention already in the repo beats anything you would invent, and the caller can re-point the skill at it.
-
-Two of those fit literally whenever the mirroring project is empty *and* another one has tests.
-In that case `other_project_has_tests` wins: it is the one carrying the do-not-propose override, and reporting the narrower situation is what keeps you from inventing a convention the repo can already show you.
-
-Three things the proposal must do, each of which was a wrong answer before it was a rule:
-
-- **Label every choice you could not derive from this repo**, and never present an ecosystem default as though the repo implied it.
-  That labelled list is the part a human actually has to decide on.
-- **Prefer the choice that invents least.** A hand-written test double costs no package decision at all, so reach for one before adopting a mocking library nothing in the repo evidences.
-  Where the manifest does name one, that is repo evidence — use it.
-- **Never fabricate a package version.** Leave a placeholder a human must pin, and say you left it.
-  A proposal that will not restore as written is honest; one that restores against a version you guessed is not.
-
-Where a framework constraint overrides the one thing the repo does show you — a runner that discovers only public classes, in a project whose only class is internal — follow the constraint and flag it in `issues:` as exactly that.
-Silently overriding repo evidence is how a proposal stops being reviewable.
-
 ## Common Utilities Check
 
 Before writing a new helper, assertion, or test data construct, check whether one already exists:
