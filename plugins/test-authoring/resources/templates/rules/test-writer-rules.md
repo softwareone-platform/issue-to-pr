@@ -65,23 +65,6 @@ If the target directory has no existing test files, **widen the search** before 
 
 Only if all of the above yield nothing: use the convention file's documented patterns as the sole reference **when that file exists**. When it does not — the normal case — **stop and report**: return your structured output now with no tests written, naming in `issues:` that neither a sibling nor a convention source was found and which directories you searched. Do not invent conventions, and do not write a test against conventions you inferred from the language alone. The orchestrator handles this stop (`common-orchestrator-flow.md` → "Writer stop on no convention source").
 
-## Common Utilities Check
-
-Before writing a new helper, assertion, or test data construct, check whether one already exists:
-
-1. **Sibling first.** Whatever helper the sibling test uses is the one to use, even where something more
-   generic exists elsewhere. In the common case this is the whole check.
-2. **Widen only to remove duplication you would otherwise write.** If following the sibling would make
-   you repeat the same construct several times, look for an existing shared helper: when the repo has a
-   shared test project, `.claude/conventions/tests/project-architecture.md` names it and says which test
-   projects reference it, and those tests show how it is called. Read the helper's own source before
-   using it.
-3. **Never introduce a utility that siblings do not use.** A helper nobody in this area calls is a new
-   convention rather than a reuse — surface it as a suggestion in your output instead of writing it in.
-4. **If `.claude/conventions/tests/project-architecture.md` is absent** (the normal state where setup has not run), step 2 has no
-   catalogue to consult: widen to the sibling tests you already read and stop there. Do not go hunting
-   the repo for a shared test project — an unused helper found that way is step 3's forbidden case.
-
 ## Common Verification Patterns Check
 
 Before finalising a test, consult `.claude/conventions/tests/common-verification-patterns.md` (if it exists):
