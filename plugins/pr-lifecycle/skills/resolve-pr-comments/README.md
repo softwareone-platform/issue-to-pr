@@ -35,7 +35,8 @@ flowchart TD
 - Respects the reviewer — triages and drafts, never auto-dismisses a comment; a likely false positive gets a drafted explanation, not a unilateral dismissal.
 - Bots (SonarCloud) — not replied to and not hand-resolved; the pushed fix triggers a CI re-run that closes the tool's own stale comments.
 - Thread status — never closes a human reviewer's thread without explicit approval; bot threads are left to CI.
-- Fix commits — follow the repo's own convention, **read off its own history** (`git log --format=%s` for the subject shape and length, `git log --format=%b` for whether it uses a `Co-Authored-By` trailer) rather than assumed. A ticket prefix is used only if the history uses one, in the form the history uses. Where there is no history to learn from, the fallback is a plain summary, ≤50 chars, English, no trailer. Only the changes made for the comments are committed.
+- Fix commits — follow the repo's own convention, **read off its own history** (`git log --format=%s` for the subject shape and length) rather than assumed. A ticket prefix is used only if the history uses one, in the form the history uses. Where there is no history to learn from, the fallback is a plain summary, ≤50 chars, English. Only the changes made for the comments are committed.
+- AI co-author trailer — off by default and never learned from the history. A `Co-authored-by` line naming Claude is added only when the invoking request explicitly asks to mark the work as AI-assisted — the same opt-in that turns on `open-pr`'s provenance footer and `ai-assisted` label.
 - Tests — a fix needing tests is handed off to `test-authoring`, not written here.
 
 ## Design notes
