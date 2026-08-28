@@ -40,16 +40,35 @@ az repos pr create \
   --title "<title>" \
   --description "@<utf8-file>" \
   --target-branch <target> \
-  [--labels ai-assisted] [--open] [--draft true] [--auto-complete true] [--reviewers <r> ...]
+  [--labels ai-assisted] [--open]
 ```
 
 - `--labels ai-assisted` is **opt-in and omitted by default** — include it only when the
   invoking request explicitly asked to mark the PR as AI-assisted (see the skill's Step 3,
   item 5). By default the PR is created with no label.
 
+- **Never pass `--auto-complete`.** This skill opens a pull request and stops there.
+  Auto-complete makes the pull request merge itself once the policies pass —
+  an outward action the confirmation gate never described to the human.
+  `--draft` and `--reviewers` are left out of the recipe for the same reason:
+  nothing in the skill body ever sets them, so a value here would be one nobody chose.
+  `--open` stays because the skill body governs it — Step 4 forbids it in a
+  non-interactive context.
+
 - If the source branch is not yet on the remote, **publish it first**
   (`git push -u origin <branch>`) — `az repos pr create` needs the source branch
   on the remote. Publish only after the human confirmation (see the skill's invariant).
+- **Read the description back and assert it does not begin with `@`.** The `@<file>`
+  form **fails open**: when `az` cannot read the file it logs
+  `Failed to open <path>, assume not a file` at **debug** level and sends the literal
+  `@<path>` string as the description. The pull request is created, the URL comes back,
+  and nothing above debug level says the body never arrived. So after creating, read the
+  stored description (`az repos pr show --id <id> -o json`) and check its first character.
+  A leading `@` means the body was never sent: repair it in place with
+  `az repos pr update --id <id> --description "@<file>"` rather than opening a second
+  pull request, and tell the user what happened. This particular read-back is safe
+  through `az`'s stdout despite the cp1252 caveat below — a path string is ASCII, so
+  console re-encoding can neither create nor hide a leading `@`.
 - Return the PR URL.
 
 #### az.cmd cp1252 / UTF-8 `@<file>` quirks (Azure-specific)
@@ -81,11 +100,14 @@ These traps are why the description must go through a UTF-8 file, not an inline 
 ### Dup-check (list existing PR)
 
 ```
-az repos pr list --source-branch <branch> --target-branch <target> --status active
+az repos pr list --source-branch <branch> --status active
 ```
 
-If one exists, **stop and point the user to it** — do not open a second PR,
-and do not modify the existing one.
+**Query by source branch alone — do not add `--target-branch`.** The two filters are
+ANDed, so narrowing by a target the caller defaulted to wrongly returns nothing and the
+skill opens a second pull request for a branch that already has one. Report every open
+pull request from this source, each with the target it goes to, and let the skill body
+judge them (Step 2).
 
 ### Add label (opt-in, best-effort)
 

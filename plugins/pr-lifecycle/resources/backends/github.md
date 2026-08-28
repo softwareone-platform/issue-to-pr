@@ -40,8 +40,7 @@ Write the full description to a temp file and pass it as `--body-file <file>`:
 gh pr create \
   --title "<title>" \
   --body-file <file> \
-  --base <target> \
-  [--draft] [--reviewer <r> ...]
+  --base <target>
 ```
 
 - If the source branch is not yet on the remote, **publish it first**
@@ -55,11 +54,15 @@ gh pr create \
 ### Dup-check (list existing PR)
 
 ```
-gh pr list --head <branch> --base <target> --state open
+gh pr list --head <branch> --state open
 ```
 
-If one exists, **stop and point the user to it** — do not open a second PR,
-and do not modify the existing one.
+**Query by head branch alone — do not add `--base`.** The two filters are ANDed, so
+narrowing by a target the caller defaulted to wrongly returns nothing and the skill
+opens a second pull request for a branch that already has one. Report every open pull
+request from this head, each with the base it goes to, and let the skill body judge
+them (Step 2).
+
 For a fork PR the head takes the `owner:branch` form.
 
 ### Add label (opt-in, best-effort) — do NOT pass `--label` to `gh pr create`

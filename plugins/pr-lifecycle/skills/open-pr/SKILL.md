@@ -65,7 +65,7 @@ Run these before drafting anything, because each is a common first-run blocker:
 
 - **Has commits to PR.** The branch must be ahead of the target: `git fetch`, then `git rev-list --count origin/<target>..HEAD` must be greater than 0.
 - **On the remote — publish if needed.** Creating the PR needs the source branch on the remote. A not-yet-pushed branch is **not** a stop: after confirmation, open-pr publishes it (`git push -u origin <branch>`) as part of the create in Step 4. (Running non-interactively it does not push and does not create — see Step 4.)
-- **No duplicate.** Check for an existing open PR for this source to target via the **backend adapter's dup-check recipe**. If one exists, **stop and point the user to it** — do not open a second PR, and do not modify the existing one here.
+- **No duplicate.** Check for an existing open PR **from this source branch** via the **backend adapter's dup-check recipe** — by source alone, never narrowed to the target, since a target that defaulted wrongly hides the very PR this check exists to find. One to the **same** target is a duplicate: **stop and point the user to it** — do not open a second PR, and do not modify the existing one here. One to a **different** target is not automatically a duplicate — the same branch can legitimately go to both a release line and the default branch — so show it, name the target it goes to, and ask before creating another.
 
 ## Step 3 — Learn from previous pull requests, then draft
 
