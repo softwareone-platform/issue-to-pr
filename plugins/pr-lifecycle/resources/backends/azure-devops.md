@@ -50,6 +50,7 @@ az repos pr create -o json \
   --title "<title>" \
   --description "@<utf8-file>" \
   --target-branch <target> \
+  --source-branch <branch> \
   [--labels ai-assisted] [--open]
 ```
 
@@ -73,6 +74,11 @@ az repos pr create -o json \
 - `--labels ai-assisted` is **opt-in and omitted by default** — include it only when the
   invoking request explicitly asked to mark the PR as AI-assisted (see the skill's Step 3,
   under "AI-provenance markers"). By default the PR is created with no label.
+
+- **Pass `--source-branch` explicitly.** Left off, the extension infers it from the current
+  branch, and on a detached HEAD there is no current branch — so the run fails inside the
+  create call, after the human has already confirmed. The skill's Step 2 now stops that case
+  before the gate; naming the branch here removes the inference as the second half.
 
 - **Pass no flag that is not in the recipe above.** The rule is closed rather than a list of
   named offenders, because `az repos pr create` accepts a good many more outward-acting flags
@@ -263,8 +269,9 @@ git log origin/<default-branch> -i --author=<token> --format='%x1e%an%x1f%s%n%b'
 policy, and a rebase-and-fast-forward completion writes no merge commit at all — that
 is a healthy configuration, not a rewritten history. A no-fast-forward policy also
 mixes the source branch's own commits into the range, so the marker count can be a
-small fraction of `-n`. Where the markers are too few, say so and use the API fallback
-below rather than reporting "no history".
+small fraction of `-n`. Where the markers do not amount to a **usable sample** — the skill's
+Step 3 defines that, and deliberately sets no number — say so and use the API fallback below
+rather than reporting "no history".
 
 ### List merged pull requests (API fallback, for a marker-less repository)
 
@@ -272,7 +279,7 @@ below rather than reporting "no history".
 az repos pr list --status completed --top 100 -o json
 ```
 
-Needed only where the git read above found too few markers. Each result carries both
+Needed only where the git read above did not yield a usable sample. Each result carries both
 `title` and `description`, so this serves both halves.
 
 - **`-o json` is not optional.** The default table output carries no description at all
@@ -342,8 +349,15 @@ status.
 Confirm the PR belongs to **this** repository by GUID — the robust check:
 
 ```
-az repos show --repository <name> --query id
+az repos show --repository <name> --query id -o tsv
 ```
+
+**`-o tsv` is not optional.** Under the default JSON formatter `--query id` emits the GUID
+*as a JSON string*, quotes included — `"7f3a…"` — while the PR's `repository.id` comes back
+bare. A raw compare of the two therefore never matches, so every legitimate pull request is
+condemned as belonging to another repository and `resolve-pr-comments` stops before it starts.
+`-o tsv` returns the bare value; if you read it some other way, strip the surrounding quotes
+and compare case-insensitively before deciding.
 
 Compare that id to the PR's `repository.id`. If you compare names or URLs
 instead, normalise first — lowercase, ignore the SSH-versus-HTTPS form, and strip
