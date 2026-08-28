@@ -8,7 +8,7 @@ Part of `pr-lifecycle`, the team-agnostic PR-lifecycle plugin. Sibling: `resolve
 
 The skill is backend-agnostic across two orthogonal axes, detected in Step 0:
 
-- **PR platform** — **Azure DevOps** (`dev.azure.com` / `*.visualstudio.com` remote) or **GitHub** (a `github.com` remote, or a GitHub Enterprise host that `gh` is configured for). Determines the create / dup-check / label / PR-cross-reference-link mechanics, and where the convention sample comes from — git on Azure DevOps, the PR list API on GitHub.
+- **PR platform** — **Azure DevOps** (a `dev.azure.com` or `visualstudio.com` host, SSH forms included) or **GitHub** (a `github.com` host, or a GitHub Enterprise host that `gh` is configured for). Determines the create / dup-check / label / PR-cross-reference-link mechanics, and where the convention sample comes from — git on Azure DevOps, the PR list API on GitHub.
 - **Issue tracker** — **Jira** (`ACME-123` keys, `https://<base>/browse/KEY` links) or **GitHub Issues** (`#123` refs, auto-linked). GitHub Issues is the zero-config default on a GitHub remote when there is no Jira configuration; a Jira base URL comes from `.claude/pr-lifecycle.json`, the Atlassian MCP, or a one-time prompt.
 
 Platform-specific recipes live in `resources/backends/{azure-devops,github}.md`; tracker-specific id/link rules live in `resources/trackers/{jira,github-issues}.md`. The skill body holds no `az`/`gh` field parsing and no tracker id/URL parsing — it detects, loads the matching adapters, and follows their recipes. (The backend files cover both siblings — the open-pr operations and `resolve-pr-comments`'s thread operations.)
@@ -23,7 +23,7 @@ flowchart TD
     S0 --> S1["Step 1 — detect target<br>named in the request/session,<br>else the repo default branch;<br>unclear → ask"]
     S1 --> S2{"Step 2 — preconditions"}
     S2 -- "behind target" --> X1(["stop & report"])
-    S2 -- "existing active PR" --> X2(["stop & point to it<br>(no duplicate, no edit)"])
+    S2 -- "open PR from this branch" --> X2(["same target: stop & point to it<br>different target: show it & ask"])
     S2 -- "ok (not-pushed → publish at S4)" --> S3["Step 3 — learn from previous PRs<br>(yours → anyone's → invent nothing;<br>source per the backend adapter)<br>+ draft title / description"]
     S3 --> S4{"Step 4 — present + confirm"}
     S4 -- "confirmed (standalone)" --> C(["publish branch if needed (git push -u)<br>→ backend adapter create recipe → return URL"])
@@ -44,7 +44,7 @@ flowchart TD
 This is the **team-agnostic** PR-creation skill. Its mechanics (routed through the backend/tracker adapters) and safety rails — confirm before creating, never auto-resolve conflicts, never delete branches, never force-push — are deliberately scoped:
 
 - learns the PR convention from the caller's own previous PRs, then anyone's, and imposes no format when there are none;
-- opens a PR for the branch as-is (no bundled "merge the base branch in" step), publishing the branch to the remote if it is not there yet so you need not push first;
+- opens a PR for the branch as-is (no bundled "merge the base branch in" step), publishing it to the remote where the remote lacks the branch **or lacks its newest commits**, so you need not push first and the PR is never opened on a stale commit;
 - has an unattended-safe path (never auto-creates without confirmation);
 - checks for an existing PR first to avoid duplicates;
 - reads its sample from the repo's previous pull requests, not from the target branch — a maintenance line with its own distinct style is a known, accepted gap rather than an oversight.

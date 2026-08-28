@@ -15,7 +15,7 @@
     {
       "name": "pr-lifecycle",
       "description": "Team-agnostic PR lifecycle skills (Azure DevOps or GitHub): open-pr, resolve-pr-comments",
-      "version": "0.13.0",
+      "version": "0.13.1",
       "source": "./plugins/pr-lifecycle"
     },
     {

@@ -1,7 +1,7 @@
 {
   "name": "pr-lifecycle",
   "description": "Team-agnostic PR lifecycle skills (Azure DevOps or GitHub): open-pr (open a PR with a title/description that follows the caller's own conventions), resolve-pr-comments (triage and act on an existing PR's review comments behind a single confirmation gate)",
-  "version": "0.13.0",
+  "version": "0.13.1",
   "repository": "https://github.com/softwareone-platform/issue-to-pr",
   "homepage": "https://github.com/softwareone-platform/issue-to-pr#pr-lifecycle",
   "license": "Apache-2.0",
