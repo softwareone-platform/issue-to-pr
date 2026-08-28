@@ -7,7 +7,7 @@ so no `gh`-specific field parsing lives in the skill body itself.
 
 > **Scope:** this file covers both the **open-pr** operations
 > (create PR, list existing PR for dup-check,
-> list a target's merged PRs for convention learning,
+> list the repository's merged PRs for convention learning,
 > add label, PR cross-reference link)
 > and the **resolve-pr-comments** thread operations
 > (identity / belongs-to-repo check, fetch + normalize review threads via
@@ -38,6 +38,17 @@ GitHub-family server. Every recipe below then applies unchanged.
   remote it passes on the strength of a github.com login while every call this run makes
   goes to a host `gh` knows nothing about. Measured: `--hostname` on a configured host
   exits 0, on an unconfigured one exits 1, while the unscoped form exits 0 for both.
+  Strip any `:<port>` from the host before passing it — a self-hosted Enterprise server on
+  a non-standard port is configured under its bare hostname, and the ported form exits 1.
+- **A non-zero exit says three different things, and only one of them is "not GitHub".**
+  `gh` may be absent from PATH; the host may be a GitHub-family server the user has not
+  logged into, or whose token has expired; or the host may genuinely be another platform.
+  On a `github.com` remote the platform is already known by name, so a failure here is
+  purely the authentication limit — say so and print the prepared title and description
+  for manual creation. On an unrecognised host, where this same command is also what
+  *identifies* the platform, do not report it as an unknown platform: name the host, say
+  `gh` could not confirm it, and offer both readings, so the user whose real remedy is
+  `gh auth login --hostname <host>` is not asked which platform they are on.
 - If `gh` is missing or unauthenticated, the skill voices the limit and prints
   the prepared title and description for manual creation — it does not fail
   silently and does not create the PR.
@@ -55,35 +66,67 @@ gh pr create \
   --base <target>
 ```
 
-- If the source branch is not yet on the remote, **publish it first**
-  (`git push -u origin <branch>`, or let `gh pr create` push it) — the PR needs
-  the source branch on the remote. Publish only after the human confirmation
+- If the source branch is not on the remote, or is behind local HEAD, **publish it first
+  with `git push -u origin <branch>`** — the PR needs the source branch on the remote, and
+  it carries whatever the remote branch holds. Publish only after the human confirmation
   (see the skill's invariant).
+- **Do not leave the publishing to `gh pr create`.** Its own help: "When the current branch
+  isn't fully pushed to a git remote, a prompt will ask where to push the branch and offer
+  an option to fork the base repository." Creating a fork is an outward action the
+  confirmation gate never described, and a push that happens inside the create also bypasses
+  the skill's push-failure branch — so a rejected publish surfaces as a create error whose
+  cause the caller cannot read. Push explicitly first; `--head` is the documented way to
+  suppress the behaviour outright if a run ever needs the belt as well as the braces.
 - The `🤖` footer and plain-ASCII fenced diagram round-trip intact through
   `--body-file` (UTF-8); no cp1252 quirk applies here.
-- Return the PR URL.
+- **Description limit: not established here.** GitHub does enforce a maximum body size and
+  rejects an over-long body, but no figure has been verified for this file, so the skill's
+  Step 4 has no number to measure against. Report the description as *unmeasured* rather
+  than treating this silence as "no limit exists" — the unverified case and the
+  no-limit case are not the same, and only one of them is safe to imply.
+- Return the PR URL, which `gh pr create` prints on success.
 
 ### Dup-check (list existing PR)
 
 ```
-gh pr list --head <branch> --state open
+gh pr list --head <branch> --state open \
+  --json number,url,baseRefName,isCrossRepository,headRepositoryOwner
 ```
 
 **Query by head branch alone — do not add `--base`.** The two filters are ANDed, so
 narrowing by a target the caller defaulted to wrongly returns nothing and the skill
-opens a second pull request for a branch that already has one. Report every open pull
-request from this head, each with the base it goes to, and let the skill body judge
-them (Step 2).
+opens a second pull request for a branch that already has one.
 
-`gh pr list --help` states for this flag that the `<owner>:<branch>` syntax is **not
-supported**, so do not reach for that form. Whether a plain `--head <branch>` matches a
-pull request opened from a fork is **not established here** — say so rather than
-reporting "no duplicate" when the remote may be a fork.
+**`--json` is not optional.** Without it the output is a human table carrying neither the
+base branch nor the fork flag, and both are values the skill's Step 2 has to judge on.
+
+Map each result into the normalized entry Step 2 expects:
+
+- `url` ← `url`.
+- `target` ← `baseRefName`, which GitHub returns as a **plain** branch name needing no
+  stripping. (Azure DevOps returns a full `refs/heads/…` ref and does need it — the two
+  platforms differ here, which is exactly why the skill body is given a normalized name
+  rather than a field.)
+- `from_fork` ← `isCrossRepository`; `headRepositoryOwner.login` names whose branch it is.
+
+**A plain `--head <branch>` does match a pull request opened from a fork** — measured
+against a public repository that takes fork contributions: `gh pr list --head <branch>`
+returned an entry with `isCrossRepository: true` at exit 0. So this query is not blind to
+forks, and no hedge about that is owed. The consequence runs the other way: on a repository
+that accepts fork contributions, a common branch name can match **a stranger's** pull
+request, which is why `from_fork` is in the mapping — such an entry is somebody else's
+branch sharing a name, not a duplicate of yours.
+
+`gh pr list --help` states for **this** flag that the `<owner>:<branch>` syntax is **not
+supported**, and it fails silently: measured, `--head "<owner>:<branch>"` returns `[]` at
+exit 0, which reads as "no duplicate". So do not reach for that form here. (The prohibition
+is scoped to `gh pr list`; `gh pr create --head` does support the `<user>:<branch>` syntax.)
 
 ### Add label (opt-in, best-effort) — do NOT pass `--label` to `gh pr create`
 
 The `ai-assisted` label is **off by default** — apply it only when the invoking
-request explicitly opted in (see the skill's Step 3, item 5). The create recipe
+request explicitly opted in (see the skill's Step 3, under "AI-provenance
+markers"). The create recipe
 above never passes `--label`, so the default (no opt-in) needs no change here.
 
 **Real bug:** `gh pr create --label X` **aborts creating the PR** if the label
@@ -102,7 +145,7 @@ above never passes `--label`, so the default (no opt-in) needs no change here.
    be pre-created in the repo to be filterable). Never let a missing label
    abort or undo the PR.
 
-### Reading a target's previous PRs — use the API, not git
+### Reading the repository's previous PRs — use the API, not git
 
 Git is **not** a sound source on GitHub, and the reason is structural rather than
 fussy: several merge strategies coexist, one repo can show all of them, and the list
@@ -133,10 +176,14 @@ gh pr list --state merged --limit 60 \
   column is the *creation* date, and which carries **no body at all**.
 - **`--author` takes a GitHub login, not an email**, and it is how the caller-scoped
   rung is expressed here. Passing the caller's git email returns an empty list with a
-  **success** exit, which reads as "no history". Resolve the login with
-  `gh api user --jq .login`, and note this is the `gh`-authenticated account, which
-  need not be the same person as `git config user.email` — where the two disagree,
-  say so rather than sampling silently. Drop the flag for the all-authors rung.
+  **success** exit, which reads as "no history" — and note that the exit-status rule below
+  cannot catch this one, because the call genuinely succeeded. Resolve the login with
+  `gh api user --hostname <host> --jq .login`: **host-scope it**, because on a GitHub
+  Enterprise remote the unscoped form answers from the default host and hands back a
+  github.com login that does not exist on this server, producing exactly the empty-at-exit-0
+  result described above. Note this is the `gh`-authenticated account, which need not be the
+  same person as `git config user.email` — where the two disagree, say so rather than
+  sampling silently. Drop the flag for the all-authors rung.
 - **The list is creation-ordered, not merge-ordered.** `mergedAt` is in the JSON —
   sort on it yourself for any "most recent" decision.
 - **An empty list and a failure are distinguishable here, so distinguish them.**

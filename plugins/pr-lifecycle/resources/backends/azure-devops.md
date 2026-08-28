@@ -7,8 +7,8 @@ so no `az`-specific field parsing lives in the skill body itself.
 
 > **Scope:** this file covers both the **open-pr** operations
 > (create PR, list existing PR for dup-check,
-> read a target's previous PRs out of git for convention learning,
-> with an API fallback for a marker-less target, add label, PR cross-reference link)
+> read the repository's previous PRs out of git for convention learning,
+> with an API fallback for a marker-less repository, add label, PR cross-reference link)
 > and the **resolve-pr-comments** thread operations
 > (identity / belongs-to-repo check, fetch + normalize review threads,
 > post a reply, set thread status).
@@ -17,11 +17,18 @@ so no `az`-specific field parsing lives in the skill body itself.
 
 Detect Azure DevOps from `git remote get-url origin`:
 
-- host **is** `dev.azure.com`, or
+- host **is** `dev.azure.com`, or **ends with** `.dev.azure.com`, or
 - host **ends with** `.visualstudio.com`.
 
-Match the end of the host, never a substring. An on-premises Azure DevOps Server has an
-arbitrary hostname and no equivalent probe, so it falls to the skill's ask branch.
+Match the end of the host, never a substring. The `.dev.azure.com` suffix is not defensive
+padding — Azure DevOps's own SSH clone URL is `git@ssh.dev.azure.com:v3/<org>/<project>/<repo>`,
+so an equality-only rule rejects every SSH-cloned repository while the legacy
+`vs-ssh.visualstudio.com` form keeps matching under the other suffix, which is what makes the
+gap easy to miss. The extension itself recognises both (`ssh.dev.azure.com` and
+`vs-ssh.visualstudio.com`) when it parses a remote.
+
+An on-premises Azure DevOps Server has an arbitrary hostname and no equivalent probe, so it
+falls to the skill's ask branch.
 
 ## Tool precondition
 
@@ -39,40 +46,87 @@ Write the full description to a **UTF-8 temp file** and pass it as `--descriptio
 never as an inline string:
 
 ```
-az repos pr create \
+az repos pr create -o json \
   --title "<title>" \
   --description "@<utf8-file>" \
   --target-branch <target> \
   [--labels ai-assisted] [--open]
 ```
 
+- **Description limit: 4,000 characters, and the platform *rejects* rather than truncates.**
+  This is the limit the skill's Step 4 measures against before creating; it is stated here,
+  in the create recipe, because that is where Step 4 looks for it.
+- **Ask for `-o json` explicitly rather than relying on the default.** `az`'s own default is
+  JSON, but it is a *configurable* default — `az configure` can set `table`, per user or per
+  folder — and this command has a table transformer that emits only
+  `ID / Created / Creator / Title / Status / IsDraft / Repository`, truncating the title and
+  carrying neither the description nor any URL. `pullRequestId` is read off this result and
+  nowhere else (the read-back below needs it), so the format cannot be left to a user setting.
+- **How to obtain the pull request's web URL is UNRESOLVED, and this adapter does not yet say.**
+  `GitPullRequest` exposes `remoteUrl` and `url`, but Microsoft documents both as
+  *"Used internally"* and the extension composes the browser URL itself rather than reading
+  either, so neither is established as the web URL. Composing it needs the organization and
+  project, which nothing in the open-pr flow surfaces. Until this is settled against a real
+  response, return whatever `az` reports and say the URL is unverified — do not present a
+  constructed or guessed URL as the pull request's own.
+
 - `--labels ai-assisted` is **opt-in and omitted by default** — include it only when the
   invoking request explicitly asked to mark the PR as AI-assisted (see the skill's Step 3,
-  item 5). By default the PR is created with no label.
+  under "AI-provenance markers"). By default the PR is created with no label.
 
-- **Never pass `--auto-complete`.** This skill opens a pull request and stops there.
-  Auto-complete makes the pull request merge itself once the policies pass —
-  an outward action the confirmation gate never described to the human.
-  `--draft` and `--reviewers` are left out of the recipe for the same reason:
-  nothing in the skill body ever sets them, so a value here would be one nobody chose.
-  `--open` stays because the skill body governs it — Step 4 forbids it in a
-  non-interactive context.
+- **Pass no flag that is not in the recipe above.** The rule is closed rather than a list of
+  named offenders, because `az repos pr create` accepts a good many more outward-acting flags
+  than any list would remember — `--auto-complete`, `--bypass-policy`, `--delete-source-branch`,
+  `--squash`, `--transition-work-items`, `--work-items`, `--required-reviewers`,
+  `--merge-commit-message` — and a list of three reads as exhaustive to the next reader.
+  Three of those deserve naming anyway, because they contradict the skill's stated behaviour
+  rather than merely exceeding it: **`--auto-complete`** makes the pull request merge itself
+  once policies pass, when this skill opens a pull request and stops there;
+  **`--delete-source-branch`** violates the safety rail "Never delete branches" outright;
+  and **`--bypass-policy`** completes the pull request while overriding the very checks the
+  reviewers rely on. `--draft` and `--reviewers` are simply values nobody chose.
+  `--open` is the one optional flag with a legitimate caller: pass it **only when the request
+  asked for the pull request to be opened in a browser**, and never in a non-interactive
+  context, which the skill's Step 4 forbids independently.
 
-- If the source branch is not yet on the remote, **publish it first**
-  (`git push -u origin <branch>`) — `az repos pr create` needs the source branch
-  on the remote. Publish only after the human confirmation (see the skill's invariant).
-- **Read the description back and assert it does not begin with `@`.** The `@<file>`
+- If the source branch is not on the remote, or is behind local HEAD, **publish it first**
+  (`git push -u origin <branch>`) — `az repos pr create` needs the source branch on the
+  remote, and the pull request carries whatever that remote branch holds. Publish only
+  after the human confirmation (see the skill's invariant).
+- **Read the description back and compare it to the file you sent.** The `@<file>`
   form **fails open**: when `az` cannot read the file it logs
   `Failed to open <path>, assume not a file` at **debug** level and sends the literal
   `@<path>` string as the description. The pull request is created, the URL comes back,
   and nothing above debug level says the body never arrived. So after creating, read the
-  stored description (`az repos pr show --id <id> -o json`) and check its first character.
-  A leading `@` means the body was never sent: repair it in place with
-  `az repos pr update --id <id> --description "@<file>"` rather than opening a second
-  pull request, and tell the user what happened. This particular read-back is safe
-  through `az`'s stdout despite the cp1252 caveat below — a path string is ASCII, so
-  console re-encoding can neither create nor hide a leading `@`.
-- Return the PR URL.
+  stored description (`az repos pr show --id <pullRequestId> -o json` — no `--org`, for the
+  same reason the recipes here never pass it) and
+  compare it with the content of the file. **Compare the content — do not just test whether
+  the first character is `@`.** That shortcut is wrong in both directions: a description
+  that legitimately opens with an `@user` mention (valid link syntax here, and a shape the
+  sample may well have taught) is condemned as a failure, while a file that was readable but
+  empty passes with an empty body. A mismatch means the body never arrived.
+- **Repair the cause before repeating the mechanism.** The only reason the send failed is
+  that the file could not be read, and that is still true at repair time — so re-issuing
+  `az repos pr update --id <pullRequestId> --description "@<file>"` against the same
+  unreadable path writes the literal `@<path>` a second time and reports success. First
+  confirm the file exists and is readable (rewrite it if not), then update, then **read back
+  and compare again**; if the second comparison also fails, stop and hand the prepared
+  description to the user rather than looping. Repair in place either way — never open a
+  second pull request.
+- **On that update call, pass only `--id` and `--description`.** `az repos pr update` also
+  accepts `--status completed|abandoned`, `--auto-complete`, `--bypass-policy`,
+  `--delete-source-branch`, `--squash` and `--draft`. Every one of them is an outward action
+  the confirmation gate never described, and two of them contradict the skill's own safety
+  rails outright, so the create recipe's flag prohibition above applies here unchanged.
+- **Compare on the ASCII text, and treat a non-ASCII-only difference as a console artefact,
+  not a drop.** The cp1252 caveat below applies to everything `az` writes to a Windows
+  console, `-o json` included — no output format exempts the `🤖` footer or a non-ASCII
+  diagram glyph from being mangled on the way out, so a comparison that demands byte equality
+  will report failures that are not real. A body that never arrived looks nothing like the
+  file (it is a bare `@<path>`); a body that arrived intact differs, if at all, only in those
+  characters. Where only they differ, confirm in the web UI or through the REST API rather
+  than repairing.
+- Return the PR URL, subject to the unresolved note above.
 
 #### az.cmd cp1252 / UTF-8 `@<file>` quirks (Azure-specific)
 
@@ -103,19 +157,50 @@ These traps are why the description must go through a UTF-8 file, not an inline 
 ### Dup-check (list existing PR)
 
 ```
-az repos pr list --source-branch <branch> --status active
+az repos pr list --source-branch <branch> --status active -o json
 ```
 
 **Query by source branch alone — do not add `--target-branch`.** The two filters are
 ANDed, so narrowing by a target the caller defaulted to wrongly returns nothing and the
-skill opens a second pull request for a branch that already has one. Report every open
-pull request from this source, each with the target it goes to, and let the skill body
-judge them (Step 2).
+skill opens a second pull request for a branch that already has one.
+
+**`-o json` is not optional here.** The table transformer emits only
+`ID / Created / Creator / Title / Status / IsDraft / Repository` — **no source or target
+branch at all** — so a user whose `az` output default is `table` would hand the skill body a
+result that cannot answer the question it was fetched for. This is the same trap the API
+fallback recipe below already guards against, on a recipe that now needs the target.
+
+Map each result into the normalized entry the skill's Step 2 judges on:
+
+- `url` ← report `pullRequestId`, which is what identifies the pull request to a human here.
+  A web URL is not available from this result (see the create recipe's unresolved note above),
+  so do not construct one.
+- `target` ← `targetRefName` **with the `refs/heads/` prefix stripped**. The API stores and
+  returns a full ref while the skill body holds a plain branch name, so an unstripped value
+  never compares equal and every existing pull request reads as going to a *different*
+  target — which turns the same-target duplicate stop into a question, silently, on every run.
+- `from_fork` ← true when the pull request's `forkSource` is present. **Azure Repos does
+  support forks and cross-fork pull requests** — `GitPullRequest` carries a `forkSource` and
+  `GitRepository` an `isFork` — so this is not a GitHub-only case, and a fork pull request
+  sharing a branch name would otherwise hard-stop the run as a duplicate of somebody else's
+  work. Do **not** test `repository.id` instead: that field names the repository of the
+  pull request's *target* branch, which for a cross-fork pull request is this repository,
+  so the test would never fire for the case it exists to catch.
+
+**Report only pull requests in this repository.** Passing neither `--repository` nor `--org`
+leaves both to git detection, and when the repository does not resolve the extension does not
+error — it lists the whole *project*'s pull requests instead (the same widening the API
+fallback below documents). A same-named branch in a sibling repository would then read as a
+duplicate and hard-stop the run, so drop any result whose `repository.name` is not this
+repository's. Take that name from the git remote — it is the last path segment of
+`git remote get-url origin`, with any trailing `.git` stripped — since nothing else in the
+open-pr flow surfaces it.
 
 ### Add label (opt-in, best-effort)
 
 The `ai-assisted` label is **off by default** — add it only when the invoking
-request explicitly opted in (see the skill's Step 3, item 5). When opted in,
+request explicitly opted in (see the skill's Step 3, under "AI-provenance
+markers"). When opted in,
 Azure DevOps creates the tag on the fly via `--labels ai-assisted` on
 `az repos pr create` (above), so no separate call is needed.
 It is then **best-effort**: if the org disallows ad-hoc PR tags and
@@ -147,13 +232,32 @@ git log origin/<default-branch> -i --author=<token> --format='%x1e%an%x1f%s%n%b'
   than a whole name, and `-i` handles the casing half of that and nothing more. Carry
   the author through rather than dropping it — a sample can be dominated by one person
   or by automation, and that is only visible if the author is in front of you.
+- **Where `<token>` comes from, since this platform has no identity lookup to ask.**
+  Take it from `git config user.name` (a distinctive word from it, per the skill's
+  Step 3) — and expect it to be imprecise, which the skill already says to expect. Two
+  properties of `--author` make it more so, and both widen the sample rather than
+  narrowing it: git matches the pattern against the whole `Name <email>` line, so a
+  token that also appears in an email domain matches every colleague at that domain;
+  and the pattern is a regular expression, so `.` and `+` match more than themselves
+  while an unbalanced `[` aborts the read with exit 128. Pick a plain alphabetic token,
+  and read the authors that come back rather than trusting the filter.
+- **An empty result is indistinguishable from a failed filter here.** A `git log` whose
+  `--author` matches nobody prints nothing and exits **0**, exactly like a repository
+  with no history. Git offers no way to tell them apart, so the skill's "confirm the
+  query ran before reading emptiness as history" cannot be satisfied on this platform by
+  exit status. Confirm it the only way available: re-run without `--author` — if that
+  yields records, the filter is what emptied the sample, not the history.
 - **`%x1e`** is a record separator, and it is load-bearing: descriptions are multi-line,
   so without a delimiter nothing distinguishes a body's continuation line from the next
   commit's subject. It is emitted *before* each record, so the first field is empty.
 - **`origin/<default-branch>`, never a bare local name** — a local branch of the same
   name is routinely behind the remote and reading it fails *silently* with a stale
-  sample. This applies to `git log` only: the API recipes below take a bare branch
-  name, and prefixing one there matches nothing at a success exit.
+  sample. This applies to `git log` only: the API recipes below take a bare branch name,
+  which the extension normalises to `refs/heads/<name>` for you. Give them the bare name
+  for consistency with the rest of this file, not because a prefixed one would fail —
+  the normalisation is idempotent, so `refs/heads/main` and `main` behave identically
+  there, and an executor who is told otherwise will build on a false premise the next
+  time it matters.
 
 **Not every repository yields markers.** Completion strategy is a per-repo, per-branch
 policy, and a rebase-and-fast-forward completion writes no merge commit at all — that
@@ -204,9 +308,10 @@ Azure DevOps does **not** reliably render Mermaid in a pull request description,
 here is a fenced **plain-ASCII** one — boxes, arrows, and `+ - | > v` glyphs, which survive an
 encoding downgrade as well as a font change. Two constraints come with it, both from this
 file's create recipe: the description travels through the UTF-8 temp file described there, and
-the platform enforces a hard **4,000-character** description limit that it *rejects* rather
-than truncates — so a diagram that pushes a description past it fails the create after the
-human has already confirmed. Check the length before offering a large one.
+it is subject to the description limit stated there, which the platform *rejects* rather than
+truncates — so a diagram that pushes a description past it fails the create after the human
+has already confirmed. The figure is stated in the create recipe and only there; check the
+length against it before offering a large diagram.
 
 ### PR cross-reference link syntax
 
