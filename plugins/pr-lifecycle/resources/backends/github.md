@@ -21,11 +21,23 @@ so no `gh`-specific field parsing lives in the skill body itself.
 
 ## Detection signature
 
-Detect GitHub from `git remote get-url origin`: host contains `github.com`.
+Detect GitHub from `git remote get-url origin`: the host **is** `github.com`, or
+**ends with** `.github.com`. Match the end of the host, never a substring —
+`github.company.com` contains `github.com` and is not it.
+
+A **GitHub Enterprise** host is arbitrary and cannot be recognised by name, so it is
+identified by asking `gh` rather than by the hostname: `gh auth status --hostname <host>`
+exiting 0 means the user has configured that host, which is what makes it a
+GitHub-family server. Every recipe below then applies unchanged.
 
 ## Tool precondition
 
-- `gh` CLI is on PATH and authenticated (`gh auth status` succeeds).
+- `gh` CLI is on PATH and authenticated **for the host this remote names**:
+  `gh auth status --hostname <host>` succeeds. **The unscoped `gh auth status` is not a
+  substitute** — it exits 0 whenever *any* host is configured, so on a GitHub Enterprise
+  remote it passes on the strength of a github.com login while every call this run makes
+  goes to a host `gh` knows nothing about. Measured: `--hostname` on a configured host
+  exits 0, on an unconfigured one exits 1, while the unscoped form exits 0 for both.
 - If `gh` is missing or unauthenticated, the skill voices the limit and prints
   the prepared title and description for manual creation — it does not fail
   silently and does not create the PR.
@@ -63,7 +75,10 @@ opens a second pull request for a branch that already has one. Report every open
 request from this head, each with the base it goes to, and let the skill body judge
 them (Step 2).
 
-For a fork PR the head takes the `owner:branch` form.
+`gh pr list --help` states for this flag that the `<owner>:<branch>` syntax is **not
+supported**, so do not reach for that form. Whether a plain `--head <branch>` matches a
+pull request opened from a fork is **not established here** — say so rather than
+reporting "no duplicate" when the remote may be a fork.
 
 ### Add label (opt-in, best-effort) — do NOT pass `--label` to `gh pr create`
 

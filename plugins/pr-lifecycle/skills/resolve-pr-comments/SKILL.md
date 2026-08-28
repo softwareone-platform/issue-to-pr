@@ -29,9 +29,10 @@ This skill **acts on** the feedback — it does not merely read and summarize. I
 
 Before anything else, resolve which backend this run targets, from `git remote get-url origin`:
 
-- `dev.azure.com` or `*.visualstudio.com` → **Azure DevOps** (`resources/backends/azure-devops.md`).
-- `github.com` → **GitHub** (`resources/backends/github.md`).
-- Ambiguous or another host → voice the limit and ask the user which platform to target rather than guessing.
+- host **is** `dev.azure.com`, or **ends with** `.visualstudio.com` → **Azure DevOps** (`resources/backends/azure-devops.md`).
+- host **is** `github.com`, or **ends with** `.github.com` → **GitHub** (`resources/backends/github.md`).
+- **Match the end of the host, never a substring** — `github.company.com` contains `github.com` and is not it.
+- Any other host may still be a **GitHub Enterprise** server, whose hostname is arbitrary and cannot be recognised by name. Ask `gh` instead of guessing: `gh auth status --hostname <host>` exiting 0 means the user has configured that host, which identifies it as a GitHub-family server — use the GitHub adapter. If it does not, voice the limit and ask which platform to target.
 
 **Resolve the plugin root first, and stop if you cannot.** The backend adapter lives under the plugin root at `resources/backends/` — never under the skill directory, and never at a path containing `plugins/pr-lifecycle/`, which exists only in this marketplace's own source tree and not in an install. Resolve that root the way this Claude Code build exposes it (`${CLAUDE_PLUGIN_ROOT}` where available, otherwise the directory holding this skill's plugin manifest), and read the adapter to confirm the resolution before going further.
 

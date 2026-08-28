@@ -8,7 +8,7 @@ Part of `pr-lifecycle`, the team-agnostic PR-lifecycle plugin. Sibling: `resolve
 
 The skill is backend-agnostic across two orthogonal axes, detected in Step 0:
 
-- **PR platform** — **Azure DevOps** (`dev.azure.com` / `*.visualstudio.com` remote) or **GitHub** (`github.com` remote). Determines the create / dup-check / label / PR-cross-reference-link mechanics, and where the convention sample comes from — git on Azure DevOps, the PR list API on GitHub.
+- **PR platform** — **Azure DevOps** (`dev.azure.com` / `*.visualstudio.com` remote) or **GitHub** (a `github.com` remote, or a GitHub Enterprise host that `gh` is configured for). Determines the create / dup-check / label / PR-cross-reference-link mechanics, and where the convention sample comes from — git on Azure DevOps, the PR list API on GitHub.
 - **Issue tracker** — **Jira** (`ACME-123` keys, `https://<base>/browse/KEY` links) or **GitHub Issues** (`#123` refs, auto-linked). GitHub Issues is the zero-config default on a GitHub remote when there is no Jira configuration; a Jira base URL comes from `.claude/pr-lifecycle.json`, the Atlassian MCP, or a one-time prompt.
 
 Platform-specific recipes live in `resources/backends/{azure-devops,github}.md`; tracker-specific id/link rules live in `resources/trackers/{jira,github-issues}.md`. The skill body holds no `az`/`gh` field parsing and no tracker id/URL parsing — it detects, loads the matching adapters, and follows their recipes. (The backend files cover both siblings — the open-pr operations and `resolve-pr-comments`'s thread operations.)

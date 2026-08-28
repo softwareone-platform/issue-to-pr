@@ -17,8 +17,11 @@ so no `az`-specific field parsing lives in the skill body itself.
 
 Detect Azure DevOps from `git remote get-url origin`:
 
-- host contains `dev.azure.com`, or
-- host matches `*.visualstudio.com`.
+- host **is** `dev.azure.com`, or
+- host **ends with** `.visualstudio.com`.
+
+Match the end of the host, never a substring. An on-premises Azure DevOps Server has an
+arbitrary hostname and no equivalent probe, so it falls to the skill's ask branch.
 
 ## Tool precondition
 

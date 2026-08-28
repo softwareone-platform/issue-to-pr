@@ -33,9 +33,10 @@ This skill is backend-agnostic: the platform-specific mechanics (create PR, dup-
 Before anything else, resolve which backend and tracker this run targets:
 
 - **PR platform** — from `git remote get-url origin`:
-  - `dev.azure.com` or `*.visualstudio.com` → **Azure DevOps** (`resources/backends/azure-devops.md`).
-  - `github.com` → **GitHub** (`resources/backends/github.md`).
-  - Ambiguous or another host → voice the limit and ask the user which platform to target rather than guessing.
+  - host **is** `dev.azure.com`, or **ends with** `.visualstudio.com` → **Azure DevOps** (`resources/backends/azure-devops.md`).
+  - host **is** `github.com`, or **ends with** `.github.com` → **GitHub** (`resources/backends/github.md`).
+  - **Match the end of the host, never a substring** — `github.company.com` contains `github.com` and is not it.
+  - Any other host may still be a **GitHub Enterprise** server, whose hostname is arbitrary and cannot be recognised by name. Ask `gh` instead of guessing: `gh auth status --hostname <host>` exiting 0 means the user has configured that host, which identifies it as a GitHub-family server — use the GitHub adapter. If it does not, voice the limit and ask which platform to target.
 - **Issue tracker (precedence — first match wins):**
   1. **Infer** the type from an existing ticket ref, matched **case-sensitively**: `[A-Z][A-Z0-9]+-\d+` → **Jira** (either platform). Case matters here more than it looks: read case-insensitively the same pattern swallows ordinary branch names (`patch-1`, `electron-41-eol`, `esbuild-0.28.2`) and invents a ticket key out of a slug, which then sends the run asking for a tracker instance that has nothing to do with the change; a bare numeric issue ref → **GitHub Issues** — but only on a **GitHub** remote (on Azure DevOps `#<n>` is a work-item link, not a GitHub issue, so a bare number does not imply GitHub Issues there).
   2. else **default only where the platform supplies the tracker**: a GitHub remote → **GitHub Issues**, which is same-repo and needs no configuration. An Azure DevOps remote gets **no default** — its native tracker is Azure Boards work items, no adapter ships for those, and assuming Jira instead would send the run asking for a Jira instance the team may not have. Ask which tracker to use, or produce no tracker line.
