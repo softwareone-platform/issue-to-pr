@@ -1,7 +1,7 @@
 {
   "name": "issue-to-pr-pipeline",
   "description": "Issue-to-PR orchestration. resolve-issue chains the review, test, and PR-lifecycle skills into one resumable pipeline (fact-check the issue, draft and harden a plan, implement, write tests, review the fix, open the PR), holding the plan-approval gate, pausing again wherever a decision is yours, and checkpointing to .claude/resolve/<ticket>/ so a fresh session can resume. resolve-issue-dashboard is a live, read-only dashboard that visualises a run by tailing the transcript and state.md; resolve-issue-learnings harvests the generic learnings captured across runs into honoured conventions.",
-  "version": "0.25.6",
+  "version": "0.26.0",
   "repository": "https://github.com/softwareone-platform/issue-to-pr",
   "homepage": "https://github.com/softwareone-platform/issue-to-pr#issue-to-pr-pipeline",
   "license": "Apache-2.0",
