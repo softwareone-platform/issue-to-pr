@@ -4,13 +4,9 @@ description: >
   Open a pull request (Azure DevOps or GitHub) for the current branch,
   giving it a title and description that follow the CALLER's own conventions —
   learned at runtime from their past merged PRs —
-  with a ticket link and a description of what changed and why,
-  in whatever shape those PRs use.
+  with a ticket link and a description of what changed and why.
   Use whenever someone wants to open / raise / put up a PR, finish a branch,
   or send changes for review on Azure DevOps or GitHub, even if they don't say "open-pr".
-  The target branch is taken from the request, or defaults to the repo's own default branch.
-  Presentation is learned from previous PRs; substance is learned only where they have some,
-  so a repo whose PRs carry no real description still gets one that does.
   It always shows the title and description for confirmation first
   and never creates the PR without explicit approval.
   Trigger phrases: "open a PR", "raise a PR", "create a pull request",
@@ -19,7 +15,6 @@ description: >
   Do NOT trigger for: reviewing or summarizing an existing PR;
   triaging or replying to PR comments (that is a separate resolve-pr-comments skill);
   completing / merging a PR; starting a branch; or plain git operations.
-  This is the team-agnostic open-pr skill for the issue-to-PR workflow.
 ---
 
 # Open PR

@@ -1,20 +1,18 @@
 ---
 name: resolve-issue
 description: >
-  Orchestrate the whole issue-to-PR pipeline for one ticket: fact-check the issue, draft a plan,
-  harden it, implement the fix, write tests, review the fix, and open the PR — chaining the
-  disconfirm-first, test-authoring, and pr-lifecycle component skills behind a plan-approval gate,
-  pausing again wherever a decision is yours.
-  Use whenever someone wants an issue / bug / Jira ticket taken from diagnosis all the way to
-  a pull request — even if they don't name the skill.
-  Takes the ticket as an argument or from natural language; resumable across sessions from .claude/resolve/<ticket>/.
+  Orchestrate the whole issue-to-PR pipeline for one ticket:
+  fact-check the issue, draft a plan, harden it, implement the fix, write tests, review the fix,
+  and open the PR — behind a plan-approval gate, pausing again wherever a decision is yours.
+  Use whenever someone wants an issue / bug / Jira ticket taken from diagnosis all the way to a pull request,
+  even if they don't name the skill. Resumable across sessions.
   Do NOT trigger when the user wants only ONE stage — route those to the component skill directly:
   "just fact-check this issue" is review-issue-fact; "review this plan" is review-plan-risk;
   "review my fix / diff before the PR" is review-code-risk; "add tests" is test-authoring;
   "open / raise a PR" is open-pr; "address / resolve the PR comments" is resolve-pr-comments.
   Also do NOT trigger for merging / completing a PR, or plain git operations.
-  Trigger phrases: "resolve this issue", "run the issue-to-PR pipeline", "take this Jira from diagnosis to PR",
-  "diagnose fix and open a PR", "/resolve-issue".
+  Trigger phrases: "resolve this issue", "run the issue-to-PR pipeline",
+  "take this Jira from diagnosis to PR", "/resolve-issue".
 ---
 
 # Resolve issue

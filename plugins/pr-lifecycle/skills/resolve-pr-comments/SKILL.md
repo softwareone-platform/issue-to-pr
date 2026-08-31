@@ -6,15 +6,15 @@ description: >
   and — after a single human confirmation — commit, push, reply, and update thread status.
   Use whenever someone wants to address, resolve, handle, action, or reply to PR comments
   or review feedback, fix the comments on a PR, or "go through the comments on PR <id>",
-  even if they don't say "resolve-pr-comments". Takes the PR id as an argument or from natural language.
+  even if they don't say "resolve-pr-comments".
   It respects the reviewer — it triages and drafts, and never auto-dismisses a comment —
-  and it makes no outward change (commit, push, reply, resolve) without explicit confirmation.
-  Do NOT trigger for: opening or creating a PR (that is open-pr); summarizing or reviewing a PR's diff;
-  reviewing a plan or code risk; or merging / completing a PR.
-  This skill actually acts on the comments (commit, push, reply, resolve) —
-  it does not merely read and summarize them.
-  Trigger phrases: "resolve PR comments", "address the review comments", "fix the comments on PR 12345",
-  "handle the PR feedback", "reply to the PR comments", "/resolve-pr-comments".
+  and it makes no outward change without explicit confirmation.
+  It acts on the comments; it does not merely summarize them.
+  Do NOT trigger for: opening or creating a PR (that is open-pr);
+  summarizing or reviewing a PR's diff; reviewing a plan or code risk;
+  or merging / completing a PR.
+  Trigger phrases: "resolve PR comments", "address the review comments",
+  "fix the comments on PR 12345", "handle the PR feedback", "/resolve-pr-comments".
 ---
 
 # Resolve PR comments

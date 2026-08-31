@@ -1,22 +1,21 @@
 ---
 name: review-issue-fact
 description: >
-  Fact-check an ISSUE — a bug report, story, or incident description, pasted as plain or markdown
-  text, or given as a Jira or GitHub issue link — against the codebase that is
-  its ground truth, BEFORE any fix is planned.
-  The issue is NOT a source of truth — it may carry a misattributed root cause or plain wrong
-  information — so the distinct question is diagnosis alignment:
-  do its factual claims hold in THIS code, or is the bug misdiagnosed.
-  Use this whenever someone wants an issue, bug report, or repro fact-checked or sanity-checked
-  before planning a fix, or wants to gate the issue-to-PR pipeline on a verified diagnosis —
-  even if they don't say "review-issue-fact".
-  Trigger phrases: "fact-check this issue", "is this bug report accurate", "does this issue
-  reproduce", "is the root cause right", "is this issue real / misdiagnosed", "/review-issue-fact".
+  Fact-check an ISSUE — a bug report, story, or incident description,
+  as text or a Jira / GitHub issue link —
+  against the codebase that is its ground truth, BEFORE any fix is planned.
+  The issue is not a source of truth, so the question is diagnosis alignment:
+  do its claims hold in THIS code, or is the bug misdiagnosed.
+  Use whenever someone wants an issue or repro fact-checked before planning a fix.
+  Trigger phrases: "fact-check this issue", "does this issue reproduce",
+  "is the root cause right", "is this issue real / misdiagnosed",
+  "/review-issue-fact".
   Do NOT trigger for: reviewing a plan / spec / RFC before implementation (review-plan-risk);
-  reviewing an implemented fix / diff (review-code-risk); creating, editing, or transitioning a tracker issue;
-  generic line-level bug-hunting (code-review / coderabbit) or
-  security scanning (security-review); debugging a failing test; or confirmatory "is my
-  understanding correct?" checks that want validation, not adversarial fact-checking.
+  reviewing an implemented fix / diff (review-code-risk);
+  creating, editing, or transitioning a tracker issue;
+  generic line-level bug-hunting (code-review / coderabbit) or security scanning (security-review);
+  debugging a failing test;
+  or confirmatory "is my understanding correct?" checks that want validation, not adversarial fact-checking.
 ---
 
 # Review Issue Fact

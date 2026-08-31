@@ -1,20 +1,21 @@
 ---
 name: review-code-risk
 description: >
-  Adversarially review an IMPLEMENTED FIX — a committed code change (a diff on a branch) —
+  Adversarially review an IMPLEMENTED FIX — a committed diff on a branch —
   against the issue it claims to resolve and the plan it was built from, BEFORE the PR is opened.
-  Its distinct question is intent alignment — does THIS change actually resolve THAT issue, per THAT
-  plan, without regressing callers or hiding a band-aid — which generic line-level review does not ask.
-  Use this whenever someone has an implemented or committed fix / diff / change and wants it
-  challenged or sanity-checked before opening a PR — even if they don't say "review-code-risk".
-  Trigger phrases: "challenge this fix / diff", "does this fix actually resolve the issue",
-  "will this change regress anything", "pressure-test / red-team / stress-test this implementation",
-  "pre-mortem this diff", "review my fix before I open the PR", "/review-code-risk".
+  Its question is intent alignment:
+  does THIS change resolve THAT issue, per THAT plan, without regressing callers or hiding a band-aid.
+  Use whenever someone has an implemented fix and wants it challenged before opening a PR.
+  Trigger phrases: "challenge this fix / diff", "will this change regress anything",
+  "red-team this implementation", "pre-mortem this diff",
+  "review my fix before the PR", "/review-code-risk".
   Do NOT trigger for: reviewing a plan / spec / RFC before implementation (review-plan-risk);
   generic line-level bug-hunting or style / simplification cleanup (code-review / coderabbit);
-  security-vulnerability scanning (security-review); debugging a failing test; summarizing or
-  addressing PR reviewer comments; refactoring; or confirmatory "is this correct?" checks that
-  want validation, not adversarial enumeration.
+  security-vulnerability scanning (security-review);
+  debugging a failing test;
+  addressing PR reviewer comments;
+  refactoring;
+  or confirmatory "is this correct?" checks that want validation, not adversarial enumeration.
 ---
 
 # Review Code Risk

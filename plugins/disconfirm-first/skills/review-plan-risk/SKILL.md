@@ -2,26 +2,19 @@
 name: review-plan-risk
 description: >
   Adversarially review a DESIGN ARTIFACT —
-  a plan, spec, RFC, or another skill / command / agent / workflow definition —
+  a plan, spec, RFC, or a skill / agent / workflow definition —
   for design risks BEFORE implementation begins.
-  Packages pre-mortem, red-teaming, and falsification into a repeatable process:
-  find and rate risks,
-  verify the plan's load-bearing premises about the current codebase against ground truth,
-  auto-fix the risks rated real — in the plan itself, never its execution —
-  and independently verify the fixes before reporting a result table.
-  Use this whenever someone wants a plan or design pressure-tested,
-  wants a spec reviewed before building,
-  or wants a SKILL.md / workflow definition checked for gaps —
-  even if they don't say "pre-mortem".
+  It rates risks, verifies the plan's load-bearing premises against the codebase,
+  and auto-fixes the ones it rates real — in the plan, never its execution.
+  Use whenever someone wants a design pressure-tested or a definition checked for gaps.
   Trigger phrases: "pre-mortem this", "stress-test this design", "what could make this fail",
   "find the holes in this plan", "review this spec before we build",
-  "does this plan's premise about the current code hold", "review this skill's design",
-  "propagate this fix to the plugin's other skills", "/review-plan-risk".
+  "review this skill's design", "propagate this fix to the plugin's other skills",
+  "/review-plan-risk".
   Do NOT trigger for: reviewing code or diffs, debugging an existing implementation,
   post-implementation code review,
   propagating a code change across source files (refactoring, not design review),
-  or confirmatory "is this correct?" checks that want validation rather than adversarial
-  enumeration — those want normal review, not this skill.
+  or confirmatory "is this correct?" checks that want validation rather than adversarial enumeration.
 ---
 
 # Review Plan Risk

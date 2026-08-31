@@ -1,18 +1,17 @@
 ---
 name: resolve-issue-learnings
 description: >
-  Harvest the generic, cross-repo learnings that resolve-issue captured during its runs and turn the real
-  ones into honored conventions — reading the accumulated candidate "dead-drop", verifying each candidate
-  against the current resolve-issue skill as ground truth, then (by default, mode X) writing the survivors to
-  a user-global conventions file that resolve-issue reads on its next run, or — only when invoked inside the
-  editable plugin source (mode Y) — proposing them as edits to resolve-issue's own SKILL.md for a PR.
-  Use whenever someone wants to distil / harvest / review / apply the learnings resolve-issue has accumulated,
-  says "harvest resolve-issue learnings", "distil the resolve-issue runs", "update my resolve-issue conventions",
-  "apply what resolve-issue learned", or "/resolve-issue-learnings".
-  Do NOT trigger to RUN the issue-to-PR pipeline (that is resolve-issue) or to watch a run (resolve-issue-dashboard);
+  Harvest the generic, cross-repo learnings that resolve-issue captured during its runs
+  and turn the real ones into honored conventions —
+  verifying each candidate against the current resolve-issue skill as ground truth,
+  then writing the survivors to a user-global conventions file that resolve-issue reads on its next run,
+  or proposing them as edits to its own SKILL.md when invoked inside the editable plugin source.
+  Use whenever someone wants to distil / harvest / review / apply the learnings resolve-issue has accumulated.
+  Do NOT trigger to RUN the issue-to-PR pipeline (that is resolve-issue)
+  or to watch a run (resolve-issue-dashboard);
   this skill neither drives a run nor reads a single run's state.md — it processes the accumulated learning store.
-  Trigger phrases: "harvest resolve-issue learnings", "distil resolve-issue runs", "update resolve-issue conventions",
-  "/resolve-issue-learnings".
+  Trigger phrases: "harvest resolve-issue learnings", "distil the resolve-issue runs",
+  "update my resolve-issue conventions", "apply what resolve-issue learned", "/resolve-issue-learnings".
 ---
 
 # Resolve issue learnings
