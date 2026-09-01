@@ -9,7 +9,7 @@
     {
       "name": "disconfirm-first",
       "description": "Adversarial review skills: review-issue-fact (issue), review-plan-risk (design), review-code-risk (implementation)",
-      "version": "1.7.2",
+      "version": "1.7.3",
       "source": "./plugins/disconfirm-first"
     },
     {
@@ -27,7 +27,7 @@
     {
       "name": "issue-to-pr-pipeline",
       "description": "Issue-to-PR orchestration: resolve-issue chains the review, test, and PR-lifecycle skills into one resumable pipeline gated on plan approval, pausing again wherever a decision is yours; resolve-issue-dashboard is a read-only dashboard that visualises a run; resolve-issue-learnings harvests learnings across runs",
-      "version": "0.26.1",
+      "version": "0.26.2",
       "source": "./plugins/issue-to-pr-pipeline"
     }
   ]
