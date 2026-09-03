@@ -34,10 +34,11 @@ flowchart TD
 
 - **Nothing here is a default title or description shape.** Presentation comes from previous PRs — yours first, then anyone's — and that includes the ticket-reference shape: bracketed, bare with a colon, prefixed by a Conventional Commits type, or absent altogether, whichever the sample uses. A bracketed word is more often a component tag than a ticket reference, and where a repo's PRs carry no ticket reference none is added.
 
-- **Substance is learned only where the sample has some.** The test is whether a sampled body, on its own, tells a reviewer what changed without following a link. Where it does, it is matched — length included. Where it does not, the draft says what changed anyway, in the presentation the sample taught, and announces that it overrode the sample.
+- **Substance is learned only where the sample has some.** The test is whether a sampled body, on its own, tells a reviewer what the change is for and what they need in order to review it, without following a link. Where it does, it is matched — length included. Where it does not, the draft says it anyway, in the presentation the sample taught, and announces that it overrode the sample. Substance is drawn from the committed range and from nowhere else — not the working tree, and not the session's own memory of how the change was arrived at — and is ranked against the change's point, so what the range only touches in passing stays out unless a reviewer would stall on it.
 
 - **AI-provenance markers are off by default**: neither the `🤖 Drafted with Claude Code` footer nor the `ai-assisted` label is added unless the invoking request explicitly asks to mark the PR as AI-assisted. When opted in, the footer is the last line and the label is best-effort. The description is sent via a temp body-file, not an inline string — see the backend adapter for each platform's create recipe and encoding traps.
 - *(Changed in 0.9.0: earlier versions shipped a fixed title and description shape and always added the provenance markers. Both are now off unless the repo's own history — or, for the markers, the caller — asks for them.)*
+- *(Changed in 0.15.0: the description is now ranked against what the pull request is for, and the committed-range-only source rule binds the learned path too. Earlier versions tested substance for completeness over the diff, which rewarded enumerating everything on the branch.)*
 
 ## Design notes
 

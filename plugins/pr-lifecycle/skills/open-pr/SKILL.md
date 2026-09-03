@@ -91,12 +91,18 @@ Reproduce what the sample does, and introduce nothing it does not do.
 
 ### Substance is learned only where the sample has some
 
-One question decides it: **does that body, on its own, tell a reviewer what changed — without following a link?**
+**Establish what the pull request is *for* before drafting any substance, and rank everything else against it.** The diff says what happened, never what it was for; the statements of intent available are the invoking request, the ticket or issue where there is one, the branch name, and the commit subjects. Name that point to yourself in a sentence — the description is an account of it, not an inventory of the range.
+
+One question decides how much the sample teaches: **does that body, on its own, tell a reviewer what the change is for, and what they need in order to review it — without following a link?**
 
 - **Where it does, match it, length included.** A complete two-line description is a convention, not a shortfall. Do not inflate it, and do not promote plain prose to headings or bullets because those look more thorough.
 - **Where it does not** — an empty body, or a bare cross-reference with no account of the change — the sample has nothing to teach here, and matching it would make this skill pointless: writing the description is the work it exists to do. So write one that passes the test, in the presentation the sample taught, and **say that you overrode the sample on substance**.
 
-Substance is the one element the sample gets no vote on. Keep it proportionate all the same: a one-line change earns a sentence, not a manufactured list.
+**Read the change from the committed range, `git diff origin/<target>...HEAD`, and from nowhere else — on this path as much as on the unlearned one below.** That range is exactly what the pull request will contain, so a description drawn from the working tree describes something the reviewer cannot see; uncommitted work is a warning named at the Step 4 confirmation, never material here. **The harder source to refuse is this session's own memory of how the change was arrived at**, because it is the richest thing in context and all of it is true. Invoked at the end of a longer piece of work, the session knows the investigation, the options weighed, the plan, the tests, the review rounds and what they turned up — and a description written from that recounts the work rather than the change. The reviewer is being asked to review a diff, not a process.
+
+**Then include only what a reviewer needs in order to review that point.** Everything else the range touches is subordinate to it, and most of it is not description material at all: a rename made in passing, a formatting sweep, a dependency bump taken to unblock the work, a helper added for one call site. Each earns a line only where a reviewer meeting it in the diff would otherwise be surprised or stall on it, and nothing at all where the diff speaks for itself. A change that genuinely does several things has several points — rank them and lead with the first, rather than forcing one. Where the presentation the sample taught includes a section that asks for an inventory, fill it: a section's existence is learned presentation, but it never promotes incidental content into the account of the change.
+
+Substance is the one element the sample gets no vote on, and proportion is part of substance: a one-line change earns a sentence, not a manufactured list.
 
 **Where the change has a shape, draw it.** Some changes are a sentence — a value, a threshold, a rename. Others are structural: work moves between components, a sequence reorders, a control path is replaced, one thing becomes two. For those a small diagram carries in a glance what a paragraph carries slowly, and readers skim a long description however well it is written. So include one when the change has that kind of shape, and leave it out when it does not — a diagram of a one-line change is noise, and putting one on every description destroys the signal that a diagram is worth stopping for.
 
@@ -110,7 +116,7 @@ This is the one element the sample cannot teach in either direction. Almost no r
 
 **Title** — a concise one-line summary of the change, introducing no prefix, no bracket, no marker, and no casing rule. Where a ticket exists, include its reference in the form the **tracker adapter** yields, wherever it reads naturally. Two or more *different* ticket ids means ask which, rather than silently taking the first.
 
-**Description** — the ticket link when there is a ticket (the **tracker adapter** builds it), then what the change does and why, in plain prose as short as the change allows. **Read the change from the committed range, `git diff origin/<target>...HEAD`, and from nowhere else** — that range is exactly what the pull request will contain, so a description drawn from the working tree describes something the reviewer cannot see. Uncommitted work is named separately at the Step 4 confirmation, per Step 2; it is a warning about what is missing, never material for the description. Describe intent, omit file and symbol names, and do not paste the diff. That is the content any description owes a reviewer; it is not a layout, and with no sample there is no layout to apply.
+**Description** — the ticket link when there is a ticket (the **tracker adapter** builds it), then what the change does and why, in plain prose as short as the change allows. The substance rules above still bind: the committed range is the only source, and the change's point is what the description is an account of. Describe intent, omit file and symbol names, and do not paste the diff. That is the content any description owes a reviewer; it is not a layout, and with no sample there is no layout to apply.
 
 ### AI-provenance markers — opt-in, off by default, on every path
 
