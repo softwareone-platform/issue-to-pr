@@ -81,6 +81,8 @@ If neither yields anything, no convention is known: draft plainly (below) and sa
 
 **Identify the caller loosely, and expect the match to be imprecise.** One person appears under more than one display name in a single repo (`Surname, First` alongside `First Surname`), and the name the platform recorded is routinely not the one in `git config`. So match a distinctive *token* — a surname, a handle — rather than a whole name or address, and match it case-insensitively. Three cautions. On some platforms that filter is a regular expression, so a token containing `[`, `.`, `+` or `(` either aborts the read outright or silently widens it: pick a token without them rather than escaping. On some it is matched against the author's **address as well as the name**, so a token that also occurs in an email domain or local part quietly matches every colleague at that domain — which is rung 2 wearing rung 1's label. And if the sample plainly contains more than one person, widen to the second probe rather than learning a stranger's style — and say rung 2 in the announcement below, because a sample that widened is no longer "your previous PRs" and reporting it as such is the one error that announcement exists to prevent.
 
+**Read the change from the committed range, `git diff origin/<target>...HEAD`, and from nowhere else** — that range is exactly what the pull request will contain, so a description drawn from the working tree describes something the reviewer cannot see. Uncommitted work is named separately at the Step 4 confirmation, per Step 2; it is a warning about what is missing, never material for the description.
+
 ### Presentation is learned — all of it
 
 Reproduce what the sample does, and introduce nothing it does not do.
@@ -110,7 +112,7 @@ This is the one element the sample cannot teach in either direction. Almost no r
 
 **Title** — a concise one-line summary of the change, introducing no prefix, no bracket, no marker, and no casing rule. Where a ticket exists, include its reference in the form the **tracker adapter** yields, wherever it reads naturally. Two or more *different* ticket ids means ask which, rather than silently taking the first.
 
-**Description** — the ticket link when there is a ticket (the **tracker adapter** builds it), then what the change does and why, in plain prose as short as the change allows. **Read the change from the committed range, `git diff origin/<target>...HEAD`, and from nowhere else** — that range is exactly what the pull request will contain, so a description drawn from the working tree describes something the reviewer cannot see. Uncommitted work is named separately at the Step 4 confirmation, per Step 2; it is a warning about what is missing, never material for the description. Describe intent, omit file and symbol names, and do not paste the diff. That is the content any description owes a reviewer; it is not a layout, and with no sample there is no layout to apply.
+**Description** — the ticket link when there is a ticket (the **tracker adapter** builds it), then what the change does and why, in plain prose as short as the change allows. Describe intent, omit file and symbol names, and do not paste the diff. That is the content any description owes a reviewer; it is not a layout, and with no sample there is no layout to apply.
 
 ### AI-provenance markers — opt-in, off by default, on every path
 
