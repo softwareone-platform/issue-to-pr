@@ -32,7 +32,7 @@ flowchart TD
 
 ## Format — learned, not shipped
 
-- **Nothing here is a default title or description shape.** Presentation comes from previous PRs — yours first, then anyone's — and that includes the ticket-reference shape: bracketed, bare with a colon, prefixed by a Conventional Commits type, or absent altogether, whichever the sample uses. A bracketed word is more often a component tag than a ticket reference, and where a repo's PRs carry no ticket reference none is added.
+- **Nothing here is a default title or description shape.** Presentation comes from previous PRs — yours first, then anyone's — and that includes the ticket-reference shape: bracketed, bare with a colon, prefixed by a Conventional Commits type, or absent altogether, whichever the sample uses. Where a repo's PRs carry no ticket reference, none is added.
 
 - **Substance is learned only where the sample has some.** The test is whether a sampled body, on its own, tells a reviewer what changed without following a link. Where it does, it is matched — length included. Where it does not, the draft says what changed anyway, in the presentation the sample taught, and announces that it overrode the sample.
 

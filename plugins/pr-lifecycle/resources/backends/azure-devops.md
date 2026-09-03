@@ -66,7 +66,7 @@ az repos pr create -o json \
   and it holds whatever the number turns out to be.
   Both ways of the number being wrong are loud rather than silent —
   too low and a description that would have been accepted gets trimmed,
-  too high and the create fails carrying the platform's own error, which Step 4 already has a branch for.
+  too high and the create fails carrying the platform's own error.
 - **Ask for `-o json` explicitly rather than relying on the default.** `az`'s own default is
   JSON, but it is a *configurable* default — `az configure` can set `table`, per user or per
   folder — and this command has a table transformer that emits only
@@ -87,7 +87,7 @@ az repos pr create -o json \
 
 - **Pass `--source-branch` explicitly.** Left off, the extension infers it from the current
   branch, and on a detached HEAD there is no current branch — so the run fails inside the
-  create call, after the human has already confirmed. The skill's Step 2 now stops that case
+  create call, after the human has already confirmed. The skill's Step 2 stops that case
   before the gate; naming the branch here removes the inference as the second half.
 
 - **Pass no flag that is not in the recipe above.** The rule is closed rather than a list of
@@ -184,7 +184,7 @@ skill opens a second pull request for a branch that already has one.
 `ID / Created / Creator / Title / Status / IsDraft / Repository` — **no source or target
 branch at all** — so a user whose `az` output default is `table` would hand the skill body a
 result that cannot answer the question it was fetched for. This is the same trap the API
-fallback recipe below already guards against, on a recipe that now needs the target.
+fallback recipe below already guards against, on a recipe that needs the target.
 
 Map each result into the normalized entry the skill's Step 2 judges on:
 
@@ -316,18 +316,6 @@ Needed only where the git read above did not yield a usable sample. Each result 
   Neither probe can teach length on this platform; the Body note in the git section above owns that point.
 - The window here (`--top`) and the git window (`-n`) are different sizes; report which
   one the sample came from.
-Two flags to leave off, both verified against the extension's behaviour:
-
-- **`--creator`** is resolved through the directory and **raises** on failure
-  (`Could not resolve identity`, or `There are multiple identities found`) instead of
-  returning an empty list, so a commit email that is not a directory identity
-  (a `noreply` address, a machine account) stops the call outright. Filter by author
-  with git's `--author` instead.
-- **`--org`** disables the git-remote detection that supplies organisation, project,
-  and repository. That detection is reliable here — this adapter is only ever loaded
-  because the remote is an Azure DevOps one — and an unresolved repository is *not*
-  an error: the extension falls back to listing the whole project's pull requests,
-  drawing the sample from other repositories. So leave detection alone.
 
 ### Diagram form
 
