@@ -84,6 +84,13 @@ gh pr create \
   Step 4 has no number to measure against. Report the description as *unmeasured* rather
   than treating this silence as "no limit exists" — the unverified case and the
   no-limit case are not the same, and only one of them is safe to imply.
+  **The vendor does not publish one either** *(external)*:
+  checked against the pull-requests REST reference on 2026-09-03, which states no maximum for `body`.
+  So the gap here is not an unfinished job — the figure is not available to look up,
+  and a number invented for this file would be worse than an honest absence.
+  If one is ever established, record where it was measured and when, the way the Azure DevOps adapter's create recipe now does.
+  Whether this platform's sample probe truncates a body the way that one's does is **unmeasured** —
+  do not read the Azure DevOps note as covering GitHub.
 - Return the PR URL, which `gh pr create` prints on success.
 
 ### Dup-check (list existing PR)

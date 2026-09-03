@@ -57,6 +57,16 @@ az repos pr create -o json \
 - **Description limit: 4,000 characters, and the platform *rejects* rather than truncates.**
   This is the limit the skill's Step 4 measures against before creating; it is stated here,
   in the create recipe, because that is where Step 4 looks for it.
+  **The figure is observed, not published** *(external)*.
+  Checked against the REST 7.1 create-pull-request reference on 2026-09-03: `description` is a bare `string` there with no maximum stated,
+  so nothing on the vendor's side confirms 4,000 and nothing would announce a change to it.
+  Treat it as a working assumption, and re-check it if a create ever fails on length alone.
+  **Reject-rather-than-truncate is the load-bearing half of this bullet**, and it is much the more stable one:
+  it is the whole reason the measurement happens before the create rather than after,
+  and it holds whatever the number turns out to be.
+  Both ways of the number being wrong are loud rather than silent —
+  too low and a description that would have been accepted gets trimmed,
+  too high and the create fails carrying the platform's own error, which Step 4 already has a branch for.
 - **Ask for `-o json` explicitly rather than relying on the default.** `az`'s own default is
   JSON, but it is a *configurable* default — `az configure` can set `table`, per user or per
   folder — and this command has a table transformer that emits only
@@ -231,6 +241,12 @@ git log origin/<default-branch> -i --author=<token> --format='%x1e%an%x1f%s%n%b'
   than summarising, so headings, bullets, and fenced blocks survive when they were
   there. How often they were there varies enormously between repositories; read the
   sample rather than expecting either answer.
+  **The body is truncated, though, so this read teaches shape and not length.**
+  Measured 2026-09-03 on a repository whose merged pull requests run long:
+  7 of 18 bodies came back at exactly 3,003 characters, each ending in an ellipsis.
+  A length range derived from this probe is therefore a lower bound and never a ceiling.
+  Do not hand it onward as a budget — say the sample could not teach length,
+  rather than reporting a range as though it were one.
 - **Author** — `%an`, ahead of a `%x1f` unit separator, so each record reads
   *author*, `0x1f`, *subject*, newline, *body*. It is the identity **the organisation
   directory holds**, not the one in the contributor's `git config`: those routinely
@@ -294,6 +310,10 @@ Needed only where the git read above did not yield a usable sample. Each result 
   *disables* that detection, and an unresolved repository is not an error — the
   extension falls back to listing the whole project's pull requests, drawing the sample
   from other repositories.
+- **`description` comes back truncated at 400 characters**, cut mid-word — measured 2026-09-03.
+  So for anything length-related this fallback is worse than the git read above, not better:
+  it teaches the body's opening shape and nothing about its extent.
+  Neither probe can teach length on this platform; the Body note in the git section above owns that point.
 - The window here (`--top`) and the git window (`-n`) are different sizes; report which
   one the sample came from.
 Two flags to leave off, both verified against the extension's behaviour:
