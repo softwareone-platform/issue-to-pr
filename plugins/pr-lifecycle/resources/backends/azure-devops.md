@@ -34,9 +34,34 @@ falls to the skill's ask branch.
 
 - `az` CLI is on PATH **and** the `azure-devops` extension is installed,
   and the session is authenticated (`az login` / a valid PAT).
-- If `az` or the `azure-devops` extension is missing or unauthenticated,
-  the skill voices the limit and prints the prepared title and description
-  for manual creation — it does not fail silently and does not create the PR.
+- **The one command that establishes all of it, and the one Step 0 runs:**
+
+  ```
+  az repos list -o json
+  ```
+
+  Detection only — no `--org`, no `--project`, for the reason the sample recipes give.
+  Exit 0 with a JSON array means `az` is present, the extension is installed, the session is
+  authenticated, and the remote resolved to an organisation and a project.
+  It is read-only and it is the cheapest call that exercises all four at once.
+  Measured 2026-09-03 on a legacy collection-style remote: exit 0, 154 repositories.
+- **Splitting the causes, once it has failed.**
+  `az extension show --name azure-devops` exits **0** when the extension is installed and **1** when it is not —
+  measured both ways, the missing case first, against a deliberately non-existent extension name.
+  So that separates "extension not installed" from "az missing, or the session unauthenticated".
+  Nothing cheap separates those last two, so say which pair you are down to rather than picking one.
+- **Do not probe with `az repos pr list`, and do not read its empty result as an answer.**
+  Measured 2026-09-03: for a repository whose active pull request is retrievable by id
+  (`az repos pr show --id <n>` returns it, `status: active`), and which `az repos list` returns by name and id,
+  `az repos pr list` **omits that repository entirely** — from the project-wide active list
+  (181 pull requests across 59 other repositories, the id range spanning the missing one),
+  and from every filtered form: by repository name, by repository GUID, and with `--source-branch`.
+  Every one returned an empty array with **exit 0**.
+  No flag combination recovered it. So an empty array from this call is not evidence of absence
+  on this platform, and a precondition probe built on it would pass while the dup-check below silently fails.
+- If the tool precondition fails, the skill voices the limit and does not create the PR.
+  Whether it can also print a prepared draft depends on where the failure was caught —
+  the skill's Step 0 and its Voiced limits own that, because Step 3 has not run at Step 0.
 
 ## Recipes
 

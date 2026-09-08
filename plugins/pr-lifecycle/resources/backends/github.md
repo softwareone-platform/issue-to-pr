@@ -49,9 +49,11 @@ GitHub-family server. Every recipe below then applies unchanged.
   *identifies* the platform, do not report it as an unknown platform: name the host, say
   `gh` could not confirm it, and offer both readings, so the user whose real remedy is
   `gh auth login --hostname <host>` is not asked which platform they are on.
-- If `gh` is missing or unauthenticated, the skill voices the limit and prints
-  the prepared title and description for manual creation — it does not fail
-  silently and does not create the PR.
+- **The command above is also the one Step 0 runs** as this platform's tool precondition,
+  so on an unrecognised host it is discharged by the selection probe itself and is not run twice.
+- If `gh` is missing or unauthenticated, the skill voices the limit and does not create the PR.
+  Whether it can also print a prepared draft depends on where the failure was caught —
+  the skill's Step 0 and its Voiced limits own that, because Step 3 has not run at Step 0.
 
 ## Recipes
 
