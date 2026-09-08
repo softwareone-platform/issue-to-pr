@@ -50,15 +50,17 @@ falls to the skill's ask branch.
   measured both ways, the missing case first, against a deliberately non-existent extension name.
   So that separates "extension not installed" from "az missing, or the session unauthenticated".
   Nothing cheap separates those last two, so say which pair you are down to rather than picking one.
-- **Do not probe with `az repos pr list`, and do not read its empty result as an answer.**
+- **Do not probe with `az repos pr list`.**
   Measured 2026-09-03: for a repository whose active pull request is retrievable by id
   (`az repos pr show --id <n>` returns it, `status: active`), and which `az repos list` returns by name and id,
   `az repos pr list` **omits that repository entirely** — from the project-wide active list
   (181 pull requests across 59 other repositories, the id range spanning the missing one),
   and from every filtered form: by repository name, by repository GUID, and with `--source-branch`.
   Every one returned an empty array with **exit 0**.
-  No flag combination recovered it. So an empty array from this call is not evidence of absence
-  on this platform, and a precondition probe built on it would pass while the dup-check below silently fails.
+  No flag combination recovered it.
+  So an empty array from this call is not evidence of absence on this platform:
+  a precondition probe built on it would pass while the dup-check below returns nothing for the same repository.
+  That is the fact; what the dup-check should do with it is not settled here, and this file does not instruct it.
 - If the tool precondition fails, the skill voices the limit and does not create the PR.
   Whether it can also print a prepared draft depends on where the failure was caught —
   the skill's Step 0 and its Voiced limits own that, because Step 3 has not run at Step 0.
