@@ -67,9 +67,10 @@ Note which of these the orchestrator actually owns: only plan approval and the t
 
 **Confirmation before something irreversible or outward-facing.** A different reason — this is blast-radius control, not plan quality.
 
+- **the work-branch guard** — before any Phase B commit, if you are still on the base branch it stops and asks you to create or switch to a feature branch. It never commits the fix or tests onto the base, and it never creates the branch for you. As of 0.27.0 the preamble says so as soon as it resolves the base, so this ask should rarely be the first you hear of it.
 - **b-open-pr** — publishes the branch and creates the PR only after you confirm. Always asks, and the run is waiting for the whole time the draft sits on screen.
 
-So after approval there is one guaranteed stop — the open-PR confirmation — plus whatever the review passes surface. When a run is paused, `state.md`'s `attention` field names what it is waiting for, and `resolve-issue-dashboard` shows it.
+So after approval there is one guaranteed stop — the open-PR confirmation — plus whatever the review passes surface, and the work-branch guard if you never left the base branch. When a run is paused, `state.md`'s `attention` field names what it is waiting for, and `resolve-issue-dashboard` shows it.
 
 ## Prerequisites
 
