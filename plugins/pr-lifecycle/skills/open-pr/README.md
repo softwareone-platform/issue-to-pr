@@ -36,9 +36,12 @@ flowchart TD
 
 - **Substance is learned only where the sample has some.** The test is whether a sampled body, on its own, tells a reviewer what changed without following a link. Where it does, it is matched — length included. Where it does not, the draft says what changed anyway, in the presentation the sample taught, and announces that it overrode the sample.
 
+- **Presentation is learned; altitude is not.** However detailed the sampled bodies are, the draft describes intent and leaves out what the diff already shows — file and symbol names, the mechanics of each edit, a walk through the work. A sample written low teaches its shape, not its detail level.
+
 - **AI-provenance markers are off by default**: neither the `🤖 Drafted with Claude Code` footer nor the `ai-assisted` label is added unless the invoking request explicitly asks to mark the PR as AI-assisted. When opted in, the footer is the last line and the label is best-effort. The description is sent via a temp body-file, not an inline string — see the backend adapter for each platform's create recipe and encoding traps.
 - *(Changed in 0.9.0: earlier versions shipped a fixed title and description shape and always added the provenance markers. Both are now off unless the repo's own history — or, for the markers, the caller — asks for them.)*
 - *(Changed in 0.15.0: when a description has to be trimmed to fit the platform's limit, prose goes first and the diagram last — the reverse of what earlier versions said. Where a change has a shape worth drawing, the diagram is where the effort belongs and the prose covers only what a diagram cannot.)*
+- *(Changed in 0.17.2: the altitude rule above used to be stated only for the no-sample path, so a detailed sample taught its detail level as well as its shape — which is how a description grows into a record of the work.)*
 
 ## Design notes
 
