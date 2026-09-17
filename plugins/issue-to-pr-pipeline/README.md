@@ -15,6 +15,12 @@ Installing `issue-to-pr-pipeline` auto-installs its three dependencies (`disconf
 
 After installing, run `/reload-plugins` to activate.
 
+## Prerequisites
+
+The pipeline itself needs nothing installed beyond what its component skills reach for — the Atlassian MCP for the Jira anchor, and `az` or `gh` for the PR step. Those are listed in the [marketplace README](../../README.md#prerequisites) and each degrades with a voiced note when absent.
+
+One optional extra: `resolve-issue-dashboard` runs a local standard-library **Python 3.8+** server (no `pip install`, no virtualenv). `resolve-issue` offers to bring it up at the start of every interactive run, so this is the one prerequisite a run visibly touches — but it is genuinely optional. Without Python the dashboard declines to start and says so in one line, and the pipeline runs exactly as it would otherwise, because the dashboard only observes. Install with `winget install Python.Python.3.13` on Windows (per-user scope, no administrator needed), `brew install python` on macOS, or your distribution's package manager.
+
 ## Plugin structure
 
 ```

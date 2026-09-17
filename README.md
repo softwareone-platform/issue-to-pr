@@ -113,11 +113,12 @@ Issue-to-PR orchestration. Depends on `disconfirm-first`, `test-authoring`, and 
 
 ## Prerequisites
 
-The plugins themselves are just Markdown and JSON — nothing to build. A few skills reach external services; install what the plugins you actually use require:
+The plugins themselves are just Markdown and JSON — nothing to build. A few skills reach external services or want a local runtime; install what the plugins you actually use require:
 
 - [Azure CLI](https://learn.microsoft.com/en-us/cli/azure/install-azure-cli) with the `azure-devops` extension (`az extension add --name azure-devops`) — required by `pr-lifecycle` on Azure DevOps remotes, which it drives through `az repos` / `az devops`.
 - [GitHub CLI](https://cli.github.com/) (`gh`, authenticated) — required by `pr-lifecycle` on GitHub remotes, which it drives through `gh pr` / `gh api`.
 - [Atlassian MCP Server](https://www.npmjs.com/package/@anthropic-ai/atlassian-mcp) in your Claude Code MCP settings — optional; enables Jira integration for `review-issue-fact`, `resolve-issue`, and the Jira link in `open-pr`. These skills fall back to a pasted link or plain text when it is absent.
+- [Python 3.8+](https://www.python.org/downloads/) on PATH — **optional**, and only for `resolve-issue-dashboard`, which runs a local standard-library server (no `pip install`, no virtualenv). Install it with `winget install Python.Python.3.13` on Windows (per-user scope, no administrator needed), `brew install python` on macOS, or your distribution's package manager. Without it the dashboard declines to start and says so in one line; `resolve-issue` and every other skill run exactly as they would otherwise, because the dashboard only observes.
 
 ## Repository layout
 
