@@ -1,5 +1,24 @@
-# shell scripts must keep LF, or a CRLF checkout fails on macOS and Linux
-# with "bad interpreter" -- the pre-push hook is the one that matters
-*.sh text eol=lf
+# Treat binary assets as binary — never apply text / end-of-line normalization
+# (CRLF<->LF conversion corrupts binary files such as PNGs).
+*.png  binary
+*.jpg  binary
+*.jpeg binary
+*.gif  binary
+*.ico  binary
+*.webp binary
+*.pdf  binary
+*.zip  binary
+*.woff  binary
+*.woff2 binary
+
+# Markdown / JSON / source stay text with LF in the repo (quiets the CRLF warnings)
+*.md   text eol=lf
+*.json text eol=lf
+*.py   text eol=lf
+*.tmpl text eol=lf
+
+# Shell scripts and workflows must keep LF: a CRLF checkout of the pre-push
+# hook fails on macOS and Linux with "bad interpreter".
+*.sh        text eol=lf
+*.yml       text eol=lf
 .githooks/* text eol=lf
-*.yml text eol=lf
