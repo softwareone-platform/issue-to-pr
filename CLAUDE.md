@@ -77,14 +77,8 @@ Distinction that matters when editing content: **rules are non-negotiable**; **c
 
 - **Editing a skill/agent**: edit the `.md`, then in a consumer session run `/reload-plugins` to pick it up. There is nothing to build.
 - **Releasing a version bump**: update the version in **both** the plugin's `.claude-plugin/plugin.json` **and** the corresponding entry in `.claude-plugin/marketplace.json` — they must stay in sync. `marketplace.json` is the registry consumers read.
-- **Before pushing, derive which plugins need a bump from the diff — do not recall it.** The cache is keyed by version, so a changed plugin at an unchanged version reaches nobody, and the push looks successful. A late commit touching a *different* plugin than the earlier ones is how this slips (it has, once). Run:
-  ```bash
-  for n in disconfirm-first pr-lifecycle test-authoring issue-to-pr-pipeline; do
-    printf '%-22s changed=%s version=%s
-' "$n"       "$(git diff --name-only origin/main HEAD -- plugins/$n | wc -l)"       "$(grep -o '"version": "[^"]*"' plugins/$n/.claude-plugin/plugin.json)"
-  done
-  ```
-  Any plugin with `changed>0` whose version equals the one already on `origin/main` is the bug. **Run it AFTER committing, not against the working tree** — `git diff` cannot see an untracked file, so a plugin whose only change is a *new* file (an added `evals.json`, a new skill dir) reports `changed=0` and the gate silently passes the exact case it exists to catch. Verified 2026-08-13: pre-commit the gate read `test-authoring changed=1`, post-commit `changed=2`. If you must check before committing, `git add` first or read `git status --porcelain` alongside it.
+- **Before pushing, derive which plugins need a bump from the diff — do not recall it.** The cache is keyed by version, so a changed plugin at an unchanged version reaches nobody, and the push looks successful. A late commit touching a *different* plugin than the earlier ones is how this slips (it has, once). **This is now mechanical: `python tools/check.py` owns it**, along with the JSON, frontmatter, description-length, manifest-sync and public-leak checks that used to be prose here. Enable the gate once per clone with `git config core.hooksPath .githooks` — CI runs the same file, but this repo publishes by direct push, so CI reports after the fact and only the hook can stop the push.
+  Two things about the gate are worth keeping in your head rather than only in the tool. It compares against the **published** ref, so it must run against a commit and not the working tree — `git diff` cannot see an untracked file, so a plugin whose only change is a *new* file would report unchanged and the gate would pass the exact case it exists to catch (verified 2026-08-13: pre-commit it read `changed=1`, post-commit `changed=2`; the hook and the workflow both run post-commit for this reason). And `tools/selfcheck.py` is what keeps it honest — it plants one defect per gate and asserts no *other* gate reports it, which is the property that makes deleting a gate turn the suite red.
 - **Adding a skill**: create `plugins/<plugin>/skills/<skill>/SKILL.md` with `name` + `description` frontmatter; add `evals/evals.json` if it warrants evals.
 - **Adding a plugin hook**: no plugin ships one today. If you add one it belongs at `plugins/<plugin>/hooks/hooks.json` *(external, and never exercised — no plugin ships a hook, so this path is unconfirmed)* — a **plugin-root** directory, not inside `.claude-plugin/` and not under `resources/` — and `/reload-plugins` picks it up. Getting the location wrong fails silently: the hook simply never loads.
 - **Changing the step registry**: `plugins/issue-to-pr-pipeline/resources/resolve-issue-steps.json` is canonical, and the dashboard's index arithmetic runs over `parse_session.py`'s `STEPS` — which `_load_steps()` builds **from that JSON** whenever it is readable and non-empty (`:42-68`). `_DEFAULT_STEPS` is a fallback reached only on `OSError` / `ValueError` / an empty `steps` list, so on the normal path it is dead code. Keep it in the same order anyway — but know that order-parity is load-bearing only on the fallback path, and two other things bite first:
@@ -132,7 +126,7 @@ Distinction that matters when editing content: **rules are non-negotiable**; **c
   to a reader forbidden to open the definition), `seed_request` (no slot in the template that had to carry
   it, so the whole feature would have silently never fired), and a U1 carve-out reachable from one add-flow
   caller of three. All four passed a behavioural fixture before a review caught them.
-- **Validating**: there is no linter. At minimum verify JSON parses (`marketplace.json`, `plugin.json`, `evals.json`) and that frontmatter is well-formed before committing.
+- **Validating**: `python tools/check.py` is the linter this repo used not to have — JSON, frontmatter, description length, version bumps, manifest sync and public-repo leaks. `python tools/selfcheck.py` tests the gates themselves. Anything it does not cover is prose on purpose, because it needs judgement.
 
 ## Running skill evals
 

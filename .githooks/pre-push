@@ -1,0 +1,32 @@
+#!/bin/sh
+# The actual gate. CI reports after the push has already landed, which is too
+# late in a repository that publishes by direct push to main -- a changed plugin
+# at an unchanged version reaches nobody and the push still looks successful.
+#
+# Enable once per clone:  git config core.hooksPath .githooks
+# Bypass deliberately:    git push --no-verify
+
+set -e
+
+PY=""
+for candidate in python python3 py; do
+  if command -v "$candidate" >/dev/null 2>&1; then
+    PY="$candidate"
+    break
+  fi
+done
+
+if [ -z "$PY" ]; then
+  echo "pre-push: no Python on PATH, skipping the marketplace gates." >&2
+  exit 0
+fi
+
+# compare against what the remote already has, which is what the version gate
+# means by published. a first push to a new branch has no such ref, and the
+# gate skips itself rather than failing.
+if git rev-parse --verify --quiet origin/main >/dev/null; then
+  ITPR_PUBLISHED_REF=origin/main
+  export ITPR_PUBLISHED_REF
+fi
+
+exec "$PY" "$(git rev-parse --show-toplevel)/tools/check.py"

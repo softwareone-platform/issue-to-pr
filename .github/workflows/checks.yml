@@ -1,0 +1,36 @@
+name: checks
+
+# The repository publishes by direct push to main, so this workflow is a
+# detector rather than a gate -- it reports after the fact. The pre-push hook in
+# .githooks is the thing that can actually stop a bad push; see tools/README.md.
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+jobs:
+  gates:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          # the version gate compares this commit against the previously
+          # published one, so it needs more than a shallow checkout
+          fetch-depth: 0
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.x'
+
+      - name: Self-check the gates
+        run: python tools/selfcheck.py
+
+      - name: Run the gates against this commit
+        env:
+          # on a push, main already carries this commit, so comparing against it
+          # would report nothing changed. the previous commit is the state
+          # consumers actually have.
+          ITPR_PUBLISHED_REF: ${{ github.event_name == 'push' && 'HEAD~1' || format('origin/{0}', github.base_ref) }}
+        run: python tools/check.py
