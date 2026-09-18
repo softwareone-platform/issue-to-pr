@@ -168,6 +168,19 @@ def main():
             ok("real history: git unavailable, gate skipped rather than failed",
                gate(git_root) == [])
 
+        print("\nA declined gate must say so (a silent skip reads as a pass):")
+        os.environ["ITPR_PUBLISHED_REF"] = "refs/heads/deliberately-absent"
+        try:
+            check.run(git_root, ["versions"])
+            ok("an unresolvable published ref is announced", len(check.NOTES) == 1,
+               f"notes were {check.NOTES}")
+            ok("the note names the ref it could not resolve",
+               any("deliberately-absent" in n for n in check.NOTES))
+        finally:
+            del os.environ["ITPR_PUBLISHED_REF"]
+        check.run(git_root, ["versions"])
+        ok("a resolvable ref produces no note", check.NOTES == [], f"notes were {check.NOTES}")
+
         print("\nGate coverage:")
         covered = {"json", "frontmatter", "descriptions", "leaks", "manifest-sync", "versions"}
         ok("every gate owns at least one known-answer case",

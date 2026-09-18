@@ -1,8 +1,9 @@
 name: checks
 
-# The repository publishes by direct push to main, so this workflow is a
-# detector rather than a gate -- it reports after the fact. The pre-push hook in
-# .githooks is the thing that can actually stop a bad push; see tools/README.md.
+# This repository publishes by direct push to main, so this workflow is a
+# detector rather than a gate -- it reports after the push has already landed.
+# The pre-push hook in .githooks is what can actually stop a bad push --
+# see tools/README.md.
 
 on:
   push:
@@ -25,12 +26,32 @@ jobs:
           python-version: '3.x'
 
       - name: Self-check the gates
+        # the tool is tested before it is trusted, in that order deliberately
         run: python tools/selfcheck.py
+
+      - name: Resolve the ref the version gate compares against
+        id: published
+        # Only a push needs this. check.py defaults to origin/main, which is
+        # right locally and on a pull request, but on a push to main that ref
+        # already points at the commit being pushed, so the comparison would
+        # report nothing changed. The push's own before-SHA is the state
+        # consumers actually had. HEAD~1 is NOT a substitute: a push carrying
+        # several commits would then hide any plugin changed in all but the
+        # last of them, which is the exact case this gate exists to catch.
+        if: github.event_name == 'push'
+        run: |
+          before='${{ github.event.before }}'
+          # a new branch or a force-push reports an all-zero or unreachable SHA
+          if [ -z "$before" ] || ! git rev-parse --verify --quiet "$before^{commit}" >/dev/null; then
+            echo "before-SHA '$before' is unusable, falling back to HEAD~1" >&2
+            before=HEAD~1
+          fi
+          echo "ref=$before" >> "$GITHUB_OUTPUT"
 
       - name: Run the gates against this commit
         env:
-          # on a push, main already carries this commit, so comparing against it
-          # would report nothing changed. the previous commit is the state
-          # consumers actually have.
-          ITPR_PUBLISHED_REF: ${{ github.event_name == 'push' && 'HEAD~1' || format('origin/{0}', github.base_ref) }}
+          # empty on a pull request, where check.py's own origin/main default is
+          # already correct. a gate that cannot resolve its ref says so rather
+          # than passing quietly.
+          ITPR_PUBLISHED_REF: ${{ steps.published.outputs.ref }}
         run: python tools/check.py

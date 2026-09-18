@@ -49,6 +49,11 @@ EMAIL_RE = re.compile(r"[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}")
 
 TEXT_SUFFIXES = {".md", ".json", ".py", ".yml", ".yaml", ".txt", ".html", ".sh"}
 
+# gates append here when they decline to run rather than when they fail. a gate
+# that skips silently reads exactly like a gate that passed, which is how a
+# fallback path hides for months.
+NOTES = []
+
 
 def _read(path):
     with open(path, encoding="utf-8-sig") as f:
@@ -293,10 +298,15 @@ def _git_change_facts(root, local):
     # is the commit being pushed and the comparison would be vacuous. a pre-push
     # hook and a push-triggered workflow both point this at the previous commit,
     # which is the state consumers actually have.
-    ref = os.environ.get("ITPR_PUBLISHED_REF", "origin/main")
+    # origin/main is right for a local run and for a pull request, whose base is
+    # main. it is wrong only on a push to main, where it already points at the
+    # commit being pushed — the workflow overrides it there with the push's
+    # own before-SHA.
+    ref = os.environ.get("ITPR_PUBLISHED_REF") or "origin/main"
     probe = subprocess.run(["git", "rev-parse", "--verify", ref],
                            cwd=root, capture_output=True, text=True)
     if probe.returncode != 0:
+        NOTES.append(f"versions: skipped — the published ref {ref!r} does not resolve here")
         return None, None
     changed, published = {}, {}
     for plugin in local:
@@ -326,6 +336,7 @@ GATES = {
 
 
 def run(root, names=None):
+    NOTES.clear()
     results = {}
     for name in (names or GATES):
         results[name] = GATES[name](root)
@@ -343,8 +354,11 @@ def main(argv):
         print(f"[{mark}] {name}")
         for failure in failures:
             print(f"         {failure}")
+    for note in NOTES:
+        print(f"         {note}")
     print()
-    print(f"{total} failure(s) across {len(GATES)} gates")
+    print(f"{total} failure(s) across {len(GATES)} gates"
+          + (f", {len(NOTES)} skipped" if NOTES else ""))
     return 1 if total else 0
 
 

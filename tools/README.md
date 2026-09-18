@@ -26,6 +26,12 @@ The mutation test is not decorative. It has already found a real hole: the versi
 
 Two exemptions are pinned by their own case, so a later tightening cannot quietly remove them: a URL host with no dot is prose placeholder syntax (`https://host/path`), and `git@<host>` is the universal SSH user for a git remote rather than an address.
 
+## What the version gate compares against
+
+`ITPR_PUBLISHED_REF` names the already-published commit. It defaults to `origin/main`, which is right for a local run and for a pull request whose base is `main`. It is wrong on a push to `main`, because by then that ref points at the commit being pushed and the comparison reports nothing changed — so the workflow overrides it with the push's own before-SHA. `HEAD~1` is not a substitute: a push carrying several commits would hide any plugin changed in all but the last of them, which is the exact case the gate exists to catch.
+
+When the ref cannot be resolved the gate declines and **says so**, and the summary line counts the skip. A gate that skips quietly reads exactly like a gate that passed, which is how a fallback path hides for months.
+
 ## Where the enforcement actually is
 
 CI (`.github/workflows/checks.yml`) runs both files, but this repository publishes by direct push to `main`, so CI reports *after* the push has landed. The gate that can stop a bad push is the hook:
