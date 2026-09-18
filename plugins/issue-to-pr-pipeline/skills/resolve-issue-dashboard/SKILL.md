@@ -30,7 +30,7 @@ Call that `SKILL_DIR`. The server is `SKILL_DIR/scripts/serve_progress.py` and i
 
 ## Preflight — confirm Python is available
 
-The server needs Python 3.8+ on the user's machine, standard library only — there is never a `pip install`. Before launching, confirm an interpreter exists: run `python --version` with the Bash tool; if that fails, try `py -3 --version` (the Windows launcher). Use whichever responds as the interpreter in the launch step. If neither resolves, **do not attempt to launch** — tell the user the dashboard needs Python 3.8+ on PATH (a one-time install from python.org or their package manager) and stop. Python is the only prerequisite; nothing else here depends on it.
+The server needs Python on the user's machine, standard library only — there is never a `pip install`. It is tested on 3.13 and 3.14; nothing older has been run, though nothing in the code requires anything newer than 3.8. Before launching, confirm an interpreter exists: run `python --version` with the Bash tool; if that fails, try `py -3 --version` (the Windows launcher). Use whichever responds as the interpreter in the launch step. If neither resolves, **do not attempt to launch** — tell the user the dashboard needs Python on PATH (a one-time install from python.org or their package manager) and stop. Python is the only prerequisite; nothing else here depends on it.
 
 ## Launch the dashboard
 

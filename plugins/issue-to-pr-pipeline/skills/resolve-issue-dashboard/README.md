@@ -6,7 +6,7 @@ It is built lightweight on purpose — a stdlib-only Python server plus one self
 
 ## Prerequisite
 
-Python 3.8+ on PATH — standard library only, no `pip install`. It is the single prerequisite; the skill checks for it (`python`, falling back to `py -3`) before launching and tells you to install it if it is missing. The browser only needs `EventSource` (every modern browser has it).
+Python on PATH — standard library only, no `pip install`. **Tested on 3.13 and 3.14, on Windows and Linux**, which is the whole of what has actually been run; the code uses nothing newer than the walrus operator, so older interpreters may well work, but none below 3.13 has been exercised. It is the single prerequisite; the skill checks that an interpreter answers (`python`, falling back to `py -3`) before launching and tells you to install one if it is missing — it does not compare versions. The browser only needs `EventSource` (every modern browser has it).
 
 ## Data flow
 
