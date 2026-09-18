@@ -68,19 +68,19 @@ Five persistent markdown files — four handoff artifacts plus the append-only `
 | 10 | — | — | no top-level `state.md`, a fix commit exists | **Table 2**, on its git-derived rows |
 | 11 | present but unreadable | any | no `next-step` can be parsed | **ask the human**, quoting what the file holds. Do not guess a cursor, and do not archive: an unreadable cursor is not evidence of a foreign run, and archiving on it would move a live run out from under itself |
 
-`work-branch` is written only at the Phase B guard, so a run abandoned after planning has none — rows 4 and 5 are what close that gap without mis-killing the legitimate "approved on the base, then switched to the feature branch for `b-implement`" handoff. Rows 6 and 7 are the normal residue of P4's t0 write: nothing the human answered is at stake and both are tree-safe to re-run, which is why they restart rather than ask.
+`work-branch` is written only at the Phase B guard, so a run abandoned after planning has none — rows 4 and 5 are what close that gap without mis-killing the legitimate "approved on the base, then switched to the feature branch for `b-implement`" handoff. Row 1 archives on a branch mismatch with no exception for a current branch that already carries this run's fix commit, and that is deliberate: archiving is a move rather than a delete, and Table 2 sees the commit and resumes at `b-write-tests` two steps later. So such a run is told it is starting fresh and then continues anyway — say so when it happens, rather than letting the recovery look like a contradiction. Rows 6 and 7 are the normal residue of P4's t0 write: nothing the human answered is at stake and both are tree-safe to re-run, which is why they restart rather than ask.
 
 **Archive is a move, never a delete.** On any row that routes to *archive*, follow the full procedure in `SKILL_DIR/ARCHIVING.md` — it moves the superseded run's files into the timestamp subdir (stamp derived from the old `started`, `state.md` moved **last** so an interrupted archive is idempotent), never deleting anything, then proceeds fresh-from-top.
 
-**Table 2 — which step does the cursor point at?** Reconcile runs on every start, not only when `state.md` is missing. Git can see only fix / test commits and an open PR; the Phase A approval evidence lives in the local gitignored `state.md` / `plan.md`, readable in the same working tree. `plan-approved: yes` or an existing fix commit means Phase A is done.
+**Table 2 — which step does the cursor point at?** Reconcile runs on every start, not only when `state.md` is missing. Read the two commit kinds off the files they change, over `git log <base>..HEAD` with the base P2 recorded — a **test commit** changes only test files, which is what `b-write-tests` guarantees by staging only those, and a **fix commit** changes at least one file that is not a test. Do not read them off the commit message: `b-implement` takes the subject convention from the consumer's own history and supports a repo whose subjects carry no ticket at all, so on that repo there is nothing to match. Git can see only those commits and an open PR; the Phase A approval evidence lives in the local gitignored `state.md` / `plan.md`, readable in the same working tree. `plan-approved: yes` or an existing fix commit means Phase A is done.
 
 | row | `state.md` | git shows | route |
 |---|---|---|---|
 | R1 | a cursor that git does not contradict | consistent | **use the cursor** — it is trusted over the git-derived rows below, because re-running from them is merely tree-safe, not free |
 | R2 | a cursor behind what git shows — it says `b-implement`, a fix is already committed | a fix commit | **trust git, and say so** — never re-run `b-implement` from a stale cursor and create a duplicate or conflicting change |
 | R3 | absent, or carrying only `a-fact-check` or a sentinel-only `a-elicit-decisions` with nothing approved | no fix commit | **fresh from top**, said plainly — do not misjudge Phase A as done |
-| R4 | absent or not trusted | a fix commit, no test commit | resume **`b-write-tests`** |
-| R5 | absent or not trusted | a fix and a test commit, no PR | resume **`b-security-review`** — git cannot tell whether the review passes already ran, their fixes being ordinary commits, and re-running them is tree-safe |
+| R4 | absent | a fix commit, no test commit | resume **`b-write-tests`** |
+| R5 | absent | a fix and a test commit, no PR | resume **`b-security-review`** — git cannot tell whether the review passes already ran, their fixes being ordinary commits, and re-running them is tree-safe |
 | R6 | any | an open PR for the branch | **`done`** |
 
 When Table 1 has just archived a prior run the top level is empty, so R3 applies.
