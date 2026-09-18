@@ -64,9 +64,12 @@ jobs:
       fail-fast: false
       matrix:
         os: [ubuntu-latest, windows-latest]
-        # 3.13 is the version every real run has used; '3.x' is the current
-        # release, and carrying it is the early warning for the next one
-        python: ['3.13', '3.x']
+        # a pinned cell backs a claim in the READMEs, a floating one backs
+        # nothing. 3.13 is the floor -- the version every observed run used --
+        # and 3.14 is the ceiling, pinned so the claim cannot go stale the day
+        # '3.x' moves on. '3.x' itself is only the early warning for the next
+        # release, and must never be what a documented version rests on.
+        python: ['3.13', '3.14', '3.x']
     runs-on: ${{ matrix.os }}
     steps:
       - uses: actions/checkout@v4
