@@ -12,6 +12,7 @@ on:
   workflow_dispatch:
 
 jobs:
+  # The publish gates. Platform- and version-independent, so they run once.
   gates:
     runs-on: ubuntu-latest
     steps:
@@ -24,10 +25,6 @@ jobs:
       - uses: actions/setup-python@v5
         with:
           python-version: '3.x'
-
-      - name: Self-check the gates
-        # the tool is tested before it is trusted, in that order deliberately
-        run: python tools/selfcheck.py
 
       - name: Resolve the ref the version gate compares against
         id: published
@@ -55,3 +52,35 @@ jobs:
           # than passing quietly.
           ITPR_PUBLISHED_REF: ${{ steps.published.outputs.ref }}
         run: python tools/check.py
+
+  # The test suites, including the dashboard's -- which is the only Python this
+  # repository actually ships to consumers, and which nothing ran automatically
+  # before. Every observed consumer run has been Windows on 3.13, while CI had
+  # only ever been Linux on whatever '3.x' resolved to, so both axes are real.
+  selfchecks:
+    strategy:
+      # a Windows failure must not hide whether Linux failed too, because that
+      # difference is what separates a platform defect from a real one
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, windows-latest]
+        # 3.13 is the version every real run has used; '3.x' is the current
+        # release, and carrying it is the early warning for the next one
+        python: ['3.13', '3.x']
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python }}
+
+      - name: Report the interpreter actually resolved
+        # the claim in the READMEs is only as good as what ran, so record it
+        run: python -c "import sys; print(sys.version)"
+
+      - name: Self-check the publish gates
+        run: python tools/selfcheck.py
+
+      - name: Self-check the dashboard parser
+        run: python plugins/issue-to-pr-pipeline/skills/resolve-issue-dashboard/tests/selfcheck.py
