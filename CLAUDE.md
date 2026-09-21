@@ -126,6 +126,15 @@ Distinction that matters when editing content: **rules are non-negotiable**; **c
   to a reader forbidden to open the definition), `seed_request` (no slot in the template that had to carry
   it, so the whole feature would have silently never fired), and a U1 carve-out reachable from one add-flow
   caller of three. All four passed a behavioural fixture before a review caught them.
+
+  **A mechanical gate for this was built and cut on 2026-09-21 — do not rebuild it.** It flagged every name present
+  in a rule book and absent from every `SKILL.md`, and it caught 3/3 of the historical bites at their defective commits.
+  On the live tree it reported 8 names and **all 8 were fine**. Three false-positive modes defeat it and no mechanical
+  rule separates them: an **upward** signal whose handler legitimately lives in a rule book (`stop_reason`); an enum
+  **value** rather than a field (`not_run` — a value needs no slot, its field does); and a field carried inside a
+  **named block** whose schema sits in another file (`previously_produced`). The one direction heuristic tried
+  misclassified `bootstrap_seed`, a real bite, as upward. Per the guard rule above — prefer cutting to a third
+  carve-out — it was cut. The audit itself is worth keeping: **zero downward-carriage defects** on the tree that day.
 - **Validating**: `python tools/check.py` is the linter this repo used not to have — JSON, frontmatter, description length, version bumps, manifest sync and public-repo leaks. `python tools/selfcheck.py` tests the gates themselves. Anything it does not cover is prose on purpose, because it needs judgement.
 
 ## Running skill evals
@@ -160,7 +169,7 @@ A fourth, milder caveat: the runner counts the **first** `tool_use`, so any expl
 
 Three rules, in order:
 
-1. **Every check needs a known-answer case that makes it fail — and run it BEFORE the correctness review, not after.** A check that has only ever been run against good input has not been tested. More than that: a review reads a check for whether it is well *built*, and cannot tell you whether it will ever *fire*. Verified here (2026-08-10): a guard survived three `review-plan-risk` passes and two fix rounds, and then its first known-answer case showed it never triggers on the input class it exists for — the premise under it ("a thin ticket yields zero load-bearing claims") was false, because an LLM asked to enumerate claims from vague text invents them instead of returning an empty set. No amount of reading the guard finds that. Fifteen minutes of fixture did. **Treat the fixture as the thing that decides whether to build, not as acceptance work afterwards.**
+1. **Every check needs a known-answer case that makes it fail — and run it BEFORE the correctness review, not after.** A check that has only ever been run against good input has not been tested. More than that: a review reads a check for whether it is well *built*, and cannot tell you whether it will ever *fire*. Verified here (2026-08-10): a guard survived three `review-plan-risk` passes and two fix rounds, and then its first known-answer case showed it never triggers on the input class it exists for — the premise under it ("a thin ticket yields zero load-bearing claims") was false, because an LLM asked to enumerate claims from vague text invents them instead of returning an empty set. No amount of reading the guard finds that. Fifteen minutes of fixture did. **Treat the fixture as the thing that decides whether to build, not as acceptance work afterwards.** **And a known-answer set proves the check fires on the cases it contains, and nothing else.** A gate built here on 2026-09-21 passed 3/3 planted defects and 4/4 clean controls, then reported 8 hits on the live tree and **all 8 were false** — every planted case was drawn from one direction and the live tree had the other, so the set had never exercised half the input space. Before quoting a pass, name the population the cases came from and add one from the population you have not sampled. Running the control arm *before* the test arm is the cheap version of the same discipline: it tells you what the signal looks like with no effect present, which is prior knowledge rather than acceptance work.
 2. **Mutation-test the check set**: delete any one check and the known-answer set must go red. A check that can be deleted without turning the suite red does not exist. This is not hypothetical — an audit tool here passed 4/4 with two of its five checks stubbed out. (A companion example once cited here — "a self-check case had frozen a bug in place" — was withdrawn: on inspection the case was pinning *correct* semantics, and "fixing" it would have weakened the only check that catches a leaked read.)
 3. **No result is quotable until 1 and 2 hold.** State the limit instead ("the tool has not been validated"), the same voiced-limit discipline the review skills use.
 
