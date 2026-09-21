@@ -128,7 +128,7 @@ Agent(subagent_type="test-authoring:verify-add-unit-test-agent"):
       <convention spec>
   - test_count: <N>
   - test_results: <per-test passed | failed (<reason>), verbatim from the writer>
-  - spec_vs_impl_divergence: <writer's entries verbatim, or "none">
+  - spec_vs_impl_divergence: <writer's entries verbatim; carry the block empty when the writer reported no entries>
   - build_status: <success | failed (<errors>), verbatim from the writer>
 
   Writer 2 output:
