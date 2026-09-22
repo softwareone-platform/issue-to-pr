@@ -4,8 +4,11 @@ Pre-publish gates for this marketplace. Standard library only, no `pip install`.
 
 ```
 python tools/pre_publish_check.py         # run the gates against the working tree
+python tools/run_tests.py                 # run every *_tests.py under a tests/ directory
 python tools/tests/pre_publish_check_tests.py   # known-answer cases for the gates
 ```
+
+`run_tests.py` discovers suites by glob rather than by a list, because a list is a thing to forget — the CI workflow named its suites individually, and a newly written one ran nowhere until somebody noticed. It fails when it finds none, since a runner that reports green by finding nothing is the failure mode this repo already names for its file-scanning gates. The pre-push hook runs it after the gates, so a failing suite now stops a push rather than reporting after one.
 
 Every gate here replaced a prose instruction that someone had to remember and run by hand. They are mechanical because they are all counting and string comparison, which is the part of the work an executor is least reliable at; anything requiring judgement stays in prose deliberately.
 

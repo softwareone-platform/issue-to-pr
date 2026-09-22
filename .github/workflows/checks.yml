@@ -82,11 +82,7 @@ jobs:
         # the claim in the READMEs is only as good as what ran, so record it
         run: python -c "import sys; print(sys.version)"
 
-      - name: Self-check the publish gates
-        run: python tools/tests/pre_publish_check_tests.py
-
-      - name: Self-check the dashboard parser
-        run: python plugins/issue-to-pr-pipeline/skills/resolve-issue-dashboard/tests/parse_session_tests.py
-
-      - name: Self-check the dashboard server
-        run: python plugins/issue-to-pr-pipeline/skills/resolve-issue-dashboard/tests/serve_progress_tests.py
+      # discovered by glob rather than listed here: a list is a thing to forget,
+      # and a suite this file did not name ran nowhere until somebody noticed
+      - name: Run the test suites
+        run: python tools/run_tests.py

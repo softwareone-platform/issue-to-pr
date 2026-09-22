@@ -135,7 +135,7 @@ Distinction that matters when editing content: **rules are non-negotiable**; **c
   **named block** whose schema sits in another file (`previously_produced`). The one direction heuristic tried
   misclassified `bootstrap_seed`, a real bite, as upward. Per the guard rule above — prefer cutting to a third
   carve-out — it was cut. The audit itself is worth keeping: **zero downward-carriage defects** on the tree that day.
-- **Validating**: `python tools/pre_publish_check.py` is the linter this repo used not to have — JSON, frontmatter, description length, version bumps, manifest sync and public-repo leaks. `python tools/tests/pre_publish_check_tests.py` tests the gates themselves. Anything it does not cover is prose on purpose, because it needs judgement.
+- **Validating**: `python tools/pre_publish_check.py` is the linter this repo used not to have — JSON, frontmatter, description length, version bumps, manifest sync and public-repo leaks. `python tools/tests/pre_publish_check_tests.py` tests the gates themselves, and `python tools/run_tests.py` runs every `*_tests.py` under a `tests/` directory — discovered by glob, because the CI workflow used to name its suites one by one and a new one ran nowhere until somebody noticed. The pre-push hook runs the gates and then the suites, so both now stop a push rather than reporting after one. Anything none of them covers is prose on purpose, because it needs judgement.
 
 ## Running skill evals
 
