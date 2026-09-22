@@ -24,6 +24,8 @@ plugins/<plugin>/
 └── docs/                             # deeper design docs
 ```
 
+**Test suites live beside the code they cover and therefore ship with the plugin** — `plugins/issue-to-pr-pipeline/skills/resolve-issue-dashboard/tests/` is 12% of that plugin's bytes, and a consumer installs it. Measured 2026-09-22 and decided to leave: the plugin format has no exclusion mechanism (no `.claudeignore`, and no `files` / `include` / `exclude` field in any `plugin.json` across the official marketplace), Anthropic's own `security-guidance` plugin ships a `tests/` directory at a similar 8%, nothing reads the directory so the token cost is zero, and moving the suites out would break the co-located sibling that `test-authoring` itself resolves conventions from, turn one `../scripts` hop into five, and leave this repo with two different test layouts. Revisit only if an exclusion mechanism appears — that would buy both halves at once.
+
 `.claude/` is **gitignored** (see `.gitignore`) — it holds local session state, and in *consumer* repos it is where `setup-test-context` writes the generated conventions. Never rely on it being present in this repo.
 
 ## The four plugins
