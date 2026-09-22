@@ -28,7 +28,7 @@ jobs:
 
       - name: Resolve the ref the version gate compares against
         id: published
-        # Only a push needs this. check.py defaults to origin/main, which is
+        # Only a push needs this. pre_publish_check.py defaults to origin/main, which
         # right locally and on a pull request, but on a push to main that ref
         # already points at the commit being pushed, so the comparison would
         # report nothing changed. The push's own before-SHA is the state
@@ -47,11 +47,11 @@ jobs:
 
       - name: Run the gates against this commit
         env:
-          # empty on a pull request, where check.py's own origin/main default is
+          # empty on a pull request, where pre_publish_check.py's own origin/main default is
           # already correct. a gate that cannot resolve its ref says so rather
           # than passing quietly.
           ITPR_PUBLISHED_REF: ${{ steps.published.outputs.ref }}
-        run: python tools/check.py
+        run: python tools/pre_publish_check.py
 
   # The test suites, including the dashboard's -- which is the only Python this
   # repository actually ships to consumers, and which nothing ran automatically
@@ -83,7 +83,10 @@ jobs:
         run: python -c "import sys; print(sys.version)"
 
       - name: Self-check the publish gates
-        run: python tools/selfcheck.py
+        run: python tools/tests/pre_publish_check_tests.py
 
       - name: Self-check the dashboard parser
-        run: python plugins/issue-to-pr-pipeline/skills/resolve-issue-dashboard/tests/selfcheck.py
+        run: python plugins/issue-to-pr-pipeline/skills/resolve-issue-dashboard/tests/parse_session_tests.py
+
+      - name: Self-check the dashboard server
+        run: python plugins/issue-to-pr-pipeline/skills/resolve-issue-dashboard/tests/serve_progress_tests.py

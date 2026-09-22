@@ -4,7 +4,7 @@
 Every gate here was a prose instruction in CLAUDE.md that someone had to
 remember and run by hand, and this session ran four of them manually before
 one commit. Each gate returns a list of human-readable failures rather than
-printing or exiting, so tests/selfcheck.py can plant one known-answer defect
+printing or exiting, so tools/tests/pre_publish_check_tests.py can plant one known-answer defect
 per gate and assert that exactly that gate reports it.
 
 Standard library only, to match the dashboard's server and for the reason the

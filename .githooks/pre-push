@@ -29,4 +29,4 @@ if git rev-parse --verify --quiet origin/main >/dev/null; then
   export ITPR_PUBLISHED_REF
 fi
 
-exec "$PY" "$(git rev-parse --show-toplevel)/tools/check.py"
+exec "$PY" "$(git rev-parse --show-toplevel)/tools/pre_publish_check.py"

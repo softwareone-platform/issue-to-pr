@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Known-answer cases for tools/check.py, plus the mutation test.
+"""Known-answer cases for tools/pre_publish_check.py, plus the mutation test.
 
 This repo's own rule is that a check which has only ever run against good input
 has not been tested, and that deleting any one check must turn the suite red.
@@ -8,7 +8,7 @@ it exists to catch, and the suite asserts that **no other gate** reports that
 fixture. Sole detection is what makes the mutation test real -- remove a gate and
 its fixture becomes invisible, so the suite goes red.
 
-Run: python tools/selfcheck.py
+Run: python tools/tests/pre_publish_check_tests.py
 """
 
 import os
@@ -17,8 +17,8 @@ import subprocess
 import sys
 import tempfile
 
-sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
-import check  # noqa: E402
+sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+import pre_publish_check as check  # noqa: E402
 
 PASSED = []
 FAILED = []

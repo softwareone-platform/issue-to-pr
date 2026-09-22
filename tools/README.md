@@ -3,8 +3,8 @@
 Pre-publish gates for this marketplace. Standard library only, no `pip install`.
 
 ```
-python tools/check.py        # run the gates against the working tree
-python tools/selfcheck.py    # known-answer cases for the gates themselves
+python tools/pre_publish_check.py         # run the gates against the working tree
+python tools/tests/pre_publish_check_tests.py   # known-answer cases for the gates
 ```
 
 Every gate here replaced a prose instruction that someone had to remember and run by hand. They are mechanical because they are all counting and string comparison, which is the part of the work an executor is least reliable at; anything requiring judgement stays in prose deliberately.
@@ -20,7 +20,7 @@ Every gate here replaced a prose instruction that someone had to remember and ru
 
 ## How the gates are tested
 
-`selfcheck.py` plants exactly one defect per gate and asserts two things: that the gate reports it, and that **no other gate does**. Sole detection is what makes the mutation test meaningful — remove a gate and its case becomes invisible, so the suite goes red.
+`tests/pre_publish_check_tests.py` plants exactly one defect per gate and asserts two things: that the gate reports it, and that **no other gate does**. Sole detection is what makes the mutation test meaningful — remove a gate and its case becomes invisible, so the suite goes red.
 
 The mutation test is not decorative. It has already found a real hole: the version assertions originally called the gate function directly rather than through the registry, so disabling the registered gate left the suite green. The fix was to route them through `GATES` and add a fixture with a real git history.
 

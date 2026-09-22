@@ -9,7 +9,7 @@ client) - that layer has no cheap deterministic oracle and is left to the eye.
 
 Pure stdlib, ASCII-only output (Windows cp1252 console). Exits non-zero on any
 failure so a Stop hook can surface it. Run from anywhere:
-    python selfcheck.py
+    python tests/parse_session_tests.py
 """
 
 import io
@@ -634,7 +634,7 @@ def main():
 def hook_main():
     """Stop-hook adapter: run the checks and, only on failure, emit a
     non-blocking systemMessage the harness surfaces to the user. It NEVER blocks
-    the stop and NEVER exits non-zero - a broken or half-edited selfcheck must
+    the stop and NEVER exits non-zero - a broken or half-edited check must
     not lock anyone out of finishing a turn (the "warn, never block" contract
     lives here, in tested code, rather than in fragile shell escaping). Silent on
     success."""
@@ -642,13 +642,13 @@ def hook_main():
         _run_all()
         fails = _fails()
         if fails:
-            body = "resolve-issue-dashboard selfcheck FAILED (%d):\n" % len(fails)
+            body = "resolve-issue-dashboard parse_session tests FAILED (%d):\n" % len(fails)
             body += "\n".join("  - %s / %s: %s" % (g, name, detail)
                               for g, name, detail in fails)
             print(json.dumps({"systemMessage": body}))
-    except Exception as exc:  # never let a selfcheck crash block the stop
+    except Exception as exc:  # never let a test crash block the stop
         print(json.dumps({"systemMessage":
-                          "resolve-issue-dashboard selfcheck could not run: %s" % exc}))
+                          "resolve-issue-dashboard parse_session tests could not run: %s" % exc}))
     return 0
 
 
