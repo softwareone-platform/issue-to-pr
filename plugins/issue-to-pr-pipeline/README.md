@@ -1,23 +1,23 @@
 # issue-to-pr-pipeline
 
-The orchestration layer of the skill marketplace. It composes the independent component plugins — `disconfirm-first`, `test-authoring`, and `pr-lifecycle` — into end-to-end workflows. It ships three skills: `resolve-issue`, the issue-to-PR pipeline; `resolve-issue-dashboard`, a read-only dashboard that visualises a run; and `resolve-issue-learnings`, which harvests the generic learnings captured across runs into honoured conventions.
+The orchestration layer of the issue-to-pr plugins. It composes the independent component plugins — `disconfirm-first`, `test-authoring`, and `pr-lifecycle` — into end-to-end workflows. It ships three skills: `resolve-issue`, the issue-to-PR pipeline; `resolve-issue-dashboard`, a read-only dashboard that visualises a run; and `resolve-issue-learnings`, which harvests the generic learnings captured across runs into honoured conventions.
 
 This is the last block of the blocks-first roadmap: the review trio, the test family, and the PR-lifecycle skills were each built and validated standalone first; this plugin wires them together.
 
 ## Installation
 
 ```
-/plugin marketplace add https://github.com/softwareone-platform/issue-to-pr.git
-/plugin install issue-to-pr-pipeline@itpr
+/plugin marketplace add https://github.com/softwareone-platform/tundra.git
+/plugin install issue-to-pr-pipeline@tundra
 ```
 
-Installing `issue-to-pr-pipeline` auto-installs its three dependencies (`disconfirm-first`, `test-authoring`, `pr-lifecycle`); dependency auto-install needs Claude Code v2.1.143 or later, and on older versions you install those three explicitly with `/plugin install <name>@itpr`. The security pass delegates to Claude Code's built-in `security-review` — no install needed.
+Installing `issue-to-pr-pipeline` auto-installs its three dependencies (`disconfirm-first`, `test-authoring`, `pr-lifecycle`); dependency auto-install needs Claude Code v2.1.143 or later, and on older versions you install those three explicitly with `/plugin install <name>@tundra`. The security pass delegates to Claude Code's built-in `security-review` — no install needed.
 
 After installing, run `/reload-plugins` to activate.
 
 ## Prerequisites
 
-The pipeline itself needs nothing installed beyond what its component skills reach for — the Atlassian MCP for the Jira anchor, and `az` or `gh` for the PR step. Those are listed in the [marketplace README](../../README.md#prerequisites) and each degrades with a voiced note when absent.
+The pipeline itself needs nothing installed beyond what its component skills reach for — the Atlassian MCP for the Jira anchor, and `az` or `gh` for the PR step. Those are listed in the [repository README](../../README.md#prerequisites) and each degrades with a voiced note when absent.
 
 One optional extra: `resolve-issue-dashboard` runs a local standard-library **Python** server (no `pip install`, no virtualenv), tested on 3.13 and 3.14 on Windows and Linux. `resolve-issue` offers to bring it up at the start of every interactive run, so this is the one prerequisite a run visibly touches — but it is genuinely optional. Without Python the dashboard declines to start and says so in one line, and the pipeline runs exactly as it would otherwise, because the dashboard only observes. Install with `winget install Python.Python.3.13` on Windows (per-user scope, no administrator needed), `brew install python` on macOS, or your distribution's package manager.
 

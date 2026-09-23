@@ -6,14 +6,13 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## What this repo is
 
-A **Claude Code plugin marketplace** for an engineering team. There is no compiled code and no build system — the "source" is almost entirely Markdown (`SKILL.md`, agent `.md`, `README.md`, docs), JSON manifests, and three Python scripts (the dashboard's server and parser, plus a self-check test). The deliverable is skills and subagents that other repos install and invoke.
+The source of four **Claude Code plugins** for an engineering team. There is no compiled code and no build system — the "source" is almost entirely Markdown (`SKILL.md`, agent `.md`, `README.md`, docs), JSON manifests, and three Python scripts (the dashboard's server and parser, plus a self-check test). The deliverable is skills and subagents that other repos install and invoke.
 
-Distribution is the GitHub marketplace repo `https://github.com/softwareone-platform/issue-to-pr.git` (git origin). Consumers install with `/plugin marketplace add <url>` then `/plugin install <plugin>@itpr`, and activate with `/reload-plugins`.
+This repo is **not a marketplace**. The plugins are published through the `tundra` registry (`https://github.com/softwareone-platform/tundra.git`), whose entries are `git-subdir` sources pointing at this repo's `plugins/<plugin>` and pinned to a commit sha. Consumers install with `/plugin marketplace add https://github.com/softwareone-platform/tundra.git` then `/plugin install <plugin>@tundra`, and activate with `/reload-plugins`. This repo was a marketplace named `itpr` until 2026-09-23; its `marketplace.json` and the `manifest-sync` gate were deleted then, so do not re-add either — a second catalogue for the same plugins gives them two identities, and a same-name marketplace silently replaces the first on add.
 
 ## Repository layout
 
 ```
-.claude-plugin/marketplace.json      # THE registry — lists every published plugin, its version + source path
 plugins/<plugin>/
 ├── .claude-plugin/plugin.json        # plugin metadata: name, description, version, optional dependencies[]
 ├── skills/<skill>/SKILL.md           # a user-invocable skill (frontmatter + body)
@@ -37,7 +36,7 @@ plugins/<plugin>/
 | `test-authoring` | Test authoring: 6 skills + 8 subagents (see below) |
 | `issue-to-pr-pipeline` | `resolve-issue` (full issue→PR pipeline), `resolve-issue-dashboard`, `resolve-issue-learnings` |
 
-Current versions live in `.claude-plugin/marketplace.json` — do not duplicate them here.
+Current versions live in each plugin's `.claude-plugin/plugin.json` — do not duplicate them here.
 
 `issue-to-pr-pipeline` declares `dependencies` on `disconfirm-first`, `test-authoring`, and `pr-lifecycle` in its `plugin.json` — `resolve-issue` chains those component skills into one pipeline. When changing a component skill's inputs/outputs, check `resolve-issue` still calls it correctly.
 
@@ -78,8 +77,9 @@ Distinction that matters when editing content: **rules are non-negotiable**; **c
 ## Making changes
 
 - **Editing a skill/agent**: edit the `.md`, then in a consumer session run `/reload-plugins` to pick it up. There is nothing to build.
-- **Releasing a version bump**: update the version in **both** the plugin's `.claude-plugin/plugin.json` **and** the corresponding entry in `.claude-plugin/marketplace.json` — they must stay in sync. `marketplace.json` is the registry consumers read.
-- **Before pushing, derive which plugins need a bump from the diff — do not recall it.** The cache is keyed by version, so a changed plugin at an unchanged version reaches nobody, and the push looks successful. A late commit touching a *different* plugin than the earlier ones is how this slips (it has, once). **This is now mechanical: `python tools/pre_publish_check.py` owns it**, along with the JSON, frontmatter, description-length, manifest-sync and public-leak checks that used to be prose here. Enable the gate once per clone with `git config core.hooksPath .githooks` — CI runs the same file, but this repo publishes by direct push, so CI reports after the fact and only the hook can stop the push.
+- **Releasing a version bump**: bump the version in the changed plugin's `.claude-plugin/plugin.json` and push — it is the only version, and the install cache is keyed by it. Bump only plugins whose content changed; the four versions move independently. **A push here does not reach anyone by itself**: `tundra` pins each entry to a sha, so the release lands only when `python scripts/sync-plugin-sources.py --write` is run and pushed in the tundra repo. Nothing in this repo detects a missed sync. Work on the tundra side happens in a session opened there, never from here.
+- **Loading the plugins from a clone**: `claude --plugin-dir ./plugins` loads all four as `<name>@inline`. Never `/plugin marketplace add ./` — there is no marketplace here to add.
+- **Before pushing, derive which plugins need a bump from the diff — do not recall it.** The cache is keyed by version, so a changed plugin at an unchanged version reaches nobody, and the push looks successful. A late commit touching a *different* plugin than the earlier ones is how this slips (it has, once). **This is now mechanical: `python tools/pre_publish_check.py` owns it**, along with the JSON, frontmatter, description-length and public-leak checks that used to be prose here. Enable the gate once per clone with `git config core.hooksPath .githooks` — CI runs the same file, but this repo publishes by direct push, so CI reports after the fact and only the hook can stop the push.
   Two things about the gate are worth keeping in your head rather than only in the tool. It compares against the **published** ref, so it must run against a commit and not the working tree — `git diff` cannot see an untracked file, so a plugin whose only change is a *new* file would report unchanged and the gate would pass the exact case it exists to catch (verified 2026-08-13: pre-commit it read `changed=1`, post-commit `changed=2`; the hook and the workflow both run post-commit for this reason). And `tools/tests/pre_publish_check_tests.py` is what keeps it honest — it plants one defect per gate and asserts no *other* gate reports it, which is the property that makes deleting a gate turn the suite red.
 - **Adding a skill**: create `plugins/<plugin>/skills/<skill>/SKILL.md` with `name` + `description` frontmatter; add `evals/evals.json` if it warrants evals.
 - **Adding a plugin hook**: no plugin ships one today. If you add one it belongs at `plugins/<plugin>/hooks/hooks.json` *(external, and never exercised — no plugin ships a hook, so this path is unconfirmed)* — a **plugin-root** directory, not inside `.claude-plugin/` and not under `resources/` — and `/reload-plugins` picks it up. Getting the location wrong fails silently: the hook simply never loads.
@@ -137,7 +137,7 @@ Distinction that matters when editing content: **rules are non-negotiable**; **c
   **named block** whose schema sits in another file (`previously_produced`). The one direction heuristic tried
   misclassified `bootstrap_seed`, a real bite, as upward. Per the guard rule above — prefer cutting to a third
   carve-out — it was cut. The audit itself is worth keeping: **zero downward-carriage defects** on the tree that day.
-- **Validating**: `python tools/pre_publish_check.py` is the linter this repo used not to have — JSON, frontmatter, description length, version bumps, manifest sync and public-repo leaks. `python tools/tests/pre_publish_check_tests.py` tests the gates themselves, and `python tools/run_tests.py` runs every `*_tests.py` under a `tests/` directory — discovered by glob, because the CI workflow used to name its suites one by one and a new one ran nowhere until somebody noticed. The pre-push hook runs the gates and then the suites, so both now stop a push rather than reporting after one. Anything none of them covers is prose on purpose, because it needs judgement.
+- **Validating**: `python tools/pre_publish_check.py` is the linter this repo used not to have — JSON, frontmatter, description length, version bumps and public-repo leaks. `python tools/tests/pre_publish_check_tests.py` tests the gates themselves, and `python tools/run_tests.py` runs every `*_tests.py` under a `tests/` directory — discovered by glob, because the CI workflow used to name its suites one by one and a new one ran nowhere until somebody noticed. The pre-push hook runs the gates and then the suites, so both now stop a push rather than reporting after one. Anything none of them covers is prose on purpose, because it needs judgement.
 
 ## Running skill evals
 

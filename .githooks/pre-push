@@ -17,7 +17,7 @@ for candidate in python python3 py; do
 done
 
 if [ -z "$PY" ]; then
-  echo "pre-push: no Python on PATH, skipping the marketplace gates." >&2
+  echo "pre-push: no Python on PATH, skipping the pre-publish gates." >&2
   exit 0
 fi
 

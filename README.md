@@ -1,6 +1,6 @@
 # issue-to-pr
 
-A [Claude Code](https://claude.com/claude-code) **plugin marketplace** (`itpr`) — a set of skills and subagents that take a ticket from diagnosis to a reviewed pull request, plus the review, test-authoring, and housekeeping tools that support that flow.
+A set of [Claude Code](https://claude.com/claude-code) plugins — skills and subagents that take a ticket from diagnosis to a reviewed pull request, plus the review, test-authoring, and housekeeping tools that support that flow.
 
 ![The resolve-issue-dashboard visualising a run mid-pipeline](docs/resolve-issue-dashboard.png)
 
@@ -10,24 +10,32 @@ A [Claude Code](https://claude.com/claude-code) **plugin marketplace** (`itpr`) 
 
 Requires Claude Code with plugin support (a recent version — dependency auto-install and enable-time dependency handling need v2.1.143 or later; on older versions use the explicit per-plugin list below).
 
-Install `issue-to-pr-pipeline` — it declares the other three plugins as dependencies, so Claude Code resolves and installs them from this marketplace automatically and lists what was added at the end of the install output.
+These plugins are published through the [`tundra`](https://github.com/softwareone-platform/tundra) marketplace; this repository holds their source and is not a marketplace itself.
+
+Install `issue-to-pr-pipeline` — it declares the other three plugins as dependencies, so Claude Code resolves and installs them from the same marketplace automatically and lists what was added at the end of the install output.
 
 ```
-/plugin marketplace add https://github.com/softwareone-platform/issue-to-pr.git
-/plugin install issue-to-pr-pipeline@itpr
+/plugin marketplace add https://github.com/softwareone-platform/tundra.git
+/plugin install issue-to-pr-pipeline@tundra
 ```
 
 Alternatively — on older Claude Code (before v2.1.143, where dependency auto-install is unavailable) or when you want only some of the plugins — install each explicitly:
 
 ```
-/plugin marketplace add https://github.com/softwareone-platform/issue-to-pr.git
-/plugin install disconfirm-first@itpr
-/plugin install pr-lifecycle@itpr
-/plugin install test-authoring@itpr
-/plugin install issue-to-pr-pipeline@itpr
+/plugin marketplace add https://github.com/softwareone-platform/tundra.git
+/plugin install disconfirm-first@tundra
+/plugin install pr-lifecycle@tundra
+/plugin install test-authoring@tundra
+/plugin install issue-to-pr-pipeline@tundra
 ```
 
 Then run `/reload-plugins` to activate — it also re-resolves any missing dependencies. Install only the plugins you need — they work standalone, except `issue-to-pr-pipeline`, which builds on the other three.
+
+Auto-update is off by default for third-party marketplaces. To receive new versions automatically, open `/plugin` → Marketplaces → `tundra` → Enable auto-update.
+
+**Moving from the old `itpr` marketplace.** This repository used to be a marketplace named `itpr`, and it no longer is — an `itpr` refresh now fails, and plugins installed from it stop loading. Run `/plugin marketplace remove itpr` (which also uninstalls the plugins installed from it), then add `tundra` and install as above. Install each plugin from one marketplace only.
+
+To work on the plugins from a clone, load them straight from the working tree with `claude --plugin-dir ./plugins` rather than adding the clone as a marketplace.
 
 ## Plugins at a glance
 
@@ -123,7 +131,6 @@ The plugins themselves are just Markdown and JSON — nothing to build. A few sk
 ## Repository layout
 
 ```
-.claude-plugin/marketplace.json   the registry — lists every published plugin
 plugins/<plugin>/
 ├── .claude-plugin/plugin.json     plugin metadata (name, version, dependencies)
 ├── skills/<skill>/SKILL.md        a user-invocable skill

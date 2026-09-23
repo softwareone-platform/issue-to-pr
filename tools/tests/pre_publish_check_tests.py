@@ -37,13 +37,10 @@ def write(path, text):
 
 
 def build_fixture(root, *, skill_name="demo-skill", description="A demo skill.",
-                  plugin_version="1.0.0", registry_version="1.0.0",
+                  plugin_version="1.0.0",
                   manifest_json=None, frontmatter=None, extra_doc=None):
-    """A minimal but valid marketplace, with one seam per defect to plant."""
+    """A minimal but valid plugin repository, with one seam per defect to plant."""
     plugin = "demo-plugin"
-    write(os.path.join(root, ".claude-plugin", "marketplace.json"),
-          '{"name": "itpr", "plugins": [{"name": "%s", "version": "%s", "source": "./plugins/%s"}]}'
-          % (plugin, registry_version, plugin))
     write(os.path.join(root, "plugins", plugin, ".claude-plugin", "plugin.json"),
           manifest_json if manifest_json is not None
           else '{"name": "%s", "version": "%s"}' % (plugin, plugin_version))
@@ -142,9 +139,6 @@ def main():
         case(tmp, "leak-ticket", "leaks",
              extra_doc="Fixes " + "PROJ" + "-" + "4821" + " in the billing path.\n")
 
-        case(tmp, "manifest-drift", "manifest-sync",
-             plugin_version="1.1.0", registry_version="1.0.0")
-
         print("\nVersion gate (through the registry, against a real git history):")
         # routed through GATES rather than the function, because the first version
         # of this suite called check_version_bumps directly and the mutation test
@@ -182,7 +176,7 @@ def main():
         ok("a resolvable ref produces no note", check.NOTES == [], f"notes were {check.NOTES}")
 
         print("\nGate coverage:")
-        covered = {"json", "frontmatter", "descriptions", "leaks", "manifest-sync", "versions"}
+        covered = {"json", "frontmatter", "descriptions", "leaks", "versions"}
         ok("every gate owns at least one known-answer case",
            covered == set(check.GATES), f"uncovered: {sorted(set(check.GATES) - covered)}")
 

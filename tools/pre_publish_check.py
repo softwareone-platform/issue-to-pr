@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Pre-publish gates for the issue-to-pr marketplace.
+"""Pre-publish gates for the issue-to-pr plugins.
 
 Every gate here was a prose instruction in CLAUDE.md that someone had to
 remember and run by hand, and this session ran four of them manually before
@@ -232,27 +232,6 @@ def check_version_bumps(root, changed=None, published=None):
     return failures
 
 
-def check_manifest_sync(root):
-    """Each plugin's version matches its entry in the marketplace registry, which
-    is the file consumers actually read."""
-    registry = os.path.join(root, ".claude-plugin", "marketplace.json")
-    if not os.path.isfile(registry):
-        return []
-    try:
-        entries = json.loads(_read(registry)).get("plugins", [])
-    except ValueError:
-        return []
-    listed = {e.get("name"): e.get("version") for e in entries if isinstance(e, dict)}
-    failures = []
-    for plugin, version in sorted(plugin_versions(root).items()):
-        if version is None:
-            continue
-        if plugin in listed and listed[plugin] != version:
-            failures.append(
-                f"{plugin}: plugin.json says {version}, marketplace.json says {listed[plugin]}")
-    return failures
-
-
 def check_leaks(root):
     """Nothing reaching this public remote carries internal detail.
 
@@ -330,7 +309,6 @@ GATES = {
     "frontmatter": check_frontmatter,
     "descriptions": check_descriptions,
     "versions": check_version_bumps,
-    "manifest-sync": check_manifest_sync,
     "leaks": check_leaks,
 }
 
