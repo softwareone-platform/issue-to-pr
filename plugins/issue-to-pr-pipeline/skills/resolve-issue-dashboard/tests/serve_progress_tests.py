@@ -20,6 +20,7 @@ failure so a Stop hook can surface it. Run from anywhere:
     python tests/serve_progress_tests.py
 """
 
+import calendar
 import contextlib
 import json
 import os
@@ -77,14 +78,14 @@ def _mgr(ticket="acme-1", cwd=None):
 def test_archived_run_is_not_tailed():
     asked = []
 
-    def _live_session(project_dir, ticket=None):
+    def _live_session(project_dir, ticket=None, since_ms=None):
         asked.append(ticket)
         return "/live/session.jsonl"
 
     made = []
 
     class _FakeCollector(object):
-        def __init__(self, project_dir, path):
+        def __init__(self, project_dir, path, since_ms=None, until_ms=None):
             made.append(path)
 
     mgr = _mgr()
@@ -115,6 +116,93 @@ def test_archived_run_is_not_tailed():
     check("live run asks ticket-aware", asked, ["acme-1"])
 
 
+def test_changed_start_rebuilds_the_collector():
+    made = []
+
+    class _FakeCollector(object):
+        def __init__(self, project_dir, path, since_ms=None, until_ms=None):
+            self.since_ms = since_ms
+            made.append(self)
+
+    mgr = _mgr()
+    with _faked(find_live_session=lambda project_dir, ticket=None, since_ms=None: "/live/s.jsonl",
+                find_project_dir=lambda cwd: "/proj", Collector=_FakeCollector):
+        mgr._ensure_session("acme-1", False, 1000)
+        first = mgr.collector
+        mgr._ensure_session("acme-1", False, 2000)
+    # a new start on the same ticket is a new run,
+    # and the old tail was read under the old window,
+    # so the collector is rebuilt even though the session path never moved
+    check("changed start builds a new collector", mgr.collector is first, False)
+    check("changed start built twice", len(made), 2)
+    check("new collector gets the new start", made[-1].since_ms, 2000)
+    check("new start recorded", mgr.since_ms, 2000)
+
+    # the control uses a real start rather than None,
+    # because None then None would stay unchanged even if the start were never recorded
+    same = []
+
+    class _SameCollector(object):
+        def __init__(self, project_dir, path, since_ms=None, until_ms=None):
+            same.append(self)
+
+    steady = _mgr()
+    with _faked(find_live_session=lambda project_dir, ticket=None, since_ms=None: "/live/s.jsonl",
+                find_project_dir=lambda cwd: "/proj", Collector=_SameCollector):
+        steady._ensure_session("acme-1", False, 1000)
+        kept = steady.collector
+        steady._ensure_session("acme-1", False, 1000)
+    # an unchanged start and path keep the tail, whose read offsets a rebuild would throw away
+    check("unchanged start keeps the collector", steady.collector is kept, True)
+    check("unchanged start built once", len(same), 1)
+
+
+def test_changed_end_rebuilds_the_collector():
+    made = []
+
+    class _FakeCollector(object):
+        def __init__(self, project_dir, path, since_ms=None, until_ms=None):
+            self.since_ms = since_ms
+            self.until_ms = until_ms
+            made.append(self)
+
+    mgr = _mgr()
+    with _faked(find_live_session=lambda project_dir, ticket=None, since_ms=None: "/live/s.jsonl",
+                find_project_dir=lambda cwd: "/proj", Collector=_FakeCollector):
+        mgr._ensure_session("acme-1", False, 1000, 5000)
+        first = mgr.collector
+        mgr._ensure_session("acme-1", False, 1000, 6000)
+    # a moved end is the run finishing or reopening,
+    # and the old tail was cut at the old end,
+    # so the collector is rebuilt even though the session path and the start never moved.
+    # dropping the until_ms comparison from the rebuild condition turns these red
+    check("changed end builds a new collector", mgr.collector is first, False)
+    check("changed end built twice", len(made), 2)
+    # dropping the until_ms kwarg from the Collector call leaves this None
+    check("new collector gets the new end", made[-1].until_ms, 6000)
+    check("new collector keeps the start", made[-1].since_ms, 1000)
+    check("new end recorded", mgr.until_ms, 6000)
+
+    # the control uses a real end rather than None,
+    # because None then None would stay unchanged even if the end were never recorded
+    same = []
+
+    class _SameCollector(object):
+        def __init__(self, project_dir, path, since_ms=None, until_ms=None):
+            same.append(self)
+
+    steady = _mgr()
+    with _faked(find_live_session=lambda project_dir, ticket=None, since_ms=None: "/live/s.jsonl",
+                find_project_dir=lambda cwd: "/proj", Collector=_SameCollector):
+        steady._ensure_session("acme-1", False, 1000, 5000)
+        kept = steady.collector
+        steady._ensure_session("acme-1", False, 1000, 5000)
+    # an unchanged window keeps the tail, whose read offsets a rebuild would throw away.
+    # if the end were never stored, the second call would compare 5000 against None and rebuild
+    check("unchanged end keeps the collector", steady.collector is kept, True)
+    check("unchanged end built once", len(same), 1)
+
+
 # ----- RunManager.build: the two orderings its own comments name --------------
 
 def _entry(rid, status, next_step, ticket="acme-1", cwd="/repo", ms=100):
@@ -130,7 +218,7 @@ def _run_build(mgr, runs, model_status):
     their output is the oracle for the orderings under test,
     so stubbing them would remove the very measurement."""
     with _faked(find_project_dir=lambda cwd: "/proj",
-                find_live_session=lambda project_dir, ticket=None: None,
+                find_live_session=lambda project_dir, ticket=None, since_ms=None: None,
                 build_model=lambda *a, **k: {"status": model_status},
                 list_runs=lambda launch_cwd: runs):
         return mgr.build()
@@ -195,11 +283,75 @@ def test_build_status_mapping():
     # a model with no status at all leaves the coarse cursor status alone
     sel3 = _entry(sid, "paused", "b-implement", cwd=d)
     with _faked(find_project_dir=lambda cwd: "/proj",
-                find_live_session=lambda project_dir, ticket=None: None,
+                find_live_session=lambda project_dir, ticket=None, since_ms=None: None,
                 build_model=lambda *a, **k: {},
                 list_runs=lambda launch_cwd: [sel3]):
         _mgr("acme-1", d).build()
     check("no model status leaves it alone", sel3["status"], "paused")
+
+
+def _build_since(state_text):
+    """Run build over a real state.md and record the since_ms that reaches
+    the session lookup and the Collector."""
+    asked, made = _build_window(state_text)
+    return asked, [since for since, _ in made]
+
+
+def _build_window(state_text):
+    """Run build over a real state.md and record the since_ms that reaches
+    the session lookup, and the (since_ms, until_ms) pair that reaches the Collector.
+    The session path is one that does not exist, so the Collector is built
+    and os.path.isfile then skips its refresh."""
+    d = tempfile.mkdtemp()
+    resolve_dir = os.path.join(d, ".claude", "resolve", "acme-1")
+    os.makedirs(resolve_dir)
+    _write(resolve_dir, "state.md", state_text)
+    asked = []
+    made = []
+
+    def _live_session(project_dir, ticket=None, since_ms=None):
+        asked.append(since_ms)
+        return "/live/s.jsonl"
+
+    class _FakeCollector(object):
+        def __init__(self, project_dir, path, since_ms=None, until_ms=None):
+            made.append((since_ms, until_ms))
+
+    with _faked(find_project_dir=lambda cwd: "/proj",
+                find_live_session=_live_session, Collector=_FakeCollector,
+                build_model=lambda *a, **k: {"status": "running"},
+                list_runs=lambda launch_cwd: []):
+        _mgr("acme-1", d).build()
+    return asked, made
+
+
+def test_build_windows_the_session_by_the_run_start():
+    asked, made = _build_since("started: 2026-09-01T10:00:00Z\n")
+    # expected value derived with calendar.timegm, independent of the parser's own _iso_to_ms
+    want = calendar.timegm((2026, 9, 1, 10, 0, 0)) * 1000
+    # state.md is read before the session is chosen,
+    # so its start both picks the session and windows the tail
+    check("session lookup gets the start", asked, [want])
+    check("collector gets the start", made, [want])
+
+    # a state.md with no start leaves the window open, rather than inventing one
+    asked, made = _build_since("next-step: b-implement\n")
+    check("no start asks unwindowed", asked, [None])
+    check("no start builds unwindowed", made, [None])
+
+
+def test_build_closes_the_session_window_at_the_run_end():
+    _, made = _build_window("started: 2026-09-01T10:00:00Z\nended: 2026-09-01T12:30:00Z\n")
+    # expected values derived with calendar.timegm, independent of the parser's own _iso_to_ms
+    start = calendar.timegm((2026, 9, 1, 10, 0, 0)) * 1000
+    end = calendar.timegm((2026, 9, 1, 12, 30, 0)) * 1000
+    # the start and the end both reach the Collector, each in its own slot.
+    # passing None or the start as the end, or swapping the two, turns this red
+    check("collector gets the start and the end", made, [(start, end)])
+
+    # a run still in progress has no end yet, so the window stays open on that side
+    _, made = _build_window("started: 2026-09-01T10:00:00Z\n")
+    check("no end leaves the window open", made, [(start, None)])
 
 
 # ----- Hub: republish gate, slow-client drop, registration round-trip ---------
@@ -388,9 +540,12 @@ def test_tick_contains_a_raising_build():
     check("error is the message head", payload["error"], "x" * 200)
 
 
-_TESTS = (test_archived_run_is_not_tailed,
+_TESTS = (test_archived_run_is_not_tailed, test_changed_start_rebuilds_the_collector,
+          test_changed_end_rebuilds_the_collector,
           test_build_computes_contention_before_reconcile,
           test_build_reconciles_before_bucketing, test_build_status_mapping,
+          test_build_windows_the_session_by_the_run_start,
+          test_build_closes_the_session_window_at_the_run_end,
           test_hub_publish, test_hub_drop_does_not_reach_the_publisher,
           test_hub_registration,
           test_set_selected_rejects_unresolvable,

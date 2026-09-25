@@ -107,6 +107,8 @@ class RunManager:
         self.sel_run_key = ""
         self.project_dir = None
         self.session_path = None
+        self.since_ms = None
+        self.until_ms = None
         self.collector = None
 
     def set_selected(self, run_id):
@@ -122,10 +124,12 @@ class RunManager:
                 # drop the old run's tail so the new run starts fresh
                 self.project_dir = None
                 self.session_path = None
+                self.since_ms = None
+                self.until_ms = None
                 self.collector = None
         return True
 
-    def _ensure_session(self, ticket, archived):
+    def _ensure_session(self, ticket, archived, since_ms=None, until_ms=None):
         # an archived run has no live session of its own; the repo's newest
         # session belongs to unrelated (usually live) work, so tailing it would
         # attribute that activity/tokens to the historical run - do not tail
@@ -137,17 +141,21 @@ class RunManager:
             self.project_dir = ps.find_project_dir(self.sel_cwd)
         # ticket-aware: prefer the session that actually drove this ticket, so an
         # unrelated newer session in the same repo does not hijack the metrics
-        latest = ps.find_live_session(self.project_dir, ticket)
-        if latest != self.session_path:
+        latest = ps.find_live_session(self.project_dir, ticket, since_ms)
+        # a changed start is a new run of the same ticket, and a changed end is the run finishing or reopening.
+        # either way the old tail was read under the old window, so it is rebuilt even when the session is the same one
+        if latest != self.session_path or since_ms != self.since_ms or until_ms != self.until_ms:
             self.session_path = latest
-            self.collector = ps.Collector(self.project_dir, latest) if latest else None
+            self.since_ms = since_ms
+            self.until_ms = until_ms
+            self.collector = (ps.Collector(self.project_dir, latest, since_ms=since_ms, until_ms=until_ms)
+                              if latest else None)
 
     def build(self):
         with self._lock:
             sel_cwd = self.sel_cwd
             ticket = self.sel_ticket or ps.find_resolve_ticket(sel_cwd, None)
             archived = bool(self.sel_run_key)
-            self._ensure_session(ticket, archived)
             state = {}
             ended_ms = None
             timings = []
@@ -160,6 +168,10 @@ class RunManager:
                 # run's last-progress time; stable across a next-day relaunch
                 ended_ms = ps._mtime_ms(state_path)
                 timings = ps.parse_timings(os.path.join(resolve_dir, "timings.md"))
+            # the state is read first because its `started` both picks the session and windows the tail,
+            # and its `ended` closes that window
+            self._ensure_session(ticket, archived, ps._iso_to_ms(state.get("started")),
+                                 ps._iso_to_ms(state.get("ended")))
             events, tin, tout, tcached = [], 0, 0, 0
             main_active = False
             main_seen = False

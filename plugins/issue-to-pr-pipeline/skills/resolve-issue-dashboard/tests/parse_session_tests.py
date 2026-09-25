@@ -12,6 +12,8 @@ failure so a Stop hook can surface it. Run from anywhere:
     python tests/parse_session_tests.py
 """
 
+import calendar
+import contextlib
 import io
 import json
 import os
@@ -201,8 +203,9 @@ def test_run_id_roundtrip():
 def test_parse_state():
     d = tempfile.mkdtemp()
     p = os.path.join(d, "state.md")
-    # an empty `attention:` must read as empty and must NOT swallow the next line
-    # (`started:`) - the regression the horizontal-whitespace pattern guards
+    # the legacy decorated form, kept so older state.md files still parse.
+    # it cannot guard the swallow regression: the `**` after the colon sits between it and the newline,
+    # so a line-crossing gap has nothing to cross and this arm stays green under that mutation
     with open(p, "w", encoding="utf-8") as f:
         f.write("- **next-step:** b-open-pr\n")
         f.write("- **ticket:** acme-1\n")
@@ -213,6 +216,21 @@ def test_parse_state():
     check("parse empty attention", st.get("attention"), "")
     check("parse started not swallowed", st.get("started"), "2026-07-13T00:00:00Z")
     check("empty attention not blocked", ps._is_blocked(st.get("attention")), False)
+
+    # the plain form resolve-issue writes today, with `attention:` empty while the run is not waiting.
+    # this arm carries the guard: an empty `attention:` must read as empty and must NOT swallow `started:`,
+    # which a whitespace gap allowed to cross the newline would do, rendering the run as blocked
+    plain = os.path.join(d, "plain-state.md")
+    with open(plain, "w", encoding="utf-8") as f:
+        f.write("next-step: b-open-pr\n")
+        f.write("ticket: acme-1\n")
+        f.write("attention:\n")
+        f.write("started: 2026-07-13T00:00:00Z\n")
+    pst = ps.parse_state(plain)
+    check("plain parse next-step", pst.get("next-step"), "b-open-pr")
+    check("plain parse empty attention", pst.get("attention"), "")
+    check("plain parse started not swallowed", pst.get("started"), "2026-07-13T00:00:00Z")
+    check("plain empty attention not blocked", ps._is_blocked(pst.get("attention")), False)
 
 
 # ----- encoding: a bad file must cost only its own run, never the payload -----
@@ -470,7 +488,7 @@ def test_session_selection():
     newer = os.path.join(d, "newer.jsonl")   # unrelated, but newer mtime
     with open(older, "w", encoding="utf-8") as f:
         f.write(json.dumps({"type": "user", "cwd": "x",
-                            "message": {"content": "/resolve-issue acme-42 please"}}) + "\n")
+                            "message": {"content": "reading .claude/resolve/acme-42/state.md"}}) + "\n")
     with open(newer, "w", encoding="utf-8") as f:
         f.write(json.dumps({"type": "user", "cwd": "x",
                             "message": {"content": "unrelated work here"}}) + "\n")
@@ -584,11 +602,397 @@ def test_run_panel():
     check("empty list", ps.plan_run_panel([]), [])
 
 
+# ----- _session_mentions: the handoff-dir reference, scanned whole ------------
+
+@contextlib.contextmanager
+def _faked(**attrs):
+    """Temporarily replace attributes on parse_session, restored in a finally
+    so a check that raises inside the block cannot leak the stand-in into later tests."""
+    old = dict((k, getattr(ps, k)) for k in attrs)
+    for k, v in attrs.items():
+        setattr(ps, k, v)
+    try:
+        yield
+    finally:
+        for k, v in old.items():
+            setattr(ps, k, v)
+
+
+def _jsonl(path, records, mode="w"):
+    with open(path, mode, encoding="utf-8") as f:
+        for o in records:
+            f.write(json.dumps(o) + "\n")
+    return path
+
+
+def _said(text):
+    return {"type": "user", "message": {"content": text}}
+
+
+def _filler(n):
+    return [_said("filler line %d with no path in it" % i) for i in range(n)]
+
+
+def test_session_mentions():
+    d = tempfile.mkdtemp()
+
+    # the driving session is often resumed deep into a long transcript,
+    # so a reference after the first 40 lines must still count.
+    # restore the 40-line head scan and this goes red
+    deep = _jsonl(os.path.join(d, "deep.jsonl"),
+                  _filler(100) + [_said("reading .claude/resolve/acme-42/state.md")])
+    check("reference after 100 lines found", ps._session_mentions(deep, "acme-42"), True)
+    shallow = _jsonl(os.path.join(d, "shallow.jsonl"), _filler(100))
+    check("100 filler lines alone do not match", ps._session_mentions(shallow, "acme-42"), False)
+
+    # a session that only talked about the ticket did not drive the run,
+    # so a bare mention with no resolve/ path is not a match
+    bare = _jsonl(os.path.join(d, "bare.jsonl"), [_said("/resolve-issue acme-42 please")])
+    check("bare ticket mention is not a match", ps._session_mentions(bare, "acme-42"), False)
+    handoff = _jsonl(os.path.join(d, "handoff.jsonl"), [_said("wrote .claude/resolve/acme-42/state.md")])
+    check("handoff path is a match", ps._session_mentions(handoff, "acme-42"), True)
+
+    # a Windows path reaches the transcript JSON-escaped, so each separator is two backslash bytes on disk
+    win = _jsonl(os.path.join(d, "win.jsonl"),
+                 [_said(r"C:\repo\.claude\resolve\acme-42\state.md")])
+    with open(win, "rb") as f:
+        raw = f.read()
+    check("escaped separators are doubled on disk", b"resolve\\\\acme-42\\\\state.md" in raw, True)
+    check("escaped Windows path matches", ps._session_mentions(win, "acme-42"), True)
+
+    # a ticket that prefixes another must not match it.
+    # drop the trailing alphanumeric guard and acme-4 claims acme-42's session
+    longer = _jsonl(os.path.join(d, "longer.jsonl"), [_said("reading .claude/resolve/acme-42/state.md")])
+    check("acme-4 does not match resolve/acme-42", ps._session_mentions(longer, "acme-4"), False)
+    check("same file matches acme-42", ps._session_mentions(longer, "acme-42"), True)
+    exact = _jsonl(os.path.join(d, "exact.jsonl"), [_said("reading .claude/resolve/acme-4/state.md")])
+    check("acme-4 matches resolve/acme-4", ps._session_mentions(exact, "acme-4"), True)
+
+
+def test_session_mentions_incremental():
+    d = tempfile.mkdtemp()
+
+    # a negative result is remembered only for the bytes already read,
+    # so a reference appended later is found on the next call
+    grow = _jsonl(os.path.join(d, "grow.jsonl"), [_said("unrelated work")])
+    check("before the append", ps._session_mentions(grow, "acme-42"), False)
+    _jsonl(grow, [_said("reading .claude/resolve/acme-42/state.md")], mode="a")
+    check("appended reference found", ps._session_mentions(grow, "acme-42"), True)
+
+    # a file that shrank was rewritten, so the cached hit no longer describes it.
+    # drop the size-below-offset reset and the stale True survives
+    shrink = _jsonl(os.path.join(d, "shrink.jsonl"),
+                    [_said("reading .claude/resolve/acme-42/state.md and a long tail of words")])
+    check("before the rewrite", ps._session_mentions(shrink, "acme-42"), True)
+    before = os.path.getsize(shrink)
+    _jsonl(shrink, [_said("x")])
+    check("rewrite really is smaller", os.path.getsize(shrink) < before, True)
+    check("rewritten file without the reference", ps._session_mentions(shrink, "acme-42"), False)
+
+
+def test_session_mentions_chunk_boundary():
+    d = tempfile.mkdtemp()
+    path = _jsonl(os.path.join(d, "split.jsonl"),
+                  _filler(3) + [_said("reading .claude/resolve/acme-42/state.md")])
+    with open(path, "rb") as f:
+        raw = f.read()
+    ref = b"resolve/acme-42"
+    at = raw.index(ref)
+    # the boundary lands four bytes into the reference, so neither chunk holds it whole
+    chunk = at + 4
+    check("boundary really splits the reference", at < chunk < at + len(ref), True)
+    # the carried tail is what joins the two halves - drop it and this goes red
+    with _faked(_MENTION_CHUNK=chunk):
+        check("reference split across chunks found", ps._session_mentions(path, "acme-42"), True)
+    check("chunk size restored", ps._MENTION_CHUNK, 8 * 1024 * 1024)
+
+
+# ----- find_live_session: a session last written before the run is no candidate -----
+
+def test_session_selection_since():
+    d = tempfile.mkdtemp()
+    stale = _jsonl(os.path.join(d, "stale.jsonl"), [_said("reading .claude/resolve/acme-42/state.md")])
+    fresh = _jsonl(os.path.join(d, "fresh.jsonl"), [_said("unrelated work here")])
+    os.utime(stale, (1000, 1000))
+    os.utime(fresh, (2000, 2000))
+    # mtimes are 1,000,000 and 2,000,000 ms, so the stamp sits well clear of both
+    since = 1500 * 1000
+    # a session that ended before the run began cannot have driven it,
+    # even though it references the ticket and the fresh one does not
+    check("stale reference excluded, fresh returned",
+          os.path.basename(ps.find_live_session(d, "acme-42", since)), "fresh.jsonl")
+    check("no since keeps the stale reference",
+          os.path.basename(ps.find_live_session(d, "acme-42")), "stale.jsonl")
+
+    # with every session stale there is nothing honest to tail
+    old = tempfile.mkdtemp()
+    a = _jsonl(os.path.join(old, "a.jsonl"), [_said("reading .claude/resolve/acme-42/state.md")])
+    b = _jsonl(os.path.join(old, "b.jsonl"), [_said("unrelated work here")])
+    os.utime(a, (1000, 1000))
+    os.utime(b, (1100, 1100))
+    check("all stale returns None", ps.find_live_session(old, "acme-42", since), None)
+    check("all stale without since still returns a path",
+          os.path.basename(ps.find_live_session(old, "acme-42")), "a.jsonl")
+
+
+# ----- Collector(since_ms): records before the run's start are not this run's -----
+
+def _epoch_ms(h, m, s=0):
+    # independent of the module's own ISO parse, so a wrong _iso_to_ms cannot cancel itself out
+    return calendar.timegm((2026, 7, 13, h, m, s, 0, 0, 0)) * 1000
+
+
+def _windowed(main_lines, since_ms, agent_lines=None, agent_mtime=None, until_ms=None):
+    d = tempfile.mkdtemp()
+    p = _jsonl(os.path.join(d, "sess.jsonl"), main_lines)
+    if agent_lines is not None:
+        sub = os.path.join(d, "sess", "subagents")
+        os.makedirs(sub)
+        ap = _jsonl(os.path.join(sub, "agent-abc12345.jsonl"), agent_lines)
+        if agent_mtime is not None:
+            os.utime(ap, (agent_mtime, agent_mtime))
+    c = ps.Collector(d, p, since_ms=since_ms, until_ms=until_ms)
+    c.refresh()
+    return c
+
+
+def _shape(c):
+    return {"events": len(c.events()), "tokens_in": c.tokens_in, "tokens_out": c.tokens_out,
+            "main_seen": c.main_seen(), "main_active": c.main_active()}
+
+
+def test_collector_since():
+    since = _epoch_ms(0, 10)
+    old = [_usage("m_old", inp=100, out=40, ts="2026-07-13T00:05:00Z", block="tool_use")]
+    # a record before the stamp belongs to earlier work in the same session,
+    # so it must move none of the counters or the liveness signals
+    check("record before since dropped", _shape(_windowed(old, since)),
+          {"events": 0, "tokens_in": 0, "tokens_out": 0, "main_seen": False, "main_active": False})
+    check("no since counts the same record", _shape(_windowed(old, None)),
+          {"events": 1, "tokens_in": 100, "tokens_out": 40, "main_seen": True, "main_active": True})
+
+    mixed = old + [_usage("m_new", inp=7, out=3, ts="2026-07-13T00:20:00Z", block="tool_use")]
+    c = _windowed(mixed, since)
+    check("mixed keeps only the new record", (len(c.events()), c.tokens_in, c.tokens_out), (1, 7, 3))
+    check("mixed keeps the new record's event", c.events()[0]["ts"], "2026-07-13T00:20:00Z")
+
+    # a record that cannot be placed outside the window is kept, as the source comment states
+    unstamped = _usage("m_none", inp=9, out=2, block="tool_use")
+    del unstamped["timestamp"]
+    garbled = _usage("m_bad", inp=5, out=1, ts="not-a-time", block="tool_use")
+    c = _windowed([unstamped, garbled], since)
+    check("unparseable stamps kept", (len(c.events()), c.tokens_in, c.tokens_out), (2, 14, 3))
+
+
+def test_collector_since_skips_stale_subagent():
+    since = _epoch_ms(0, 10)
+    main = [_usage("m_main", inp=100, out=10, ts="2026-07-13T00:20:00Z")]
+    # the subagent's records are all inside the window, so only its mtime can exclude it.
+    # restore reading every subagent file and its usage and event come back
+    agent = [_usage("m_sub", inp=7, out=3, ts="2026-07-13T00:30:00Z", block="tool_use")]
+    stale = _windowed(main, since, agent, agent_mtime=since // 1000 - 60)
+    check("stale-mtime subagent not counted",
+          (len(stale.events()), stale.tokens_in, stale.tokens_out), (0, 100, 10))
+    fresh = _windowed(main, since, agent, agent_mtime=since // 1000 + 60)
+    check("fresh-mtime subagent counted",
+          (len(fresh.events()), fresh.tokens_in, fresh.tokens_out), (1, 107, 13))
+
+
+# ----- collect_model: state.md's started picks the session and windows it ------
+
+def _run_repo(started, sessions, ended=None, plain=False):
+    """A cwd holding .claude/resolve/acme-42/state.md, and a projects dir holding
+    `sessions` as (name, records, mtime_seconds) - returned as (cwd, project_dir).
+    `plain` writes the canonical block resolve-issue emits -
+    bare `field: value` lines, every field present, an empty one keeping its colon -
+    instead of the legacy `- **field:** value` form."""
+    cwd = tempfile.mkdtemp()
+    run = os.path.join(cwd, ".claude", "resolve", "acme-42")
+    os.makedirs(run)
+    if plain:
+        lines = ["# resolve-issue state", "", "next-step: b-implement", "ticket: acme-42",
+                 "base-branch: main", "work-branch:", "plan-approved: yes", "pr-url:",
+                 "attention:", "started:" + (" " + started if started else ""),
+                 "ended:" + (" " + ended if ended else "")]
+    else:
+        lines = ["- **next-step:** b-implement", "- **ticket:** acme-42"]
+        if started:
+            lines.append("- **started:** " + started)
+        if ended:
+            lines.append("- **ended:** " + ended)
+    with open(os.path.join(run, "state.md"), "w", encoding="utf-8") as f:
+        f.write(NL.join(lines) + NL)
+    proj = tempfile.mkdtemp()
+    for name, records, mtime in sessions:
+        p = _jsonl(os.path.join(proj, name + ".jsonl"), records)
+        os.utime(p, (mtime, mtime))
+    return cwd, proj
+
+
+def _tool(ts, tid):
+    return {"type": "assistant", "timestamp": ts,
+            "message": {"stop_reason": "tool_use",
+                        "content": [{"type": "tool_use", "id": tid, "name": "Bash",
+                                     "input": {"command": "ls"}}]}}
+
+
+def test_collect_model_since():
+    since_s = _epoch_ms(0, 10) // 1000
+    handoff = _said("reading .claude/resolve/acme-42/state.md")
+    cwd, proj = _run_repo("2026-07-13T00:10:00Z", [
+        ("fresh", [handoff, _tool("2026-07-13T00:05:00Z", "t_before"),
+                   _tool("2026-07-13T00:20:00Z", "t_after")], since_s + 3600),
+        ("stale", [handoff, _tool("2026-07-13T00:01:00Z", "t_stale")], since_s - 3600),
+    ])
+    with _faked(find_project_dir=lambda c: proj):
+        m = ps.collect_model(cwd, "acme-42")
+    # started windows the Collector, so the tool call before it is not this run's
+    check("only the call after started counted", m["metrics"]["toolCalls"], 1)
+    check("fresh session selected", m["session"]["id"], "fresh")
+    check("startedMs from state.md", m["metrics"]["startedMs"], _epoch_ms(0, 10))
+
+    # started must also reach find_live_session:
+    # here only the stale session references the ticket, so without the stamp it would win
+    cwd2, proj2 = _run_repo("2026-07-13T00:10:00Z", [
+        ("fresh", [_said("unrelated work"), _tool("2026-07-13T00:20:00Z", "t1")], since_s + 3600),
+        ("stale", [handoff, _tool("2026-07-13T00:01:00Z", "t2")], since_s - 3600),
+    ])
+    with _faked(find_project_dir=lambda c: proj2):
+        m2 = ps.collect_model(cwd2, "acme-42")
+    check("stale referencing session not selected", m2["session"]["id"], "fresh")
+    # control: the same arrangement with no started falls back to the ticket reference
+    cwd3, proj3 = _run_repo(None, [
+        ("fresh", [_said("unrelated work"), _tool("2026-07-13T00:20:00Z", "t1")], since_s + 3600),
+        ("stale", [handoff, _tool("2026-07-13T00:01:00Z", "t2")], since_s - 3600),
+    ])
+    with _faked(find_project_dir=lambda c: proj3):
+        m3 = ps.collect_model(cwd3, "acme-42")
+    check("no started selects the stale reference", m3["session"]["id"], "stale")
+
+
+# ----- Collector(until_ms): records after the run's end are not this run's -----
+
+def test_collector_until():
+    until = _epoch_ms(0, 30)
+    in_window = _usage("m_in", inp=10, out=4, ts="2026-07-13T00:20:00Z")
+    in_window["message"]["stop_reason"] = "end_turn"
+    late = _usage("m_late", inp=100, out=40, ts="2026-07-13T00:40:00Z", block="tool_use")
+    # the session went on to other work after the run ended,
+    # so the late tool call must move neither the counters nor the liveness.
+    # drop the until clause and the late record reads as this run still working
+    check("record after until dropped", _shape(_windowed([in_window, late], None, until_ms=until)),
+          {"events": 0, "tokens_in": 10, "tokens_out": 4, "main_seen": True, "main_active": False})
+    check("no until counts the late record", _shape(_windowed([in_window, late], None)),
+          {"events": 1, "tokens_in": 110, "tokens_out": 44, "main_seen": True, "main_active": True})
+
+    # a record with no stamp cannot be placed after the window either, so it is kept
+    unstamped = _usage("m_none", inp=9, out=2, block="tool_use")
+    del unstamped["timestamp"]
+    c = _windowed([unstamped], None, until_ms=until)
+    check("stampless record kept under until only", (len(c.events()), c.tokens_in, c.tokens_out), (1, 9, 2))
+
+
+def test_collector_until_grace_second():
+    until = _epoch_ms(0, 30)
+    # ended is written in whole seconds, so a record half a second into that second is still the run's own.
+    # remove the +1000 grace and this record is dropped
+    grace = _usage("m_grace", inp=3, out=2, ts="2026-07-13T00:30:00.500Z", block="tool_use")
+    c = _windowed([grace], None, until_ms=until)
+    check("record inside the ended second kept", (len(c.events()), c.tokens_in, c.tokens_out), (1, 3, 2))
+    # the next second is outside the run, and its very first millisecond already is.
+    # relax >= to > and this boundary record is kept
+    edge = _usage("m_edge", inp=3, out=2, ts="2026-07-13T00:30:01.000Z", block="tool_use")
+    c = _windowed([edge], None, until_ms=until)
+    check("record at the next second dropped", (len(c.events()), c.tokens_in, c.tokens_out), (0, 0, 0))
+
+
+def test_collector_until_subagent():
+    until = _epoch_ms(0, 30)
+    main = [_at("assistant", "2026-07-13T00:25:00Z", "end_turn")]
+    agent = [_usage("s_in", inp=7, out=3, ts="2026-07-13T00:20:00Z", block="tool_use"),
+             _usage("s_late", inp=50, out=20, ts="2026-07-13T00:40:00Z", block="tool_use")]
+    # the subagent file was written after the run ended, so only a per-record check can split it.
+    # skip it by mtime and the in-window record goes too
+    after = until // 1000 + 3600
+    c = _windowed(main, None, agent, agent_mtime=after, until_ms=until)
+    check("only the in-window subagent record counted",
+          (len(c.events()), c.tokens_in, c.tokens_out), (1, 7, 3))
+    # the dropped late record must not advance the subagent's last stamp past the main yield,
+    # or a finished run reads as a background agent still working
+    check("late subagent record does not keep the run active", c.main_active(), False)
+    ctl = _windowed(main, None, agent, agent_mtime=after)
+    check("no until counts both subagent records",
+          (len(ctl.events()), ctl.tokens_in, ctl.tokens_out), (2, 57, 23))
+    check("no until reads the late subagent as working", ctl.main_active(), True)
+
+
+def test_collect_model_until():
+    since_s = _epoch_ms(0, 10) // 1000
+    handoff = _said("reading .claude/resolve/acme-42/state.md")
+    records = [handoff, _tool("2026-07-13T00:05:00Z", "t_before"),
+               _tool("2026-07-13T00:20:00Z", "t_during"), _tool("2026-07-13T00:40:00Z", "t_after")]
+    cwd, proj = _run_repo("2026-07-13T00:10:00Z", [("fresh", records, since_s + 3600)],
+                          ended="2026-07-13T00:30:00Z")
+    with _faked(find_project_dir=lambda c: proj):
+        m = ps.collect_model(cwd, "acme-42")
+    # ended must reach the Collector, or the call after the run is counted as its own
+    check("only the call between started and ended counted", m["metrics"]["toolCalls"], 1)
+    cwd2, proj2 = _run_repo("2026-07-13T00:10:00Z", [("fresh", records, since_s + 3600)])
+    with _faked(find_project_dir=lambda c: proj2):
+        m2 = ps.collect_model(cwd2, "acme-42")
+    check("no ended counts the call after it", m2["metrics"]["toolCalls"], 2)
+
+
+def test_collect_model_in_progress_plain_state():
+    since_s = _epoch_ms(0, 10) // 1000
+    handoff = _said("reading .claude/resolve/acme-42/state.md")
+    records = [handoff, _tool("2026-07-13T00:05:00Z", "t_before"),
+               _tool("2026-07-13T00:20:00Z", "t_during"), _tool("2026-07-13T00:40:00Z", "t_after")]
+    # the state.md mtime stands in for "last progress" while ended is empty,
+    # so pin it well clear of every stamp in the fixture
+    state_mtime = since_s + 7200
+    cwd, proj = _run_repo("2026-07-13T00:10:00Z", [("fresh", records, since_s + 3600)], plain=True)
+    state_path = os.path.join(cwd, ".claude", "resolve", "acme-42", "state.md")
+    os.utime(state_path, (state_mtime, state_mtime))
+    with open(state_path, encoding="utf-8") as f:
+        raw = f.read()
+    check("plain fixture has an empty ended line", raw.endswith(NL + "ended:" + NL), True)
+    st = ps.parse_state(state_path)
+    check("plain empty ended reads as empty", st.get("ended"), "")
+    # only the plain form puts a bare newline right after an empty field's colon,
+    # so this is where a value pattern that crosses lines makes `attention:` swallow `started:`.
+    # the model cannot show it here - the live tool call reads as approaching and masks blocked
+    check("plain empty attention reads as empty", st.get("attention"), "")
+    with _faked(find_project_dir=lambda c: proj):
+        m = ps.collect_model(cwd, "acme-42")
+    # an in-progress run leaves the window open at the far end, so the late call is its own.
+    # parse the empty ended as a stamp - epoch 0, or started - and this drops to 0
+    check("empty ended leaves the window open", m["metrics"]["toolCalls"], 2)
+    # a plain started line that fails to parse lets the pre-start call in, and startedMs falls back to it
+    check("plain started read", m["metrics"]["startedMs"], _epoch_ms(0, 10))
+    check("empty ended falls back to the state.md mtime", m["metrics"]["endedMs"], state_mtime * 1000)
+    check("fresh session selected", m["session"]["id"], "fresh")
+
+    # control: the same fixture with ended stamped in the plain form caps the window
+    cwd2, proj2 = _run_repo("2026-07-13T00:10:00Z", [("fresh", records, since_s + 3600)],
+                            ended="2026-07-13T00:30:00Z", plain=True)
+    os.utime(os.path.join(cwd2, ".claude", "resolve", "acme-42", "state.md"), (state_mtime, state_mtime))
+    with _faked(find_project_dir=lambda c: proj2):
+        m2 = ps.collect_model(cwd2, "acme-42")
+    check("plain ended caps the window", m2["metrics"]["toolCalls"], 1)
+    check("plain ended read", m2["metrics"]["endedMs"], _epoch_ms(0, 30))
+
+
 _TESTS = (test_status_rules, test_main_active, test_background_agent_is_not_a_yield,
           test_run_id_roundtrip, test_parse_state, test_encoding_tolerance,
           test_contention, test_timings, test_waiting_detection, test_step_activity,
           test_token_totals, test_session_selection, test_run_summary_precedence,
-          test_run_panel)
+          test_run_panel, test_session_mentions, test_session_mentions_incremental,
+          test_session_mentions_chunk_boundary, test_session_selection_since,
+          test_collector_since, test_collector_since_skips_stale_subagent,
+          test_collect_model_since, test_collector_until, test_collector_until_grace_second,
+          test_collector_until_subagent, test_collect_model_until,
+          test_collect_model_in_progress_plain_state)
 
 
 def _run_all():

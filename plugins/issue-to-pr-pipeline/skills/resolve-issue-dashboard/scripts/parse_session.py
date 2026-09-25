@@ -137,37 +137,74 @@ def find_project_dir(cwd):
     return newest
 
 
+# (path, lowered ticket) -> [bytes scanned, carried tail, found].
+# a long-lived session runs to ~100MB, so it is scanned once and then only as it grows
+_mention_cache = {}
+_MENTION_CHUNK = 8 * 1024 * 1024
+# bytes carried between chunks so a reference split across a read boundary still matches
+_MENTION_OVERLAP = 256
+
+
 def _session_mentions(path, ticket):
-    """Cheap head-scan: does this session's opening reference the ticket? A
-    resolve-issue run's driving session starts with the `/resolve-issue <ticket>`
-    invocation, so a bounded read of the first records tells it apart from an
-    unrelated session in the same repo. Best-effort - any read issue returns
-    False, and the caller falls back to the newest session."""
+    """Does this session reference the ticket's handoff dir, `.claude/resolve/<ticket>`?
+    The driving session has to read and write state.md there at every step,
+    so the path is something it is obliged to produce, which a bare mention of the ticket is not -
+    a session that merely talked about the ticket used to win.
+    The whole file is scanned rather than its opening,
+    because resolve-issue is often invoked deep into a session that was compacted and resumed many times.
+    Either separator matches, since Windows paths reach the transcript as JSON-escaped backslashes.
+    Best-effort - any read issue returns False, and the caller falls back to the newest session."""
     if not ticket:
         return False
-    tl = ticket.lower()
+    key = (path, ticket.lower())
+    entry = _mention_cache.get(key)
     try:
-        with open(path, encoding="utf-8") as f:
-            for i, line in enumerate(f):
-                if i >= 40:
+        size = os.path.getsize(path)
+    except OSError:
+        return False
+    if entry is None or size < entry[0]:
+        entry = [0, b"", False]
+        _mention_cache[key] = entry
+    if entry[2] or size == entry[0]:
+        return entry[2]
+    pattern = re.compile(rb"resolve[\\/]+" + re.escape(ticket.encode("utf-8"))
+                         + rb"(?![A-Za-z0-9])", re.IGNORECASE)
+    try:
+        with open(path, "rb") as f:
+            f.seek(entry[0])
+            while entry[0] < size:
+                chunk = f.read(min(_MENTION_CHUNK, size - entry[0]))
+                if not chunk:
                     break
-                if tl in line.lower():
-                    return True
+                entry[0] += len(chunk)
+                data = entry[1] + chunk
+                if pattern.search(data):
+                    entry[2] = True
+                    break
+                entry[1] = data[-_MENTION_OVERLAP:]
     except OSError:
         pass
-    return False
+    return entry[2]
 
 
-def find_live_session(project_dir, ticket=None):
+def find_live_session(project_dir, ticket=None, since_ms=None):
     """The live session is the most recently modified top-level *.jsonl
     (subagent transcripts live one level down and are excluded here). When a
-    `ticket` is given, prefer the newest session that references that ticket, so
-    an unrelated newer session in the same repo cannot hijack the view (the
-    metrics/activity/gate cues are session-derived); fall back to the newest
-    overall when none reference it (no regression from the ticketless behaviour)."""
+    `ticket` is given, prefer the newest session that references that ticket's
+    handoff dir, so an unrelated newer session in the same repo cannot hijack the
+    view (the metrics/activity/gate cues are session-derived); fall back to the
+    newest overall when none reference it (no regression from the ticketless
+    behaviour).
+
+    `since_ms` is the run's `started` stamp.
+    A session last written before it cannot have driven the run, so it is not a candidate at all -
+    and with none left there is nothing to tail,
+    which reads more honestly than tailing a session that ended before the run began."""
     if not project_dir:
         return None
     files = glob.glob(os.path.join(project_dir, "*.jsonl"))
+    if since_ms is not None:
+        files = [f for f in files if _mtime_ms(f) is not None and _mtime_ms(f) >= since_ms]
     if not files:
         return None
     files.sort(key=os.path.getmtime, reverse=True)
@@ -343,11 +380,22 @@ class Collector:
     State is kept across refreshes (byte offset per file, accumulated tool
     events, cached agent labels) so a long-running session is read once, not
     re-scanned every tick.
+
+    `since_ms` is the run's `started` stamp. One session is not one run:
+    compacting keeps every earlier record in the file and a resume appends to it,
+    so a session can carry weeks of work on other tickets ahead of this run.
+    Records before the stamp are dropped as they are read,
+    which windows the activity, the tool-call count, the token totals and the liveness signals alike.
+
+    `until_ms` is the run's `ended` stamp, the same window from the other side:
+    a finished run's session often goes on to other work, which is not this run's either.
     """
 
-    def __init__(self, project_dir, session_path):
+    def __init__(self, project_dir, session_path, since_ms=None, until_ms=None):
         self.project_dir = project_dir
         self.session_path = session_path
+        self.since_ms = since_ms
+        self.until_ms = until_ms
         self.session_id = session_id_of(session_path) if session_path else None
         self._offsets = {}
         self._buffers = {}
@@ -402,6 +450,13 @@ class Collector:
         if self.session_path and os.path.isfile(self.session_path):
             self._consume(self.session_path, "main")
         for path in subagent_files(self.project_dir, self.session_id):
+            # a subagent last written before the run began holds nothing inside the window,
+            # and a long session has hundreds of them. checked every refresh rather than remembered,
+            # so one resumed after the run started is picked up
+            if self.since_ms is not None:
+                m = _mtime_ms(path)
+                if m is None or m < self.since_ms:
+                    continue
             self._consume(path, self._label_for(path))
 
     def _label_for(self, path):
@@ -489,6 +544,15 @@ class Collector:
             return
         msg = o.get("message") or {}
         ts = o.get("timestamp")
+        # a record with no readable stamp cannot be placed outside the window, so it is kept
+        if self.since_ms is not None or self.until_ms is not None:
+            rec_ms = _iso_to_ms(ts)
+            if rec_ms is not None and self.since_ms is not None and rec_ms < self.since_ms:
+                return
+            # the stamps are whole seconds while records carry milliseconds,
+            # so the rest of the `ended` second still belongs to the run - its own closing writes land there
+            if rec_ms is not None and self.until_ms is not None and rec_ms >= self.until_ms + 1000:
+                return
         # tell 'approaching a human gate' from 'actually parked at it': track
         # whether the MAIN session is still working. a main assistant turn ending
         # in tool_use means work continues; any other stop (end_turn / stop_sequence)
@@ -921,12 +985,15 @@ def collect_model(cwd, ticket):
     build: locate everything, read it all, and return the model."""
     cwd = os.path.abspath(cwd)
     project_dir = find_project_dir(cwd)
-    session_path = find_live_session(project_dir, ticket)
     resolve_dir = resolve_dir_for(cwd, ticket) if ticket else None
     state_path = os.path.join(resolve_dir, "state.md") if resolve_dir else None
     state = parse_state(state_path) if state_path else {}
     ended_ms = _mtime_ms(state_path) if state_path else None
     timings = parse_timings(os.path.join(resolve_dir, "timings.md")) if resolve_dir else []
+    # the run's own start both picks its session and windows what is read from it
+    since_ms = _iso_to_ms(state.get("started"))
+    until_ms = _iso_to_ms(state.get("ended"))
+    session_path = find_live_session(project_dir, ticket, since_ms)
 
     session_meta = {
         "id": session_id_of(session_path) if session_path else None,
@@ -938,7 +1005,7 @@ def collect_model(cwd, ticket):
     main_seen = False
     token_records = []
     if session_path:
-        collector = Collector(project_dir, session_path)
+        collector = Collector(project_dir, session_path, since_ms=since_ms, until_ms=until_ms)
         collector.refresh()
         events = collector.events()
         tokens_in, tokens_out = collector.tokens_in, collector.tokens_out
