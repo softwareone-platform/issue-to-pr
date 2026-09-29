@@ -44,7 +44,7 @@ flowchart TD
 - **Pick model and effort before you invoke; the pipeline never switches or downgrades them** — effort is chosen at invocation and never changes mid-run, and Phase A (diagnose and plan) is the reasoning-critical part it drives, so bias toward a stronger model and higher effort where the difficulty is *inference-hard* — a reasoning chain in which a wrong step compounds — rather than *fact-hard*, where the question is whether a claim about the code holds and depth buys much less than the discipline of checking before asserting. The a-gate-approve pause is the natural moment to change model/effort for Phase B. The pipeline and its subagents follow the session's model and effort and never pin, cap, or silently downgrade them — lower the session model yourself if you want a run to be cheaper.
 - **`plan.md` is not committed** — `review-code-risk` reads it from the working-tree disk; committing it would pollute the code diff and the PR. Recommend gitignoring `.claude/resolve/` in the consumer repo.
 - **Tests are committed before the review passes** — Phase B runs implement → test → commit → `security-review` (security) → `review-code-risk` → PR. Committing the tests first makes them an **independent regression oracle** for the security and fix-review edits; each pass reads the committed diff, applies its fixes uncommitted, and — when it changed code — a build+test gate verifies them before that pass commits.
-- **Never commit onto the base branch** — a work-branch guard stops any Phase B commit unless the current branch is a feature branch distinct from the base P2 recorded (the default branch, or a maintenance line).
+- **Never commit onto the base branch** — a work-branch guard makes every Phase B commit land on a feature branch distinct from the base P2 recorded (the default branch, or a maintenance line), creating one when the run is still on the base.
 - **Ends at PR-created** — addressing review comments is Phase C (`resolve-pr-comments`), invoked by the human later; there is no polling loop.
 
 ## Where the run stops for you
@@ -67,10 +67,10 @@ Note which of these the orchestrator actually owns: only plan approval and the t
 
 **Confirmation before something irreversible or outward-facing.** A different reason — this is blast-radius control, not plan quality.
 
-- **the work-branch guard** — before any Phase B commit, if you are still on the base branch it stops and asks you to create or switch to a feature branch. It never commits the fix or tests onto the base, and it never creates the branch for you. As of 0.27.0 the preamble says so as soon as it resolves the base, so this ask should rarely be the first you hear of it.
+- **the work-branch guard** — before any Phase B commit, if you are still on the base branch it creates the feature branch itself, named after the repo's existing branches, and says so. It stops to ask only when the working tree has uncommitted changes (they would ride along into the fix commit) or when a branch of that name already exists. It never commits the fix or tests onto the base. If you start on some other branch whose name does not carry the ticket, the preamble asks whether it is this issue's branch before anything runs — otherwise commits already on it would be read as this run's fix and Phase A skipped.
 - **b-open-pr** — publishes the branch and creates the PR only after you confirm. Always asks, and the run is waiting for the whole time the draft sits on screen.
 
-So after approval there is one guaranteed stop — the open-PR confirmation — plus whatever the review passes surface, and the work-branch guard if you never left the base branch. When a run is paused, `state.md`'s `attention` field names what it is waiting for, and `resolve-issue-dashboard` shows it.
+So after approval there is one guaranteed stop — the open-PR confirmation — plus whatever the review passes surface, and the work-branch guard if your tree is dirty or the branch name is taken. When a run is paused, `state.md`'s `attention` field names what it is waiting for, and `resolve-issue-dashboard` shows it.
 
 ## Prerequisites
 
