@@ -983,6 +983,121 @@ def test_collect_model_in_progress_plain_state():
     check("plain ended read", m2["metrics"]["endedMs"], _epoch_ms(0, 30))
 
 
+# ----- a session glob lists but stat cannot read costs only itself -----------
+
+@contextlib.contextmanager
+def _unstatable(*paths):
+    """Make os.path.getmtime raise for `paths` and delegate for everything else, restored in a finally.
+    This stands in for a path past Windows' 260-character limit - listed by its parent, unreadable by name -
+    without needing one on disk, so the checks below run the same on every platform."""
+    real = os.path.getmtime
+    bad = set(os.path.normcase(os.path.abspath(p)) for p in paths)
+
+    def getmtime(p):
+        if os.path.normcase(os.path.abspath(p)) in bad:
+            raise FileNotFoundError(3, "The system cannot find the path specified", p)
+        return real(p)
+
+    os.path.getmtime = getmtime
+    try:
+        yield
+    finally:
+        os.path.getmtime = real
+
+
+def test_live_session_skips_unstatable():
+    d = tempfile.mkdtemp()
+    # the unreadable one is the newest and the only one naming the ticket,
+    # so it would win both selections if it were still a candidate
+    ok = _jsonl(os.path.join(d, "ok.jsonl"), [_said("unrelated work here")])
+    bad = _jsonl(os.path.join(d, "bad.jsonl"), [_said("reading .claude/resolve/acme-42/state.md")])
+    os.utime(ok, (1000, 1000))
+    os.utime(bad, (2000, 2000))
+    check("fixture: bad really is newest and matching",
+          (os.path.basename(ps.find_live_session(d)), os.path.basename(ps.find_live_session(d, "acme-42"))),
+          ("bad.jsonl", "bad.jsonl"))
+    # restore the bare os.path.getmtime sort key and both of these raise instead
+    with _unstatable(bad):
+        check("unstatable skipped, no ticket", os.path.basename(ps.find_live_session(d)), "ok.jsonl")
+    with _unstatable(bad):
+        check("unstatable skipped, with ticket",
+              os.path.basename(ps.find_live_session(d, "acme-42")), "ok.jsonl")
+
+    # with nothing readable there is nothing to tail, which must read as None rather than a raise
+    with _unstatable(ok, bad):
+        check("every session unstatable returns None", ps.find_live_session(d), None)
+    with _unstatable(ok, bad):
+        check("every session unstatable with ticket returns None", ps.find_live_session(d, "acme-42"), None)
+
+
+def test_live_session_skip_keeps_since():
+    d = tempfile.mkdtemp()
+    stale = _jsonl(os.path.join(d, "stale.jsonl"), [_said("reading .claude/resolve/acme-42/state.md")])
+    fresh = _jsonl(os.path.join(d, "fresh.jsonl"), [_said("unrelated work here")])
+    bad = _jsonl(os.path.join(d, "bad.jsonl"), [_said("reading .claude/resolve/acme-42/state.md")])
+    os.utime(stale, (1000, 1000))
+    os.utime(fresh, (2000, 2000))
+    os.utime(bad, (3000, 3000))
+    since = 1500 * 1000
+    # folding the skip into the since filter must not loosen it:
+    # drop the since clause and the stale session naming the ticket wins over the fresh one
+    with _unstatable(bad):
+        check("since still excludes a readable stale session",
+              os.path.basename(ps.find_live_session(d, "acme-42", since)), "fresh.jsonl")
+    with _unstatable(bad, fresh):
+        check("only stale left after the skip returns None", ps.find_live_session(d, "acme-42", since), None)
+
+
+def test_project_dir_fallback_skips_unstatable():
+    root = tempfile.mkdtemp()
+    dirs = {}
+    for name in ("holds-bad", "holds-newer", "holds-older"):
+        dirs[name] = os.path.join(root, name)
+        os.makedirs(dirs[name])
+    bad = _jsonl(os.path.join(dirs["holds-bad"], "bad.jsonl"), [_said("x")])
+    newer = _jsonl(os.path.join(dirs["holds-newer"], "s.jsonl"), [_said("x")])
+    older = _jsonl(os.path.join(dirs["holds-older"], "s.jsonl"), [_said("x")])
+    os.utime(bad, (3000, 3000))
+    os.utime(newer, (2000, 2000))
+    os.utime(older, (1000, 1000))
+    # a cwd whose encoding names none of the dirs, so only the newest-session fallback can answer
+    cwd = os.path.join(tempfile.mkdtemp(), "no-such-repo")
+    with _faked(projects_root=lambda: root):
+        check("fixture: bad's dir wins while readable", ps.find_project_dir(cwd), dirs["holds-bad"])
+        # restore the bare os.path.getmtime in the fallback loop and this raises
+        with _unstatable(bad):
+            check("fallback skips the unstatable session, newest readable wins",
+                  ps.find_project_dir(cwd), dirs["holds-newer"])
+
+
+def test_list_runs_survives_unstatable():
+    def repo(ticket):
+        cwd = tempfile.mkdtemp()
+        run = os.path.join(cwd, ".claude", "resolve", ticket)
+        os.makedirs(run)
+        with open(os.path.join(run, "state.md"), "w", encoding="utf-8") as f:
+            f.write("next-step: b-implement" + NL)
+        return cwd
+
+    good_repo = repo("acme-1")
+    bad_repo = repo("acme-7")
+    root = tempfile.mkdtemp()
+    good_dir = os.path.join(root, "good")
+    bad_dir = os.path.join(root, "bad")
+    os.makedirs(good_dir)
+    os.makedirs(bad_dir)
+    _jsonl(os.path.join(good_dir, "s.jsonl"), [{"type": "user", "cwd": good_repo, "message": {"content": "x"}}])
+    bad = _jsonl(os.path.join(bad_dir, "s.jsonl"), [{"type": "user", "cwd": bad_repo, "message": {"content": "x"}}])
+    with _faked(projects_root=lambda: root):
+        check("fixture: both repos list while readable",
+              sorted(r["ticket"] for r in ps.list_runs()), ["acme-1", "acme-7"])
+        # this is the payload the dashboard blanked on:
+        # one project dir whose only session cannot be stat'ed used to raise out of list_runs for every repo
+        with _unstatable(bad):
+            check("unstatable project dir costs only its own runs",
+                  [r["id"] for r in ps.list_runs()], [ps.run_id(good_repo, "acme-1")])
+
+
 _TESTS = (test_status_rules, test_main_active, test_background_agent_is_not_a_yield,
           test_run_id_roundtrip, test_parse_state, test_encoding_tolerance,
           test_contention, test_timings, test_waiting_detection, test_step_activity,
@@ -992,7 +1107,9 @@ _TESTS = (test_status_rules, test_main_active, test_background_agent_is_not_a_yi
           test_collector_since, test_collector_since_skips_stale_subagent,
           test_collect_model_since, test_collector_until, test_collector_until_grace_second,
           test_collector_until_subagent, test_collect_model_until,
-          test_collect_model_in_progress_plain_state)
+          test_collect_model_in_progress_plain_state, test_live_session_skips_unstatable,
+          test_live_session_skip_keeps_since, test_project_dir_fallback_skips_unstatable,
+          test_list_runs_survives_unstatable)
 
 
 def _run_all():

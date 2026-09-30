@@ -126,12 +126,12 @@ def find_project_dir(cwd):
         if os.path.basename(d).lower() == enc.lower():
             return d
     newest = None
-    newest_mtime = -1.0
+    newest_mtime = -1
     for d in dirs:
         sessions = glob.glob(os.path.join(d, "*.jsonl"))
         for s in sessions:
-            m = os.path.getmtime(s)
-            if m > newest_mtime:
+            m = _mtime_ms(s)
+            if m is not None and m > newest_mtime:
                 newest_mtime = m
                 newest = d
     return newest
@@ -202,12 +202,15 @@ def find_live_session(project_dir, ticket=None, since_ms=None):
     which reads more honestly than tailing a session that ended before the run began."""
     if not project_dir:
         return None
-    files = glob.glob(os.path.join(project_dir, "*.jsonl"))
-    if since_ms is not None:
-        files = [f for f in files if _mtime_ms(f) is not None and _mtime_ms(f) >= since_ms]
-    if not files:
+    # a file glob lists but stat cannot read is dropped rather than raised,
+    # because list_runs calls this for every project dir and one failure would blank the whole dashboard.
+    # a path past Windows' 260-character limit is exactly this: listed by its parent, unreadable by name
+    stamped = [(m, f) for f, m in ((f, _mtime_ms(f)) for f in glob.glob(os.path.join(project_dir, "*.jsonl")))
+               if m is not None and (since_ms is None or m >= since_ms)]
+    if not stamped:
         return None
-    files.sort(key=os.path.getmtime, reverse=True)
+    stamped.sort(key=lambda mf: mf[0], reverse=True)
+    files = [f for _, f in stamped]
     if ticket:
         for f in files:
             if _session_mentions(f, ticket):
