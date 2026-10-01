@@ -304,6 +304,37 @@ def _git_change_facts(root, local):
     return changed, published
 
 
+def release_notice(root, published=None):
+    """The plugins whose version differs from the published copy's, as `name old -> new` lines.
+
+    Not a gate: it never fails a push, it says what the push releases.
+    tundra pins each plugin to a commit, so a bumped version pushed here reaches nobody until that pin moves,
+    and the sync that moves it lives in another repository where nothing here can see whether it ran.
+    `published` is injectable for the same reason as in check_version_bumps."""
+    local = plugin_versions(root)
+    if published is None:
+        _, published = _git_change_facts(root, local)
+        if published is None:
+            return []
+    return [f"{plugin} {published.get(plugin) or 'unpublished'} -> {version}"
+            for plugin, version in sorted(local.items()) if version != published.get(plugin)]
+
+
+def print_release_notice(root):
+    lines = release_notice(root)
+    if not lines:
+        return 0
+    print()
+    print("release: this push publishes")
+    for line in lines:
+        print(f"         {line}")
+    print("         tundra pins each plugin to a commit, so nobody receives this until that pin moves.")
+    print("         In a tundra session: python scripts/sync-plugin-sources.py --write, review the diff, push there.")
+    print("         A Claude session that ran this push: message the open tundra session (ListAgents) to do it,")
+    print("         or ask the human to open one if none is open. Do not only report this notice.")
+    return 0
+
+
 GATES = {
     "json": check_json,
     "frontmatter": check_frontmatter,
@@ -322,7 +353,10 @@ def run(root, names=None):
 
 
 def main(argv):
-    root = os.path.abspath(argv[1]) if len(argv) > 1 else os.getcwd()
+    args = [a for a in argv[1:] if a != "--release-notice"]
+    root = os.path.abspath(args[0]) if args else os.getcwd()
+    if "--release-notice" in argv[1:]:
+        return print_release_notice(root)
     results = run(root)
     total = 0
     for name in GATES:

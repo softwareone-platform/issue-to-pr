@@ -37,4 +37,8 @@ ROOT="$(git rev-parse --show-toplevel)"
 
 # and the suites, which until now ran only in CI -- that is, only after the push
 # this hook exists to stop.
-exec "$PY" "$ROOT/tools/run_tests.py" "$ROOT"
+"$PY" "$ROOT/tools/run_tests.py" "$ROOT"
+
+# last, and reached only once every gate and suite has passed, so it appears only for a push that goes ahead.
+# it has to be the hook's final output, because a reader who keeps only the tail would otherwise lose it under the suites.
+exec "$PY" "$ROOT/tools/pre_publish_check.py" --release-notice "$ROOT"
