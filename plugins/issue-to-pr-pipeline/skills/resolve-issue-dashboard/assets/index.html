@@ -120,6 +120,30 @@
     background: rgba(251, 191, 36, 0.1); border: 1px solid rgba(251, 191, 36, 0.4); color: #fcd9a0;
   }
   .warn.show { display: flex; }
+  .header { position: relative; }
+  .builderr { display: none; flex: 1; min-width: 0; margin: 0 14px; align-items: center; gap: 7px;
+    font: inherit; font-size: 12px; color: #f6c1c0; background: none; border: 1px solid transparent;
+    border-radius: 8px; padding: 4px 8px; cursor: pointer; text-align: left; }
+  .builderr:hover, .builderr[aria-expanded=true] { background: rgba(226, 75, 74, 0.08); border-color: rgba(226, 75, 74, 0.35); }
+  .builderr.show { display: inline-flex; }
+  .builderr.show + .spacer { display: none; }
+  .builderr .bd { flex: none; width: 7px; height: 7px; border-radius: 50%; background: var(--error); }
+  .builderr .bt { flex: none; font-weight: 600; }
+  .builderr .bm { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+    font-family: var(--mono); font-size: 11.5px; color: var(--text-secondary); }
+  .builderr .bx { flex: none; font-size: 11px; color: var(--text-tertiary); }
+  .errpanel { display: none; position: absolute; top: calc(100% + 6px); left: 0; right: 0; z-index: 50;
+    max-height: 55vh; overflow: auto; padding: 12px 14px; border-radius: 10px;
+    background: var(--surface-raised); border: 1px solid rgba(226, 75, 74, 0.45);
+    box-shadow: 0 12px 32px rgba(0, 0, 0, 0.55); }
+  .errpanel.show { display: block; }
+  .errpanel .eh { display: flex; align-items: center; gap: 8px; margin-bottom: 8px; font-size: 12px; color: #f6c1c0; font-weight: 600; }
+  .errpanel .eh .sp { flex: 1; }
+  .errpanel button { font: inherit; font-size: 11.5px; color: var(--text-secondary); background: var(--surface-raised-2);
+    border: 1px solid var(--border-subtle); border-radius: 6px; padding: 3px 10px; cursor: pointer; }
+  .errpanel pre { margin: 0; font-family: var(--mono); font-size: 11.5px; line-height: 1.5; color: var(--text-secondary);
+    white-space: pre-wrap; overflow-wrap: anywhere; user-select: text; }
+  .errpanel .em { color: #f6c1c0; margin-bottom: 10px; }
   .warn svg { color: var(--amber); flex: none; margin-top: 1px; }
   .warn .warn-body { flex: 1; min-width: 0; }
   .warn .warn-runs { margin-top: 6px; display: flex; flex-wrap: wrap; gap: 6px; }
@@ -260,8 +284,14 @@
     <div class="header">
       <span class="brand">resolve-issue <span class="dim">progress</span></span>
       <span class="ticket-chip" id="ticket">no ticket</span>
+      <button class="builderr" id="builderr" aria-expanded="false" aria-controls="errpanel"><span class="bd"></span><span class="bt">Server error</span><span class="bm" id="builderr-msg"></span><span class="bx" id="builderr-x">details &#9662;</span></button>
       <span class="spacer"></span>
       <span class="status-pill"><span class="dot" id="status-dot"></span><span id="status-text">idle</span></span>
+    <div class="errpanel" id="errpanel" role="region" aria-label="Server error details">
+      <div class="eh"><span>Server error, retrying every poll</span><span class="sp"></span><button id="errcopy">Copy</button><button id="errclose">Close</button></div>
+      <pre class="em" id="errpanel-msg"></pre>
+      <pre id="errpanel-trace"></pre>
+    </div>
     </div>
 
     <div class="meta" id="meta"></div>
@@ -799,8 +829,32 @@ function renderContention(c) {
 // the SSE payload is { runPanel, selectedId, model, contention } - dispatch to the views.
 // runPanel arrives already grouped, bucketed and ordered by the server:
 // see plan_run_panel in parse_session.py, which is where that logic is tested
+function setErrOpen(open) {
+  document.getElementById("errpanel").classList.toggle("show", open);
+  document.getElementById("builderr").setAttribute("aria-expanded", open ? "true" : "false");
+  document.getElementById("builderr-x").innerHTML = open ? "close &#9652;" : "details &#9662;";
+}
+document.getElementById("builderr").addEventListener("click", function () {
+  setErrOpen(!document.getElementById("errpanel").classList.contains("show"));
+});
+document.getElementById("errclose").addEventListener("click", function () { setErrOpen(false); });
+document.addEventListener("keydown", function (e) { if (e.key === "Escape") { setErrOpen(false); } });
+document.getElementById("errcopy").addEventListener("click", function () {
+  var t = document.getElementById("errpanel-msg").textContent + "\n\n" + document.getElementById("errpanel-trace").textContent;
+  if (navigator.clipboard) { navigator.clipboard.writeText(t).catch(function () {}); }
+});
 function render(p) {
-  if (!p || p.error) { return; }
+  if (!p) { return; }
+  var be = document.getElementById("builderr");
+  if (p.error) {
+    be.classList.add("show");
+    document.getElementById("builderr-msg").textContent = p.error;
+    document.getElementById("errpanel-msg").textContent = p.error;
+    document.getElementById("errpanel-trace").textContent = p.trace || "";
+    return;
+  }
+  be.classList.remove("show");
+  setErrOpen(false);
   renderContention(p.contention);
   renderRuns(p.runPanel, p.selectedId);
   renderModel(p.model || {});

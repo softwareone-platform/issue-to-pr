@@ -26,6 +26,7 @@ import json
 import os
 import sys
 import tempfile
+import traceback
 
 # import the modules under test from the sibling scripts/ dir without installing.
 # serve_progress imports parse_session at load and both live there,
@@ -528,16 +529,115 @@ def test_tick_publishes_the_model():
 
 def test_tick_contains_a_raising_build():
     hub = sp.Hub()
-    sp.tick(_Mgr(error=RuntimeError("x" * 300)), hub)
+    sp.tick(_Mgr(error=RuntimeError("boom")), hub)
     payload = json.loads(hub.snapshot())
     # poller calls tick once a second;
     # an exception escaping here kills that thread,
     # and every viewer then sits on the last good frame forever,
     # with nothing on screen to say the updates stopped
-    check("error payload replaces the model", sorted(payload), ["error"])
-    # truncated, so one enormous traceback cannot become the whole SSE frame
-    check("error truncated to 200", len(payload["error"]), 200)
-    check("error is the message head", payload["error"], "x" * 200)
+    check("error envelope replaces the model", sorted(payload), ["error", "trace"])
+    # the stand-in's build() lives in tests/, not scripts/,
+    # so the innermost frame of the dashboard's own code is tick itself
+    check("error head names type, own frame and message",
+          payload["error"], "RuntimeError in tick: boom")
+
+
+# ----- _raising_function / error_envelope: own frame named, both caps held ----
+
+def _compiled(src, filename):
+    """Exec src as if it lived at filename, so a traceback through it carries that filename.
+    The frame's file never has to exist: only the name the frame records is read."""
+    ns = {}
+    exec(compile(src, filename, "exec"), ns)
+    return ns
+
+
+def _raise_through(inner_file, msg="inner"):
+    """Two own-code frames (compiled under scripts/), own_outer calling own_step,
+    which calls into a frame compiled under inner_file that raises.
+    Returns the caught exception, whose traceback holds all three.
+    Two own frames because production has several (tick -> build -> ...),
+    and with only one the outermost and the innermost own frame are the same frame."""
+    inner = _compiled("def inner_raise(msg):\n    raise ValueError(msg)\n", inner_file)
+    own = _compiled("def own_outer(f, msg):\n    own_step(f, msg)\n\n"
+                    "def own_step(f, msg):\n    f(msg)\n",
+                    os.path.join(sp.HERE, "fake_own_step.py"))
+    try:
+        own["own_outer"](inner["inner_raise"], msg)
+    except ValueError as exc:
+        return exc
+    return None
+
+
+def test_raising_function_names_the_innermost_own_frame():
+    # the raising frame lives in tests/, standing in for the standard library:
+    # it is the innermost frame overall but says nothing about which dashboard step failed
+    exc = _raise_through(os.path.join(_HERE, "fake_lib.py"))
+    # the precondition: two own frames, or picking the outermost one could not be told apart
+    own = [f.name for f in traceback.extract_tb(exc.__traceback__)
+           if os.path.dirname(os.path.abspath(f.filename)) == sp.HERE]
+    check("chain carries two own frames", own, ["own_outer", "own_step"])
+    # own_outer is what taking own[0] instead of own[-1] would report,
+    # the way production would then always blame tick
+    check("innermost own frame named", sp._raising_function(exc), "own_step")
+
+
+def test_raising_function_skips_pseudo_filenames():
+    # a pseudo filename only resolves into scripts/ when the server runs from there,
+    # so the cwd is what makes "<frozen fake>" look like the dashboard's own file.
+    # a synthetic one, because which stdlib modules are frozen varies by Python version
+    old = os.getcwd()
+    os.chdir(sp.HERE)
+    try:
+        exc = _raise_through("<frozen fake>")
+        # the precondition: without the "<" skip, this frame would count as own code
+        check("pseudo filename resolves into scripts/",
+              os.path.dirname(os.path.abspath("<frozen fake>")) == sp.HERE, True)
+        check("pseudo frame skipped for the own caller", sp._raising_function(exc), "own_step")
+    finally:
+        os.chdir(old)
+
+
+def test_raising_function_falls_back_to_the_innermost_frame():
+    # no frame is the dashboard's own, so the innermost is still better than no name at all
+    lib = _compiled("def lib_raise():\n    raise ValueError('x')\n",
+                    os.path.join(_HERE, "fake_lib.py"))
+    try:
+        lib["lib_raise"]()
+    except ValueError as exc:
+        caught = exc
+    check("no own frame names the innermost", sp._raising_function(caught), "lib_raise")
+
+    # an exception that was never raised has no traceback, so there is no frame to name
+    # and the head drops the " in <fn>" part rather than printing "in None"
+    never = ValueError("never raised")
+    check("no traceback names nothing", sp._raising_function(never), None)
+    check("no traceback head", sp.error_envelope(never)["error"], "ValueError: never raised")
+
+
+def test_error_envelope_keeps_the_trace_tail():
+    marker = "END-OF-TRACE-7f3a"
+    exc = _raise_through(os.path.join(_HERE, "fake_lib.py"), "x" * (sp.TRACE_MAX + 100) + marker)
+    trace = sp.error_envelope(exc)["trace"]
+    # the innermost frames and the message sit at the bottom of a traceback,
+    # so a cut from the top keeps what says what broke
+    check("trace capped", len(trace), sp.TRACE_MAX)
+    check("trace keeps its tail", trace.endswith(marker + "\n"), True)
+    check("trace lost its head", trace.startswith("Traceback (most recent call last)"), False)
+
+
+def test_error_envelope_caps_both_fields():
+    msg = "y" * (sp.TRACE_MAX + 100)
+    env = sp.error_envelope(_raise_through(os.path.join(_HERE, "fake_lib.py"), msg))
+    head = "ValueError in own_step: "
+    # the envelope is republished every poll, so an unbounded message would ride along on every frame
+    check("error capped", len(env["error"]), sp.ERROR_MAX)
+    # cut from the end, so the type and the step that failed survive
+    check("error keeps its head", env["error"][:len(head)], head)
+    # compared as a bool, so a failure prints no thousand-character repr
+    check("error cut from the end",
+          env["error"][len(head):] == msg[:sp.ERROR_MAX - len(head)], True)
+    check("trace capped alongside", len(env["trace"]), sp.TRACE_MAX)
 
 
 _TESTS = (test_archived_run_is_not_tailed, test_changed_start_rebuilds_the_collector,
@@ -551,7 +651,12 @@ _TESTS = (test_archived_run_is_not_tailed, test_changed_start_rebuilds_the_colle
           test_set_selected_rejects_unresolvable,
           test_set_selected_only_resets_on_a_real_change,
           test_plugin_version, test_tick_publishes_the_model,
-          test_tick_contains_a_raising_build)
+          test_tick_contains_a_raising_build,
+          test_raising_function_names_the_innermost_own_frame,
+          test_raising_function_skips_pseudo_filenames,
+          test_raising_function_falls_back_to_the_innermost_frame,
+          test_error_envelope_keeps_the_trace_tail,
+          test_error_envelope_caps_both_fields)
 
 
 def _run_all():

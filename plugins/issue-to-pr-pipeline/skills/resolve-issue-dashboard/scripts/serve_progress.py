@@ -15,12 +15,14 @@ import os
 import queue
 import threading
 import time
+import traceback
 import webbrowser
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from urllib.parse import urlparse, parse_qs
 
 import parse_session as ps
 
+HERE = os.path.dirname(os.path.abspath(__file__))
 ASSETS = os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "assets")
 PLUGIN_JSON = os.path.normpath(os.path.join(
     os.path.dirname(os.path.abspath(__file__)),
@@ -223,11 +225,36 @@ class RunManager:
         }
 
 
+# caps on the error envelope, which is republished every poll:
+# the message is shown whole, so it gets room for a long path,
+# while a deep traceback is cut from the top because its innermost frames are the ones that say what broke
+ERROR_MAX = 1000
+TRACE_MAX = 8000
+
+
+def _raising_function(exc):
+    """The innermost frame of this dashboard's own code, which names the step that failed.
+    The very innermost is usually the standard library (`getmtime`), which says nothing about where to look."""
+    frames = traceback.extract_tb(exc.__traceback__)
+    # a pseudo filename such as `<frozen genericpath>` resolves against the working directory,
+    # so a server started from scripts/ would otherwise count the standard library as its own
+    own = [f for f in frames
+           if not f.filename.startswith("<") and os.path.dirname(os.path.abspath(f.filename)) == HERE]
+    return (own or frames)[-1].name if frames else None
+
+
+def error_envelope(exc):
+    where = _raising_function(exc)
+    head = type(exc).__name__ + (" in " + where if where else "") + ": " + str(exc)
+    trace = "".join(traceback.format_exception(type(exc), exc, exc.__traceback__))
+    return {"error": head[:ERROR_MAX], "trace": trace[-TRACE_MAX:]}
+
+
 def tick(mgr, hub):
     try:
         hub.publish(json.dumps(mgr.build(), ensure_ascii=True))
     except Exception as exc:  # never let a transient read error kill the loop
-        hub.publish(json.dumps({"error": str(exc)[:200]}, ensure_ascii=True))
+        hub.publish(json.dumps(error_envelope(exc), ensure_ascii=True))
 
 
 def poller(mgr, hub, stop, server):
