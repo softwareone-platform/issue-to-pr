@@ -1005,6 +1005,25 @@ def _unstatable(*paths):
         os.path.getmtime = real
 
 
+@contextlib.contextmanager
+def _listed_in_order(pattern, paths):
+    """Make glob.glob return `paths` in exactly this order for `pattern` and delegate every other pattern, restored in a finally.
+    The real listing order is alphabetical on NTFS and hash order on Linux,
+    so a check that depends on which entry comes first has to fix the order itself to mean the same on both."""
+    real = ps.glob.glob
+
+    def listing(p, *args, **kwargs):
+        if p == pattern:
+            return list(paths)
+        return real(p, *args, **kwargs)
+
+    ps.glob.glob = listing
+    try:
+        yield
+    finally:
+        ps.glob.glob = real
+
+
 def test_live_session_skips_unstatable():
     d = tempfile.mkdtemp()
     # the unreadable one is the newest and the only one naming the ticket,
@@ -1062,9 +1081,15 @@ def test_project_dir_fallback_skips_unstatable():
     os.utime(older, (1000, 1000))
     # a cwd whose encoding names none of the dirs, so only the newest-session fallback can answer
     cwd = os.path.join(tempfile.mkdtemp(), "no-such-repo")
-    with _faked(projects_root=lambda: root):
+    # the older readable dir is listed ahead of the newer one,
+    # so taking the first dir with any readable session picks the wrong one
+    pattern = os.path.join(root, "*")
+    order = [dirs["holds-bad"], dirs["holds-older"], dirs["holds-newer"]]
+    with _faked(projects_root=lambda: root), _listed_in_order(pattern, order):
+        check("fixture: listing puts the older readable dir first", ps.glob.glob(pattern), order)
         check("fixture: bad's dir wins while readable", ps.find_project_dir(cwd), dirs["holds-bad"])
-        # restore the bare os.path.getmtime in the fallback loop and this raises
+        # restore the bare os.path.getmtime in the fallback loop and this raises,
+        # and stop at the first readable dir instead of comparing mtimes and this returns holds-older
         with _unstatable(bad):
             check("fallback skips the unstatable session, newest readable wins",
                   ps.find_project_dir(cwd), dirs["holds-newer"])
