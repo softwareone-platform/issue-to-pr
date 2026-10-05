@@ -40,8 +40,10 @@ def write(path, text):
 
 def build_fixture(root, *, skill_name="demo-skill", description="A demo skill.",
                   plugin_version="1.0.0",
-                  manifest_json=None, frontmatter=None, extra_doc=None):
+                  manifest_json=None, frontmatter=None, extra_doc=None, files=None):
     """A minimal but valid plugin repository, with one seam per defect to plant."""
+    for rel, text in (files or {}).items():
+        write(os.path.join(root, rel), text)
     plugin = "demo-plugin"
     write(os.path.join(root, "plugins", plugin, ".claude-plugin", "plugin.json"),
           manifest_json if manifest_json is not None
@@ -111,6 +113,38 @@ def restore_env(name, saved):
         os.environ[name] = saved
 
 
+# a root README with one of everything the translation gate compares,
+# and its translation built from parts so each case can break exactly one of them.
+README_SOURCE = (
+    "# Demo\n\n" + check.SWITCHER + "\n\n"
+    "Read [the guide](docs/guide.md), then [install](#install).\n\n"
+    "## Install\n\n```\n/plugin install demo@market\n```\n\n"
+    "## Notes\n\n| a | b |\n|---|---|\n| 1 | 2 |\n"
+)
+TRANSLATED = {
+    "switcher": check.SWITCHER,
+    "links": "閱讀 [指南](docs/guide.md)，然後 [安裝](#install)。",
+    "install": '<a id="install"></a>\n## 安裝',
+    "code": "```\n/plugin install demo@market\n```",
+    "notes": "## 備註",
+    "table": "| a | b |\n|---|---|\n| 1 | 2 |",
+}
+
+
+def translation(source=README_SOURCE, **override):
+    parts = {**TRANSLATED, **override}
+    mark = "<!-- translated from README.md, source sha256 %s; see CLAUDE.md -->" % check.source_digest(source)
+    return "\n\n".join([mark + "\n# Demo", parts["switcher"], parts["links"], parts["install"],
+                        parts["code"], parts["notes"], parts["table"]]) + "\n"
+
+
+def translated_repo(source=README_SOURCE, zh_tw=None, zh_cn=None):
+    files = {"README.md": source, "README.zh-TW.md": zh_tw if zh_tw is not None else translation(source)}
+    if zh_cn is not False:
+        files["README.zh-CN.md"] = zh_cn if zh_cn is not None else translation(source)
+    return {"files": files}
+
+
 def case(tmp, label, expected_gate, **kwargs):
     root = os.path.join(tmp, label)
     build_fixture(root, **kwargs)
@@ -157,6 +191,38 @@ def main():
 
         case(tmp, "leak-ticket", "leaks",
              extra_doc="Fixes " + "PROJ" + "-" + "4821" + " in the billing path.\n")
+
+        # each translation defect below breaks one thing the gate compares, and only that one,
+        # so deleting any single comparison from the gate leaves its case unreported.
+        case(tmp, "translations-current", None, **translated_repo())
+        # a Windows checkout turns the README's line endings into CRLF while CI reads LF,
+        # and both must agree that a translation made from either is current
+        crlf = translated_repo()
+        crlf["files"]["README.md"] = README_SOURCE.replace("\n", "\r\n")
+        case(tmp, "translations-current-on-crlf-checkout", None, **crlf)
+        case(tmp, "translation-stale", "translations",
+             **translated_repo(zh_tw=translation(source=README_SOURCE + "\nA new paragraph.\n")))
+        case(tmp, "translation-missing", "translations", **translated_repo(zh_cn=False))
+        case(tmp, "translation-code-changed", "translations",
+             **translated_repo(zh_tw=translation(code="```\n/plugin install 示範@market\n```")))
+        case(tmp, "translation-link-dropped", "translations",
+             **translated_repo(zh_tw=translation(links="閱讀指南，然後 [安裝](#install)。")))
+        case(tmp, "translation-heading-dropped", "translations",
+             **translated_repo(zh_tw=translation(notes="備註")))
+        case(tmp, "translation-table-row-dropped", "translations",
+             **translated_repo(zh_tw=translation(table="| a | b |\n|---|---|")))
+        case(tmp, "translation-anchor-broken", "translations",
+             **translated_repo(zh_tw=translation(install="## 安裝")))
+        # the same three links in another order: only the switcher comparison can see it
+        case(tmp, "translation-switcher-reordered", "translations",
+             **translated_repo(zh_tw=translation(
+                 switcher="[繁體中文](README.zh-TW.md) | [English](README.md) | [简体中文](README.zh-CN.md)")))
+        # the source's own broken anchor, with translations that carry a matching explicit one
+        broken_source = README_SOURCE + "\nSee [later](#later).\n"
+        later = translation(source=broken_source, table="| a | b |\n|---|---|\n| 1 | 2 |\n\n"
+                            '<a id="later"></a>見 [稍後](#later)。')
+        case(tmp, "readme-anchor-broken", "translations",
+             **translated_repo(source=broken_source, zh_tw=later, zh_cn=later))
 
         print("\nVersion gate (through the registry, against a real git history):")
         # routed through GATES rather than the function, because the first version
@@ -305,7 +371,7 @@ def main():
             check.run = real_run
 
         print("\nGate coverage:")
-        covered = {"json", "frontmatter", "descriptions", "leaks", "versions"}
+        covered = {"json", "frontmatter", "descriptions", "leaks", "versions", "translations"}
         ok("every gate owns at least one known-answer case",
            covered == set(check.GATES), f"uncovered: {sorted(set(check.GATES) - covered)}")
 

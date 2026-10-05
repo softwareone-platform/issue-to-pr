@@ -11,6 +11,7 @@ Standard library only, to match the dashboard's server and for the reason the
 repo gives there: a contributor should need nothing installed to run it.
 """
 
+import hashlib
 import json
 import os
 import re
@@ -263,6 +264,98 @@ def check_leaks(root):
     return failures
 
 
+# ----- translations of the root README ----------------------------------------
+
+README = "README.md"
+TRANSLATIONS = ("README.zh-TW.md", "README.zh-CN.md")
+# the same line in every language, so a reader can switch from any of them,
+# and so it can be compared rather than translated.
+SWITCHER = "[English](README.md) | [繁體中文](README.zh-TW.md) | [简体中文](README.zh-CN.md)"
+SOURCE_MARK_RE = re.compile(r"<!-- translated from README\.md, source sha256 ([0-9a-f]{64})")
+FENCE_RE = re.compile(r"^```.*?^```[ \t]*$", re.MULTILINE | re.DOTALL)
+LINK_RE = re.compile(r"\]\(([^)\s]+)\)")
+HEADING_RE = re.compile(r"^(#{1,6})[ \t]+(.+?)[ \t]*$", re.MULTILINE)
+TABLE_ROW_RE = re.compile(r"^\|", re.MULTILINE)
+ANCHOR_RE = re.compile(r"<a\s+(?:id|name)=\"([^\"]+)\"")
+
+
+def source_digest(text):
+    """What a translation records as its source: a digest of the README's text as `_read` returns it.
+
+    `_read` opens in text mode, which already turns a Windows checkout's CRLF into LF,
+    so a Windows clone and a Linux CI runner agree on the digest without normalising here."""
+    return hashlib.sha256(text.encode("utf-8")).hexdigest()
+
+
+def _slug(heading):
+    # the anchor GitHub derives from a heading: lower-cased, punctuation dropped, spaces to hyphens.
+    # \w keeps CJK letters, which is what makes a translated heading's anchor differ from the English one.
+    return re.sub(r"[^\w\- ]", "", heading.lower()).replace(" ", "-")
+
+
+def _shape(text):
+    """The parts of a README that must survive translation unchanged, and its outline."""
+    fences = FENCE_RE.findall(text)
+    prose = FENCE_RE.sub("", text)
+    return {
+        "code blocks": fences,
+        "link targets": sorted(LINK_RE.findall(prose)),
+        "heading levels": [len(h) for h, _ in HEADING_RE.findall(prose)],
+        "table rows": len(TABLE_ROW_RE.findall(prose)),
+    }
+
+
+def _broken_anchors(text):
+    prose = FENCE_RE.sub("", text)
+    targets = {_slug(title) for _, title in HEADING_RE.findall(prose)} | set(ANCHOR_RE.findall(prose))
+    return sorted({link[1:] for link in LINK_RE.findall(prose) if link.startswith("#")} - targets)
+
+
+def check_translations(root):
+    """Each translation of the root README is current, complete, and still links where it should.
+
+    Three things are mechanical and gated here: the translation was made from the README as it
+    stands (its recorded source digest), nothing that must not be translated changed or went
+    missing (code blocks, link targets, outline), and every in-page link lands on an anchor.
+    Whether the translation means what the README means is not mechanical; CLAUDE.md says how
+    that is checked."""
+    source_path = os.path.join(root, README)
+    present = [t for t in TRANSLATIONS if os.path.exists(os.path.join(root, t))]
+    if not os.path.exists(source_path):
+        return []
+    source = _read(source_path)
+    if SWITCHER not in source.splitlines() and not present:
+        return []
+    failures = []
+    # no check that the README itself carries the switcher: with a translation present, its
+    # missing links already differ from the translation's, and with none present the gate is off.
+    broken = _broken_anchors(source)
+    if broken:
+        failures.append(f"{README}: links to missing anchors {broken}")
+    digest = source_digest(source)
+    expected = _shape(source)
+    for rel in TRANSLATIONS:
+        path = os.path.join(root, rel)
+        if rel not in present:
+            failures.append(f"{rel}: missing, but {README} offers it")
+            continue
+        text = _read(path)
+        mark = SOURCE_MARK_RE.search(text.split("\n", 1)[0])
+        if not mark or mark.group(1) != digest:
+            failures.append(f"{rel}: stale, translated from another {README} "
+                            f"(current source sha256 {digest}); re-translate the changed parts")
+        if SWITCHER not in text.splitlines():
+            failures.append(f"{rel}: lacks the language switcher line")
+        shape = _shape(text)
+        for part, value in expected.items():
+            if shape[part] != value:
+                failures.append(f"{rel}: its {part} differ from {README}'s")
+        broken = _broken_anchors(text)
+        if broken:
+            failures.append(f"{rel}: links to missing anchors {broken}")
+    return failures
+
+
 # ----- git facts for the version gate -----------------------------------------
 
 def _git_change_facts(root, local):
@@ -341,6 +434,7 @@ GATES = {
     "descriptions": check_descriptions,
     "versions": check_version_bumps,
     "leaks": check_leaks,
+    "translations": check_translations,
 }
 
 

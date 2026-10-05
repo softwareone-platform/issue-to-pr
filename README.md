@@ -1,5 +1,7 @@
 # issue-to-pr
 
+[English](README.md) | [繁體中文](README.zh-TW.md) | [简体中文](README.zh-CN.md)
+
 [![CI](https://img.shields.io/github/actions/workflow/status/softwareone-platform/issue-to-pr/checks.yml?branch=main&label=CI)](https://github.com/softwareone-platform/issue-to-pr/actions/workflows/checks.yml) [![Claude Code](https://img.shields.io/badge/Claude%20Code-2.1.143%2B-blue)](#install) [![License: Apache-2.0](https://img.shields.io/github/license/softwareone-platform/issue-to-pr)](LICENSE)
 
 A set of [Claude Code](https://claude.com/claude-code) plugins — skills and subagents that take a ticket from diagnosis to a reviewed pull request, plus the review, test-authoring, and housekeeping tools that support that flow.
