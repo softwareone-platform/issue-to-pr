@@ -264,13 +264,15 @@ def check_leaks(root):
     return failures
 
 
-# ----- translations of the root README ----------------------------------------
+# ----- translations of READMEs -----------------------------------------------
 
 README = "README.md"
-TRANSLATIONS = ("README.zh-TW.md", "README.zh-CN.md")
+LANGS = ("zh-TW", "zh-CN")
 # the same line in every language, so a reader can switch from any of them,
-# and so it can be compared rather than translated.
+# and so it can be compared rather than translated. the links are siblings,
+# so one line serves every README that is translated.
 SWITCHER = "[English](README.md) | [繁體中文](README.zh-TW.md) | [简体中文](README.zh-CN.md)"
+TRANSLATION_FILE_RE = re.compile(r"(^|/)README\.(?:" + "|".join(map(re.escape, LANGS)) + r")\.md$")
 SOURCE_MARK_RE = re.compile(r"<!-- translated from README\.md, source sha256 ([0-9a-f]{64})")
 FENCE_RE = re.compile(r"^```.*?^```[ \t]*$", re.MULTILINE | re.DOTALL)
 LINK_RE = re.compile(r"\]\(([^)\s]+)\)")
@@ -293,13 +295,23 @@ def _slug(heading):
     return re.sub(r"[^\w\- ]", "", heading.lower()).replace(" ", "-")
 
 
-def _shape(text):
+def _prose(text):
+    # the switcher is compared as a whole line on its own, so its links stay out of the link comparison.
+    return "\n".join(line for line in FENCE_RE.sub("", text).split("\n") if line != SWITCHER)
+
+
+def _english_target(link, lang):
+    """A translation's link as the English README writes it: a translated README stands for its source."""
+    return re.sub(r"(^|/)README\." + re.escape(lang) + r"\.md(?=#|$)", r"\1README.md", link)
+
+
+def _shape(text, lang=None):
     """The parts of a README that must survive translation unchanged, and its outline."""
-    fences = FENCE_RE.findall(text)
-    prose = FENCE_RE.sub("", text)
+    prose = _prose(text)
+    links = LINK_RE.findall(prose)
     return {
-        "code blocks": fences,
-        "link targets": sorted(LINK_RE.findall(prose)),
+        "code blocks": FENCE_RE.findall(text),
+        "link targets": sorted(_english_target(link, lang) if lang else link for link in links),
         "heading levels": [len(h) for h, _ in HEADING_RE.findall(prose)],
         "table rows": len(TABLE_ROW_RE.findall(prose)),
     }
@@ -311,48 +323,75 @@ def _broken_anchors(text):
     return sorted({link[1:] for link in LINK_RE.findall(prose) if link.startswith("#")} - targets)
 
 
-def check_translations(root):
-    """Each translation of the root README is current, complete, and still links where it should.
+def _untranslated_links(root, rel, text, lang):
+    """Links from a translation into an English README that has a translation in the same language.
 
-    Three things are mechanical and gated here: the translation was made from the README as it
-    stands (its recorded source digest), nothing that must not be translated changed or went
-    missing (code blocks, link targets, outline), and every in-page link lands on an anchor.
-    Whether the translation means what the README means is not mechanical; CLAUDE.md says how
-    that is checked."""
-    source_path = os.path.join(root, README)
-    present = [t for t in TRANSLATIONS if os.path.exists(os.path.join(root, t))]
-    if not os.path.exists(source_path):
-        return []
-    source = _read(source_path)
-    if SWITCHER not in source.splitlines() and not present:
-        return []
-    failures = []
-    # no check that the README itself carries the switcher: with a translation present, its
-    # missing links already differ from the translation's, and with none present the gate is off.
-    broken = _broken_anchors(source)
-    if broken:
-        failures.append(f"{README}: links to missing anchors {broken}")
-    digest = source_digest(source)
-    expected = _shape(source)
-    for rel in TRANSLATIONS:
-        path = os.path.join(root, rel)
-        if rel not in present:
-            failures.append(f"{rel}: missing, but {README} offers it")
+    A reader who chose a language should stay in it while one exists."""
+    here = os.path.dirname(rel)
+    found = []
+    for link in LINK_RE.findall(_prose(text)):
+        path = link.split("#", 1)[0]
+        if "://" in link or not path or os.path.basename(path) != README:
             continue
-        text = _read(path)
-        mark = SOURCE_MARK_RE.search(text.split("\n", 1)[0])
-        if not mark or mark.group(1) != digest:
-            failures.append(f"{rel}: stale, translated from another {README} "
-                            f"(current source sha256 {digest}); re-translate the changed parts")
-        if SWITCHER not in text.splitlines():
-            failures.append(f"{rel}: lacks the language switcher line")
-        shape = _shape(text)
-        for part, value in expected.items():
-            if shape[part] != value:
-                failures.append(f"{rel}: its {part} differ from {README}'s")
-        broken = _broken_anchors(text)
+        target = os.path.normpath(os.path.join(here, path))
+        if os.path.exists(os.path.join(root, os.path.dirname(target), f"README.{lang}.md")):
+            found.append(link)
+    return found
+
+
+def _translated_sources(root):
+    """Every README.md that offers translations: one of its siblings exists, or it carries the switcher."""
+    for rel in _tracked_files(root):
+        if os.path.basename(rel) != README or not os.path.exists(os.path.join(root, rel)):
+            continue
+        here = os.path.dirname(rel)
+        siblings = [os.path.join(root, here, f"README.{lang}.md") for lang in LANGS]
+        if any(os.path.exists(s) for s in siblings) or SWITCHER in _read(os.path.join(root, rel)).splitlines():
+            yield rel
+
+
+def check_translations(root):
+    """Each translated README is current, complete, and still links where it should.
+
+    Three things are mechanical and gated here: a translation was made from its README as it
+    stands (its recorded source digest), nothing that must not be translated changed or went
+    missing (code blocks, link targets, outline), and every in-page link lands on an anchor, while
+    a link into another translated README goes to the same language. Whether the translation means
+    what the README means is not mechanical; CLAUDE.md says how that is checked."""
+    failures = []
+    for source_rel in _translated_sources(root):
+        source = _read(os.path.join(root, source_rel))
+        here = os.path.dirname(source_rel)
+        # no check that the README itself carries the switcher: with a translation present, its
+        # missing links already differ from the translation's, and with none present the gate is off.
+        broken = _broken_anchors(source)
         if broken:
-            failures.append(f"{rel}: links to missing anchors {broken}")
+            failures.append(f"{source_rel}: links to missing anchors {broken}")
+        digest = source_digest(source)
+        expected = _shape(source)
+        for lang in LANGS:
+            rel = "/".join(p for p in (here, f"README.{lang}.md") if p)
+            path = os.path.join(root, rel)
+            if not os.path.exists(path):
+                failures.append(f"{rel}: missing, but {source_rel} offers it")
+                continue
+            text = _read(path)
+            mark = SOURCE_MARK_RE.search(text.split("\n", 1)[0])
+            if not mark or mark.group(1) != digest:
+                failures.append(f"{rel}: stale, translated from another {source_rel} "
+                                f"(current source sha256 {digest}); re-translate the changed parts")
+            if SWITCHER not in text.splitlines():
+                failures.append(f"{rel}: lacks the language switcher line")
+            shape = _shape(text, lang)
+            for part, value in expected.items():
+                if shape[part] != value:
+                    failures.append(f"{rel}: its {part} differ from {source_rel}'s")
+            broken = _broken_anchors(text)
+            if broken:
+                failures.append(f"{rel}: links to missing anchors {broken}")
+            english = _untranslated_links(root, rel, text, lang)
+            if english:
+                failures.append(f"{rel}: links to English READMEs that have a {lang} translation {english}")
     return failures
 
 
@@ -385,7 +424,10 @@ def _git_change_facts(root, local):
         diff = subprocess.run(
             ["git", "diff", "--name-only", ref, "HEAD", "--", f"{PLUGINS}/{plugin}"],
             cwd=root, capture_output=True, text=True)
-        changed[plugin] = bool(diff.stdout.strip())
+        # a README translation is read by nothing at runtime, so it alone ships nothing a
+        # consumer would see, and a version bump for it would be a release with no change in it.
+        names = [n for n in diff.stdout.splitlines() if n and not TRANSLATION_FILE_RE.search(n)]
+        changed[plugin] = bool(names)
         show = subprocess.run(
             ["git", "show", f"{ref}:{PLUGINS}/{plugin}/.claude-plugin/plugin.json"],
             cwd=root, capture_output=True, text=True)

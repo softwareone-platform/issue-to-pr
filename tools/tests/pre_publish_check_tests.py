@@ -145,6 +145,25 @@ def translated_repo(source=README_SOURCE, zh_tw=None, zh_cn=None):
     return {"files": files}
 
 
+# a README below the root, translated too, linking back up to the root README
+NESTED = "plugins/demo-plugin/"
+NESTED_SOURCE = "# Demo plugin\n\n" + check.SWITCHER + "\n\nSee [the overview](../../README.md).\n"
+
+
+def nested_translation(lang, source=NESTED_SOURCE, root_link=None):
+    mark = "<!-- translated from README.md, source sha256 %s; see CLAUDE.md -->" % check.source_digest(source)
+    link = root_link or "../../README.%s.md" % lang
+    return mark + "\n# Demo plugin\n\n" + check.SWITCHER + "\n\n見 [概覽](%s)。\n" % link
+
+
+def nested_repo(zh_tw=None):
+    files = translated_repo()["files"]
+    files[NESTED + "README.md"] = NESTED_SOURCE
+    files[NESTED + "README.zh-TW.md"] = zh_tw if zh_tw is not None else nested_translation("zh-TW")
+    files[NESTED + "README.zh-CN.md"] = nested_translation("zh-CN")
+    return {"files": files}
+
+
 def case(tmp, label, expected_gate, **kwargs):
     root = os.path.join(tmp, label)
     build_fixture(root, **kwargs)
@@ -213,16 +232,24 @@ def main():
              **translated_repo(zh_tw=translation(table="| a | b |\n|---|---|")))
         case(tmp, "translation-anchor-broken", "translations",
              **translated_repo(zh_tw=translation(install="## 安裝")))
-        # the same three links in another order: only the switcher comparison can see it
-        case(tmp, "translation-switcher-reordered", "translations",
-             **translated_repo(zh_tw=translation(
-                 switcher="[繁體中文](README.zh-TW.md) | [English](README.md) | [简体中文](README.zh-CN.md)")))
+        # the switcher's links stay out of the link comparison, so a translation that drops the
+        # whole line is visible to the switcher comparison alone
+        case(tmp, "translation-switcher-missing", "translations",
+             **translated_repo(zh_tw=translation(switcher="")))
         # the source's own broken anchor, with translations that carry a matching explicit one
         broken_source = README_SOURCE + "\nSee [later](#later).\n"
         later = translation(source=broken_source, table="| a | b |\n|---|---|\n| 1 | 2 |\n\n"
                             '<a id="later"></a>見 [稍後](#later)。')
         case(tmp, "readme-anchor-broken", "translations",
              **translated_repo(source=broken_source, zh_tw=later, zh_cn=later))
+        # a README below the root is held to the same rules, and a translated link into another
+        # translated README counts as the English link it stands for
+        case(tmp, "nested-translations-current", None, **nested_repo())
+        case(tmp, "nested-translation-stale", "translations",
+             **nested_repo(zh_tw=nested_translation("zh-TW", source=NESTED_SOURCE + "\nMore.\n")))
+        # the English root README, linked from a translation while the root has one in that language
+        case(tmp, "translation-links-english-readme", "translations",
+             **nested_repo(zh_tw=nested_translation("zh-TW", root_link="../../README.md")))
 
         print("\nVersion gate (through the registry, against a real git history):")
         # routed through GATES rather than the function, because the first version
@@ -246,6 +273,19 @@ def main():
         else:
             ok("real history: git unavailable, gate skipped rather than failed",
                gate(git_root) == [])
+
+        # a README translation inside a plugin is read by nothing at runtime, so adding one alone
+        # must not demand a release, while the same plugin's own README still does
+        translated_root = build_fixture(os.path.join(tmp, "versions-translation"))
+        if init_git_history(translated_root):
+            write(os.path.join(translated_root, "plugins", "demo-plugin", "README.zh-TW.md"), "# 示範\n")
+            git(translated_root, "add", "-A")
+            git(translated_root, "commit", "-q", "-m", "translation")
+            ok("real history: a translation alone needs no bump", gate(translated_root) == [])
+            write(os.path.join(translated_root, "plugins", "demo-plugin", "README.md"), "# Demo\n")
+            git(translated_root, "add", "-A")
+            git(translated_root, "commit", "-q", "-m", "readme")
+            ok("real history: the plugin's own README still needs one", gate(translated_root) != [])
 
         print("\nA declined gate must say so (a silent skip reads as a pass):")
         os.environ["ITPR_PUBLISHED_REF"] = "refs/heads/deliberately-absent"
