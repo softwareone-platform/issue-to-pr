@@ -31,7 +31,7 @@ DESCRIPTION_MAX = 1024
 ALLOWED_HOSTS = {
     "github.com", "docs.github.com", "cli.github.com",
     "claude.com", "www.python.org", "www.npmjs.com",
-    "learn.microsoft.com", "www.apache.org",
+    "learn.microsoft.com", "www.apache.org", "img.shields.io",
     "acme.atlassian.net", "127.0.0.1", "localhost",
 }
 
