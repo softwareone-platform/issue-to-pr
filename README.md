@@ -1,6 +1,6 @@
 # issue-to-pr
 
-[![checks](https://github.com/softwareone-platform/issue-to-pr/actions/workflows/checks.yml/badge.svg)](https://github.com/softwareone-platform/issue-to-pr/actions/workflows/checks.yml) [![License: Apache-2.0](https://img.shields.io/github/license/softwareone-platform/issue-to-pr)](LICENSE)
+[![CI](https://img.shields.io/github/actions/workflow/status/softwareone-platform/issue-to-pr/checks.yml?branch=main&label=CI)](https://github.com/softwareone-platform/issue-to-pr/actions/workflows/checks.yml) [![Claude Code](https://img.shields.io/badge/Claude%20Code-2.1.143%2B-blue)](#install) [![License: Apache-2.0](https://img.shields.io/github/license/softwareone-platform/issue-to-pr)](LICENSE)
 
 A set of [Claude Code](https://claude.com/claude-code) plugins — skills and subagents that take a ticket from diagnosis to a reviewed pull request, plus the review, test-authoring, and housekeeping tools that support that flow.
 
@@ -10,7 +10,7 @@ A set of [Claude Code](https://claude.com/claude-code) plugins — skills and su
 
 ## Install
 
-Requires Claude Code with plugin support (a recent version — dependency auto-install and enable-time dependency handling need v2.1.143 or later; on older versions use the explicit per-plugin list below).
+Requires Claude Code with plugin support. Dependency auto-install and enable-time dependency handling need the version in the Claude Code badge above; on older versions use the explicit per-plugin list below.
 
 These plugins are published through the [`tundra`](https://github.com/softwareone-platform/tundra) marketplace; this repository holds their source and is not a marketplace itself.
 
@@ -21,7 +21,7 @@ Install `issue-to-pr-pipeline` — it declares the other three plugins as depend
 /plugin install issue-to-pr-pipeline@tundra
 ```
 
-Alternatively — on older Claude Code (before v2.1.143, where dependency auto-install is unavailable) or when you want only some of the plugins — install each explicitly:
+Alternatively — on Claude Code older than the badge shows, where dependency auto-install is unavailable, or when you want only some of the plugins — install each explicitly:
 
 ```
 /plugin marketplace add https://github.com/softwareone-platform/tundra.git
