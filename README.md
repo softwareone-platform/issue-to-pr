@@ -1,5 +1,7 @@
 # issue-to-pr
 
+[![checks](https://github.com/softwareone-platform/issue-to-pr/actions/workflows/checks.yml/badge.svg)](https://github.com/softwareone-platform/issue-to-pr/actions/workflows/checks.yml) [![License: Apache-2.0](https://img.shields.io/github/license/softwareone-platform/issue-to-pr)](LICENSE)
+
 A set of [Claude Code](https://claude.com/claude-code) plugins — skills and subagents that take a ticket from diagnosis to a reviewed pull request, plus the review, test-authoring, and housekeeping tools that support that flow.
 
 ![The resolve-issue-dashboard visualising a run mid-pipeline](docs/resolve-issue-dashboard.png)
