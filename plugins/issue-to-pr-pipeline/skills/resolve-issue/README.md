@@ -31,7 +31,7 @@ flowchart TD
         bSecurityReview --> bCodeRisk["b-code-risk git fetch → review-code-risk<br>(diff + issue + plan.md;<br>verifier = backstop;<br>commit auto-fixes after human sees table)"]
         bCodeRisk --> CK{"b-code-risk→b-open-pr checkpoint:<br>unresolved real / failed-verification?"}
         CK -- "yes" --> HOLD(["pause for human disposition"])
-        CK -- "clear" --> bOpenPr["b-open-pr push work-branch → open-pr<br>(confirm gate; convention learned per target)"]
+        CK -- "clear" --> bOpenPr["b-open-pr push work-branch → open-pr<br>(confirm gate; convention learned from past PRs)"]
     end
     bOpenPr --> DONE(["done: record pr-url;<br>point to Phase C<br>(resolve-pr-comments, user-invoked)"])
 ```
@@ -74,7 +74,7 @@ So after approval there is one guaranteed stop — the open-PR confirmation — 
 
 ## Prerequisites
 
-- **MCP / CLI** — whatever the component skills require: the Atlassian MCP for the Jira anchor (a-fact-check), and `az` with the azure-devops extension for `open-pr` (b-open-pr). Each degrades with a voiced note if absent.
+- **MCP / CLI** — whatever the component skills require: the Atlassian MCP for the Jira anchor (a-fact-check), and `az` with the azure-devops extension, or `gh` on GitHub, for `open-pr` (b-open-pr). Each degrades with a voiced note if absent.
 - **Python on PATH — optional, and not a prerequisite of this skill.** The preamble offers to bring up `resolve-issue-dashboard` at the start of every interactive run, and that dashboard is a local standard-library Python server (no `pip install`, no virtualenv). It is the one prerequisite a run visibly touches, which is why it is named here — but without it the launch declines in one line and the pipeline is unaffected, because the dashboard only observes. See the [plugin README](../../README.md#prerequisites) for the install command.
 - **Keep the built-in `security-review` unshadowed (b-security-review).** b-security-review invokes the harness built-in `/security-review` (report-only). Built-in skills have no plugin namespace, so a third-party plugin that claims that bare name — e.g. CodeRabbit — shadows it and wins the bare-name resolution; if that plugin's CLI is not installed, the bare name fails outright. Disable any such plugin so the built-in resolves: set `enabledPlugins: { "coderabbit@…": false }` in `settings.json`, or run `/plugin disable coderabbit`. Because `security-review` is the pipeline's only built-in review pass, a shadowed *or* absent `security-review` is treated as the pass **not having run** — b-security-review surfaces a loud `SECURITY REVIEW DID NOT RUN` rather than silently trusting the wrong tool.
 
