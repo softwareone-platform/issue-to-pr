@@ -92,7 +92,7 @@
    ◉─ 11  Done                pipeline complete, PR awaiting review
 ```
 
-**只有「起草計畫」和「修改程式碼」這兩步不需要你參與。** 有兩個停止點是無條件的：計畫核准，以及開 PR 前的確認；其他每一步都可能暫停來問你，例如一個它不准自行猜測的設計決定、一個需要你處置的風險、一個測試類型的判斷，或一個品質警示。每次等待都沒有時限：暫停的執行會一直停在那裡，直到有人回答。它會在 `state.md` 寫明自己在等什麼，`resolve-issue-dashboard` 也會顯示出來。依每個停止點存在的理由分組的完整說明，見 [resolve-issue 的 README](plugins/issue-to-pr-pipeline/skills/resolve-issue/README.md#where-the-run-stops-for-you)。
+**只有「起草計畫」和「修改程式碼」這兩步不需要你參與。** 有兩個停止點是無條件的：計畫核准，以及開 PR 前的確認；其他每一步都可能暫停來問你，例如一個它不准自行猜測的設計決定、一個需要你處置的風險、一個測試類型的判斷，或一個品質警示。每次等待都沒有時限：暫停的執行會一直停在那裡，直到有人回答。它會在 `state.md` 寫明自己在等什麼，`resolve-issue-dashboard` 也會顯示出來。依每個停止點存在的理由分組的完整說明，見 [resolve-issue 的 README](plugins/issue-to-pr-pipeline/skills/resolve-issue/README.zh-TW.md#where-the-run-stops-for-you)。
 
 **一次執行要花你多少。** 大部分步驟都交給 subagent 執行，而測試和審查步驟各自要付一個撰寫者加一個獨立驗證者的成本，所以即使是一行的修正也要付這一對的費用。pipeline 裡沒有任何環節能回報自己花了多少：協調者看不到自己的 token 用量，儀表板上的計數器是用量而不是價格。實際經過時間同樣無法引用：一次執行的經過時間，大部分是它在關卡前等 **你** 的時間，所以這裡不列任何時長。請觀察你第一次執行的用量，不要只相信估計值。
 
@@ -120,7 +120,7 @@
 
 ### test-authoring
 
-把測試撰寫交給撰寫者和驗證者 subagent（共 8 個）。agent 遵守的規則隨 plugin 一起提供，並直接從 plugin 讀取，所以不會有任何東西被複製到你的 repo。若執行過一次 `setup-test-context`，它還會把這個 repo 的跨層對照表快取起來；沒有它，每個流程仍會從最接近的相鄰測試學習慣例，照常執行。完整架構見 [plugin README](plugins/test-authoring/README.md)。
+把測試撰寫交給撰寫者和驗證者 subagent（共 8 個）。agent 遵守的規則隨 plugin 一起提供，並直接從 plugin 讀取，所以不會有任何東西被複製到你的 repo。若執行過一次 `setup-test-context`，它還會把這個 repo 的跨層對照表快取起來；沒有它，每個流程仍會從最接近的相鄰測試學習慣例，照常執行。完整架構見 [plugin README](plugins/test-authoring/README.zh-TW.md)。
 
 - **setup-test-context**：為 repo 建立一次性的概況；把它的跨層對照表以慣例的形式快取在 `.claude/conventions/tests/` 下。可以重複執行，重新執行就是更新。
 - **scan-test-gaps**：找出沒有測試的程式碼和過時的測試，然後反覆委派產生與更新。

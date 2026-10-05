@@ -48,7 +48,7 @@
 
 **从旧的 `itpr` marketplace 迁移。** 本 repo 过去是一个名为 `itpr` 的 marketplace，现在已经不是了：刷新 `itpr` 会失败，从它安装的 plugin 也会停止加载。请运行 `/plugin marketplace remove itpr`（这也会卸载从它安装的 plugin），然后添加 `tundra` 并按上面的方式安装。每个 plugin 只应从一个 marketplace 安装。
 
-如果要基于克隆下来的 repo 开发这些 plugin，请用 `claude --plugin-dir ./plugins` 直接从工作目录加载，而不是把克隆添加为 marketplace。
+如果要基于克隆下来的 repo 开发这些 plugin，请用 `claude --plugin-dir ./plugins` 直接从 working tree 加载，而不是把克隆添加为 marketplace。
 
 <a id="plugins-at-a-glance"></a>
 ## 🗂️ Plugin 一览
@@ -92,7 +92,7 @@
    ◉─ 11  Done                pipeline complete, PR awaiting review
 ```
 
-**只有“起草计划”和“修改代码”这两步不需要你参与。** 有两个停止点是无条件的：计划批准，以及创建 PR 前的确认；其他每一步都可能暂停来询问你，例如一个它被禁止自行猜测的设计决定、一个需要你处置的风险、一个测试类型的判断，或一个质量警示。每次等待都没有时限：暂停的运行会一直停在那里，直到有人回答。它会在 `state.md` 中写明自己在等什么，`resolve-issue-dashboard` 也会显示出来。按每个停止点存在的理由分组的完整说明，见 [resolve-issue 的 README](plugins/issue-to-pr-pipeline/skills/resolve-issue/README.md#where-the-run-stops-for-you)。
+**只有“起草计划”和“修改代码”这两步不需要你参与。** 有两个停止点是无条件的：计划批准，以及创建 PR 前的确认；其他每一步都可能暂停来询问你，例如一个它被禁止自行猜测的设计决定、一个需要你处置的风险、一个测试类型的判断，或一个质量警示。每次等待都没有时限：暂停的运行会一直停在那里，直到有人回答。它会在 `state.md` 中写明自己在等什么，`resolve-issue-dashboard` 也会显示出来。按每个停止点存在的理由分组的完整说明，见 [resolve-issue 的 README](plugins/issue-to-pr-pipeline/skills/resolve-issue/README.zh-CN.md#where-the-run-stops-for-you)。
 
 **一次运行的成本。** 大部分步骤都交给 subagent 执行，而测试和审查步骤各自要承担一个编写者加一个独立验证者的成本，所以即使是一行的修复也要为这一对付费。pipeline 中没有任何环节能报告自己的花费：编排器看不到自己的 token 用量，仪表盘上的计数器反映的是用量而不是价格。实际耗时同样给不出可靠的数字：一次运行的耗时，大部分是它在关卡前等待 **你** 的时间，所以这里不给出任何时长。请观察你第一次运行的用量，而不是相信任何估算。
 
@@ -120,7 +120,7 @@
 
 ### test-authoring
 
-把测试编写交给编写者和验证者 subagent（共 8 个）。agent 遵守的规则随 plugin 一起提供，并直接从 plugin 读取，因此不会有任何东西被复制到你的 repo。如果运行过一次 `setup-test-context`，它还会把这个 repo 的跨层映射缓存下来；没有它，每个流程仍会从最近的相邻测试学习约定，照常运行。完整架构见 [plugin README](plugins/test-authoring/README.md)。
+把测试编写交给编写者和验证者 subagent（共 8 个）。agent 遵守的规则随 plugin 一起提供，并直接从 plugin 读取，因此不会有任何东西被复制到你的 repo。如果运行过一次 `setup-test-context`，它还会把这个 repo 的跨层映射缓存下来；没有它，每个流程仍会从最近的相邻测试学习约定，照常运行。完整架构见 [plugin README](plugins/test-authoring/README.zh-CN.md)。
 
 - **setup-test-context**：对 repo 做一次测试概况分析；把它的跨层映射以约定的形式缓存在 `.claude/conventions/tests/` 下。可以重复运行，重新运行就是刷新。
 - **scan-test-gaps**：找出没有测试的代码和过时的测试，然后反复委派生成与更新。

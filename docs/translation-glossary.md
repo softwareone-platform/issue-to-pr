@@ -44,6 +44,14 @@ These stay in English inside translated prose too, because they are what a reade
 | claim (in an issue) | 主張 | 论断 |
 | triage (a review comment) | 判斷如何處理 | 判断如何处理 |
 | open (a PR) | 開出 | 创建 |
+| spawn (a subagent) | 啟動 | 启动 |
+| sequencer, not a re-implementation | 只負責串接順序，不重新實作 | 只负责排序，而不是重新实现 |
+| regression oracle | 回歸判準 | 回归判定依据 |
+| baseline (copy) | 基準副本 | 基线副本 |
+| maintenance line | 維護線 | 维护线 |
+| circuit breaker | 斷路器 | 熔断机制 |
+| consumer (repo) | 使用端 repo | 使用方 repo |
+| never (a hard rule) | 絕不 | 绝不 |
 
 ## How to translate
 
