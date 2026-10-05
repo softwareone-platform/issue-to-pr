@@ -11,7 +11,7 @@ This is the last block of the blocks-first roadmap: the review trio, the test fa
 /plugin install issue-to-pr-pipeline@tundra
 ```
 
-Installing `issue-to-pr-pipeline` auto-installs its three dependencies (`disconfirm-first`, `test-authoring`, `pr-lifecycle`); dependency auto-install needs the Claude Code version in the [repository README's badge](https://github.com/softwareone-platform/issue-to-pr#install), and on older versions you install those three explicitly with `/plugin install <name>@tundra`. The security pass delegates to Claude Code's built-in `security-review` — no install needed.
+Installing `issue-to-pr-pipeline` auto-installs its three dependencies (`disconfirm-first`, `test-authoring`, `pr-lifecycle`); dependency auto-install needs Claude Code v2.1.143 or later, and on older versions you install those three explicitly with `/plugin install <name>@tundra`. The security pass delegates to Claude Code's built-in `security-review` — no install needed.
 
 After installing, run `/reload-plugins` to activate.
 
