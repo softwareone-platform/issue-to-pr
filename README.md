@@ -50,7 +50,7 @@ Auto-update is off by default for third-party marketplaces. To receive new versi
 To work on the plugins from a clone, load them straight from the working tree with `claude --plugin-dir ./plugins` rather than adding the clone as a marketplace.
 
 <a id="plugins-at-a-glance"></a>
-## 🧩 Plugins at a glance
+## 🗂️ Plugins at a glance
 
 | Plugin | What it gives you |
 |---|---|
@@ -62,7 +62,7 @@ To work on the plugins from a clone, load them straight from the working tree wi
 Invoke any skill as `/<plugin>:<skill>`, or just describe the task — each skill auto-triggers from natural language.
 
 <a id="how-they-fit-together"></a>
-## 🏗️ How they fit together
+## 🧩 How they fit together
 
 The review, test, and PR plugins are independently useful. `issue-to-pr-pipeline` composes them: `resolve-issue` drives one ticket through the pipeline below, gated on plan approval and pausing again wherever a decision is yours, delegating each stage to the skill that owns it — the review, test, and PR skills, plus Claude Code's built-in `security-review`.
 

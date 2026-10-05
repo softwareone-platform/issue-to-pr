@@ -1,4 +1,4 @@
-<!-- translated from README.md, source sha256 fc3f732d87514796fa7152b886a03739b28fae85a0525505311b84d6ed7e5a11; see CLAUDE.md "Translations of the root README" before editing -->
+<!-- translated from README.md, source sha256 07c526e69f72e4c41e40eaad7d74a011557e7888003eb2c32427bc832a8ca93f; see CLAUDE.md "Translations of the root README" before editing -->
 # issue-to-pr
 
 ![resolve-issue-dashboard 正在展示一次运行到一半的 pipeline](docs/resolve-issue-dashboard.png)
@@ -51,7 +51,7 @@
 如果要基于克隆下来的 repo 开发这些 plugin，请用 `claude --plugin-dir ./plugins` 直接从工作目录加载，而不是把克隆添加为 marketplace。
 
 <a id="plugins-at-a-glance"></a>
-## 🧩 Plugin 一览
+## 🗂️ Plugin 一览
 
 | Plugin | 提供什么 |
 |---|---|
@@ -63,7 +63,7 @@
 任何 skill 都可以用 `/<plugin>:<skill>` 调用，或者直接描述你要做的事：每个 skill 都会根据自然语言自动触发。
 
 <a id="how-they-fit-together"></a>
-## 🏗️ 它们如何协同
+## 🧩 它们如何协同
 
 审查、测试和 PR 这三个 plugin 各自都可以单独使用。`issue-to-pr-pipeline` 把它们组合起来：`resolve-issue` 带着一个工单走完下方的 pipeline，以计划批准作为关卡，并在每个该由你决定的地方再次暂停；每个阶段都交给负责它的 skill 执行，包括审查、测试和 PR 的 skill，以及 Claude Code 内置的 `security-review`。
 
