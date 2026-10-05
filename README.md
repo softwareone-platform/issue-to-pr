@@ -1,16 +1,24 @@
 # issue-to-pr
 
-[English](README.md) | [繁體中文](README.zh-TW.md) | [简体中文](README.zh-CN.md)
-
-[![CI](https://img.shields.io/github/actions/workflow/status/softwareone-platform/issue-to-pr/checks.yml?branch=main&label=CI)](https://github.com/softwareone-platform/issue-to-pr/actions/workflows/checks.yml) [![Claude Code](https://img.shields.io/badge/Claude%20Code-2.1.143%2B-blue)](#install) [![License: Apache-2.0](https://img.shields.io/github/license/softwareone-platform/issue-to-pr)](LICENSE)
-
-A set of [Claude Code](https://claude.com/claude-code) plugins — skills and subagents that take a ticket from diagnosis to a reviewed pull request, plus the review, test-authoring, and housekeeping tools that support that flow.
-
 ![The resolve-issue-dashboard visualising a run mid-pipeline](docs/resolve-issue-dashboard.png)
 
 <sub>The `resolve-issue-dashboard` (in `issue-to-pr-pipeline`) watching a run move through the pipeline — illustrative example data.</sub>
 
-## Install
+<div align="center">
+
+[![CI](https://img.shields.io/github/actions/workflow/status/softwareone-platform/issue-to-pr/checks.yml?branch=main&label=CI)](https://github.com/softwareone-platform/issue-to-pr/actions/workflows/checks.yml) [![Claude Code](https://img.shields.io/badge/Claude%20Code-2.1.143%2B-blue)](#install) [![License: Apache-2.0](https://img.shields.io/github/license/softwareone-platform/issue-to-pr)](LICENSE)
+
+[English](README.md) | [繁體中文](README.zh-TW.md) | [简体中文](README.zh-CN.md)
+
+</div>
+
+<a id="overview"></a>
+## 🧭 Overview
+
+A set of [Claude Code](https://claude.com/claude-code) plugins — skills and subagents that take a ticket from diagnosis to a reviewed pull request, plus the review, test-authoring, and housekeeping tools that support that flow.
+
+<a id="install"></a>
+## 📦 Install
 
 Requires Claude Code with plugin support. Dependency auto-install and enable-time dependency handling need the version in the Claude Code badge above; on older versions use the explicit per-plugin list below.
 
@@ -41,7 +49,8 @@ Auto-update is off by default for third-party marketplaces. To receive new versi
 
 To work on the plugins from a clone, load them straight from the working tree with `claude --plugin-dir ./plugins` rather than adding the clone as a marketplace.
 
-## Plugins at a glance
+<a id="plugins-at-a-glance"></a>
+## 🧩 Plugins at a glance
 
 | Plugin | What it gives you |
 |---|---|
@@ -52,7 +61,8 @@ To work on the plugins from a clone, load them straight from the working tree wi
 
 Invoke any skill as `/<plugin>:<skill>`, or just describe the task — each skill auto-triggers from natural language.
 
-## How they fit together
+<a id="how-they-fit-together"></a>
+## 🔗 How they fit together
 
 The review, test, and PR plugins are independently useful. `issue-to-pr-pipeline` composes them: `resolve-issue` drives one ticket through the pipeline below, gated on plan approval and pausing again wherever a decision is yours, delegating each stage to the skill that owns it — the review, test, and PR skills, plus Claude Code's built-in `security-review`.
 
@@ -89,7 +99,8 @@ The whole run checkpoints to `.claude/resolve/<ticket>/`, so a fresh session can
 
 **One thing lands outside the repo you invoked it in.** `resolve-issue` appends candidate learnings to `~/.claude/resolve-learnings/candidates.md`, and `resolve-issue-learnings` promotes the verified ones into `~/.claude/resolve-learnings/conventions.md` for later runs to honour. Both are user-global, shared across all your repos, and plain markdown you can read, edit, or delete — and they are the only files these plugins write outside the repo. Everything else stays in that repo's `.claude/`; the dashboard reads `~/.claude/projects/` but never writes there.
 
-## Skills
+<a id="skills"></a>
+## 🛠️ Skills
 
 ### disconfirm-first
 
@@ -123,7 +134,8 @@ Issue-to-PR orchestration. Depends on `disconfirm-first`, `test-authoring`, and 
 - **resolve-issue-dashboard** — A live, read-only dashboard that visualises a run — pipeline step, per-subagent activity, metrics, and the gate it is paused at — by tailing the transcript and `state.md`. Observes only; never drives.
 - **resolve-issue-learnings** — Harvests the cross-repo learnings a run captured, verifies each against the current skill as ground truth, and writes the survivors to a conventions file the pipeline reads next time.
 
-## Prerequisites
+<a id="prerequisites"></a>
+## 📋 Prerequisites
 
 The plugins themselves are just Markdown and JSON — nothing to build. A few skills reach external services or want a local runtime; install what the plugins you actually use require:
 
@@ -132,7 +144,8 @@ The plugins themselves are just Markdown and JSON — nothing to build. A few sk
 - [Atlassian MCP Server](https://www.npmjs.com/package/@anthropic-ai/atlassian-mcp) in your Claude Code MCP settings — optional; enables Jira integration for `review-issue-fact`, `resolve-issue`, and the Jira link in `open-pr`. These skills fall back to a pasted link or plain text when it is absent.
 - [Python](https://www.python.org/downloads/) on PATH — **optional**, and only for `resolve-issue-dashboard`, which runs a local standard-library server (no `pip install`, no virtualenv). Tested on 3.13 and 3.14, on Windows and Linux. Install it with `winget install Python.Python.3.13` on Windows (per-user scope, no administrator needed), `brew install python` on macOS, or your distribution's package manager. Without it the dashboard declines to start and says so in one line; `resolve-issue` and every other skill run exactly as they would otherwise, because the dashboard only observes.
 
-## Repository layout
+<a id="repository-layout"></a>
+## 📁 Repository layout
 
 ```
 plugins/<plugin>/

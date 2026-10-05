@@ -1,18 +1,25 @@
-<!-- translated from README.md, source sha256 a03b44a12168b55c9c5b1f7e47cc80944f75460184df6e9e7177954cc606683c; see CLAUDE.md "Translations of the root README" before editing -->
+<!-- translated from README.md, source sha256 a215bcb37376d8697eedfea3f5fdf70b3cc09ec057b2677df8fb1a38960c2755; see CLAUDE.md "Translations of the root README" before editing -->
 # issue-to-pr
-
-[English](README.md) | [繁體中文](README.zh-TW.md) | [简体中文](README.zh-CN.md)
-
-[![CI](https://img.shields.io/github/actions/workflow/status/softwareone-platform/issue-to-pr/checks.yml?branch=main&label=CI)](https://github.com/softwareone-platform/issue-to-pr/actions/workflows/checks.yml) [![Claude Code](https://img.shields.io/badge/Claude%20Code-2.1.143%2B-blue)](#install) [![License: Apache-2.0](https://img.shields.io/github/license/softwareone-platform/issue-to-pr)](LICENSE)
-
-一組 [Claude Code](https://claude.com/claude-code) plugin：由 skill 與 subagent 組成，把一張工單從診斷一路帶到經過審查的 pull request，並附上支撐這個流程的審查、測試撰寫與維護工具。
 
 ![resolve-issue-dashboard 正在顯示一次執行到一半的 pipeline](docs/resolve-issue-dashboard.png)
 
 <sub>`issue-to-pr-pipeline` 裡的 `resolve-issue-dashboard` 正在追蹤一次執行在 pipeline 中的進度（示意用的範例資料）。</sub>
 
+<div align="center">
+
+[![CI](https://img.shields.io/github/actions/workflow/status/softwareone-platform/issue-to-pr/checks.yml?branch=main&label=CI)](https://github.com/softwareone-platform/issue-to-pr/actions/workflows/checks.yml) [![Claude Code](https://img.shields.io/badge/Claude%20Code-2.1.143%2B-blue)](#install) [![License: Apache-2.0](https://img.shields.io/github/license/softwareone-platform/issue-to-pr)](LICENSE)
+
+[English](README.md) | [繁體中文](README.zh-TW.md) | [简体中文](README.zh-CN.md)
+
+</div>
+
+<a id="overview"></a>
+## 🧭 概覽
+
+一組 [Claude Code](https://claude.com/claude-code) plugin：由 skill 與 subagent 組成，把一張工單從診斷一路帶到經過審查的 pull request，並附上支撐這個流程的審查、測試撰寫與維護工具。
+
 <a id="install"></a>
-## 安裝
+## 📦 安裝
 
 需要支援 plugin 的 Claude Code。相依套件的自動安裝，以及啟用時對相依套件的處理，需要上方 Claude Code badge 標示的版本；較舊的版本請改用下方逐一安裝的清單。
 
@@ -43,7 +50,8 @@
 
 如果要從 clone 下來的 repo 開發這些 plugin，請用 `claude --plugin-dir ./plugins` 直接從 working tree 載入，而不是把 clone 加成 marketplace。
 
-## Plugin 一覽
+<a id="plugins-at-a-glance"></a>
+## 🧩 Plugin 一覽
 
 | Plugin | 提供什麼 |
 |---|---|
@@ -55,7 +63,7 @@
 任何 skill 都可以用 `/<plugin>:<skill>` 叫用，或直接描述你要做的事：每個 skill 都會依自然語言自動觸發。
 
 <a id="how-they-fit-together"></a>
-## 它們如何搭配
+## 🔗 它們如何搭配
 
 審查、測試和 PR 這三個 plugin 各自都能單獨使用。`issue-to-pr-pipeline` 把它們組合起來：`resolve-issue` 帶著一張工單走過下方的 pipeline，以計畫核准作為關卡，並在每個該由你決定的地方再次暫停；每個階段都交給負責它的 skill 執行，包括審查、測試和 PR 的 skill，以及 Claude Code 內建的 `security-review`。
 
@@ -92,7 +100,8 @@
 
 **有一樣東西會寫到你叫用它的 repo 之外。** `resolve-issue` 會把候選經驗附加到 `~/.claude/resolve-learnings/candidates.md`，而 `resolve-issue-learnings` 會把通過驗證的那些升級到 `~/.claude/resolve-learnings/conventions.md`，供之後的執行遵循。兩者都是使用者全域、所有 repo 共用的純 Markdown 檔，你可以閱讀、編輯或刪除；它們也是這些 plugin 在 repo 之外寫入的唯一檔案。其他所有東西都留在那個 repo 的 `.claude/` 裡；儀表板會讀取 `~/.claude/projects/`，但從不寫入。
 
-## Skill
+<a id="skills"></a>
+## 🛠️ Skill
 
 ### disconfirm-first
 
@@ -126,7 +135,8 @@
 - **resolve-issue-dashboard**：一個即時、唯讀的儀表板，透過追蹤 transcript 和 `state.md`，顯示一次執行的 pipeline 步驟、每個 subagent 的活動、各項指標，以及它停在哪個關卡。只觀察，從不驅動執行。
 - **resolve-issue-learnings**：收集執行過程中記下的跨 repo 經驗，以目前的 skill 為依據逐一驗證，並把通過的寫入一個 pipeline 下次會讀取的慣例檔。
 
-## 前置需求
+<a id="prerequisites"></a>
+## 📋 前置需求
 
 plugin 本身只是 Markdown 和 JSON，沒有任何東西需要建置。少數 skill 會連到外部服務，或需要本機的執行環境；只需安裝你實際使用的 plugin 所需要的：
 
@@ -135,7 +145,8 @@ plugin 本身只是 Markdown 和 JSON，沒有任何東西需要建置。少數 
 - 在 Claude Code 的 MCP 設定中加入 [Atlassian MCP Server](https://www.npmjs.com/package/@anthropic-ai/atlassian-mcp)：選用；為 `review-issue-fact`、`resolve-issue` 啟用 Jira 整合，並讓 `open-pr` 加上 Jira 連結。沒有它時，這些 skill 會改用貼上的連結或純文字。
 - PATH 上的 [Python](https://www.python.org/downloads/)：**選用**，而且只有 `resolve-issue-dashboard` 需要，它會在本機執行一個只用標準函式庫的伺服器（不需要 `pip install`，也不需要 virtualenv）。已在 Windows 和 Linux 上以 3.13 和 3.14 測試。在 Windows 上用 `winget install Python.Python.3.13` 安裝（使用者範圍，不需要系統管理員），macOS 用 `brew install python`，或用你的發行版的套件管理工具。沒有它時，儀表板會拒絕啟動並用一行說明原因；`resolve-issue` 和其他所有 skill 的執行完全不受影響，因為儀表板只負責觀察。
 
-## Repo 結構
+<a id="repository-layout"></a>
+## 📁 Repo 結構
 
 ```
 plugins/<plugin>/

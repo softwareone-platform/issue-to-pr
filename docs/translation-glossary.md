@@ -4,7 +4,7 @@ The root `README.md` is translated into Traditional Chinese (`README.zh-TW.md`) 
 
 ## Never translated
 
-Kept exactly as written in the English README: product and service names (Claude Code, GitHub, Azure DevOps, Atlassian, Jira, Python, SonarCloud), plugin, skill and subagent names (`disconfirm-first`, `resolve-issue`, …), slash commands, file and directory paths, command lines, every fenced code block (including the pipeline diagram, whose alignment CJK full-width characters would break), and every link target.
+Kept exactly as written in the English README: product and service names (Claude Code, GitHub, Azure DevOps, Atlassian, Jira, Python, SonarCloud), plugin, skill and subagent names (`disconfirm-first`, `resolve-issue`, …), slash commands, file and directory paths, command lines, every fenced code block (including the pipeline diagram, whose alignment CJK full-width characters would break), every link target, and the section icons and the English `<a id>` anchor above each section (links written against the English README must land in every language).
 
 These stay in English inside translated prose too, because they are what a reader types or searches for: plugin, skill, subagent, marketplace, hook, PR (and pull request), issue, story, repo, working tree, branch, remote, commit, push, pipeline, session, agent, badge, token, transcript, frontmatter, fixture.
 
@@ -12,6 +12,7 @@ These stay in English inside translated prose too, because they are what a reade
 
 | English | zh-TW | zh-CN |
 |---|---|---|
+| overview (section) | 概覽 | 概览 |
 | ticket | 工單 | 工单 |
 | plan | 計畫 | 计划 |
 | fix (noun) | 修正 | 修复 |
