@@ -1,5 +1,7 @@
 # test-authoring
 
+[English](README.md) | [繁體中文](README.zh-TW.md) | [简体中文](README.zh-CN.md)
+
 A self-contained plugin for test authoring in your codebases. Ships a cohesive set of 6 skills, 8 subagents, and the rule books they obey.
 
 The plugin is **cohesive**: skills are designed to work together. Every skill reads its rule books straight from the plugin's `resources/templates/{rules,shared}/` — nothing is copied into a consumer repo, so a plugin upgrade reaches every repo at once. `setup-test-context` is an **optional accelerator** on top of that: it profiles the consumer repo once and caches the cross-layer map (project architecture, recurring verification patterns) under `.claude/conventions/tests/`. Without it every workflow (`scan-test-gaps`, `add/update {unit,integration} test`) still runs, discovering conventions from the nearest sibling tests at runtime.
@@ -48,7 +50,7 @@ When `/test-authoring:setup-test-context` runs in a consumer repo it writes one 
 .claude/
 └── conventions/tests/                  # repo-specific patterns, learned from the codebase
     ├── project-architecture.md         # source/test layout, naming, mirroring, shared test project
-    └── common-verification-patterns.md # only if a cross-layer pattern was detected
+    └── common-verification-patterns.md # only if a qualifying pattern was detected
 ```
 
 Per-type `{type}-test-conventions.md` are **not** written, and the plugin no longer reads them either. Writers use the nearest sibling, which is always more current than a cache — and a file nothing generates but every writer would trust is an injection surface, invisible in review because the path is gitignored.
@@ -108,8 +110,8 @@ who the actor is, its input contract, procedure, and output schema; one per role
 (orchestrator / writer / update-writer / verifier).
 The remaining files are **rule books** — constraints and protocols, scoped by audience:
 `test-rules.md` binds every agent, `test-writer-rules.md` binds writers,
-and `fix-protocol.md` is read by the **orchestrator** (it routes verifier findings;
-verifiers themselves follow `common-verifier-checks.md`).
+and `fix-protocol.md` is read by the **orchestrator**, which routes verifier findings by it,
+and by each verifier for how its findings will be routed (its own check sequence is `common-verifier-checks.md`).
 When adding content, put the actor's procedure in its `common-*` file
 and the constraint in the matching rule book — never both
 (duplicating across the pair is how rules drift into two sources of truth).
@@ -135,7 +137,7 @@ Repo-specific patterns derived from actual codebase analysis — the only thing 
 | File | Source | Purpose |
 |---|---|---|
 | `project-architecture.md` | _(generated from analysis, no template)_ | Source/test directory structure, naming conventions, feature organisation, shared test project |
-| `common-verification-patterns.md` | _(generated from analysis, conditional on a cross-layer pattern being detected)_ | Recurring verification patterns |
+| `common-verification-patterns.md` | _(generated from analysis, only when a layer-common or cross-layer-common pattern is detected)_ | Recurring verification patterns |
 
 `status-legend.md` is **not** written per-repo. It lives at [`resources/static/status-legend.md`](resources/static/status-legend.md) and skills read it directly via `<plugin-root>/resources/static/status-legend.md`. This keeps the controlled-vocabulary single-sourced; user extensions to a per-repo copy are not honoured.
 
