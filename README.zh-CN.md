@@ -1,4 +1,4 @@
-<!-- translated from README.md, source sha256 a215bcb37376d8697eedfea3f5fdf70b3cc09ec057b2677df8fb1a38960c2755; see CLAUDE.md "Translations of the root README" before editing -->
+<!-- translated from README.md, source sha256 fc3f732d87514796fa7152b886a03739b28fae85a0525505311b84d6ed7e5a11; see CLAUDE.md "Translations of the root README" before editing -->
 # issue-to-pr
 
 ![resolve-issue-dashboard 正在展示一次运行到一半的 pipeline](docs/resolve-issue-dashboard.png)
@@ -63,7 +63,7 @@
 任何 skill 都可以用 `/<plugin>:<skill>` 调用，或者直接描述你要做的事：每个 skill 都会根据自然语言自动触发。
 
 <a id="how-they-fit-together"></a>
-## 🔗 它们如何协同
+## 🏗️ 它们如何协同
 
 审查、测试和 PR 这三个 plugin 各自都可以单独使用。`issue-to-pr-pipeline` 把它们组合起来：`resolve-issue` 带着一个工单走完下方的 pipeline，以计划批准作为关卡，并在每个该由你决定的地方再次暂停；每个阶段都交给负责它的 skill 执行，包括审查、测试和 PR 的 skill，以及 Claude Code 内置的 `security-review`。
 
